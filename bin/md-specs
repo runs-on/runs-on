@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -eo pipefail
+
+echo ""
+echo "### Runner types"
+echo ""
+default_runner=$(node -e 'console.log(require("./src/constants").DEFAULT_RUNNER_SPEC_KEY)')
+echo "Default if no \`runner\` label provided: \`$default_runner\`."
+echo ""
+node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require("./src/constants").RUNNERS)))' | jq -r '
+  ["key", "cpu", "family", "iops"],
+  ["---", "---", "---"],
+  (.[] | [.key, .cpu, (.family | join(", ")), .iops])
+  | @tsv | gsub("\t"; " | ") | "| " + . + " |"
+'
+
+echo ""
+echo "### Runner images"
+echo ""
+default_image=$(node -e 'console.log(require("./src/constants").DEFAULT_IMAGE_SPEC_KEY)')
+echo "Default if no \`image\` label provided: \`$default_image\`."
+echo ""
+node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require("./src/constants").IMAGES)))' | jq -r '
+  ["key", "platform", "arc", "owner", "user", "name"],
+  ["---", "---", "---", "---", "---", "---"],
+  (.[] | [.key, .platform, .arch, .owner, .user, .name])
+  | @tsv | gsub("\t"; " | ") | "| " + . + " |"
+'

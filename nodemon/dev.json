@@ -1,0 +1,5 @@
+{
+  "verbose": true,
+  "watch": [".", "app.yml.example", ".env", "./data", "./views"],
+  "ext": "js,sh,hbs,handlebars"
+}

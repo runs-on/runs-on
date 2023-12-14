@@ -1,0 +1,54 @@
+## Purpose
+
+This issue is used to track daily costs associated with runs-on self-hosted GitHub runners. The content is generated automatically by your runs-on GitHub App.
+
+It will also be used to surface errors occurring when handling your workflow jobs. Each error will be added as a comment to this issue. Make sure you subscribe to this issue to be notified.
+
+## Status
+
+Installation status: ✅ (last updated: {{lastUpdated}})
+
+## Runner types
+
+Those are the default runner types available. You can also choose to define custom runner types with specific amount of CPU, RAM, DISK, Architecture, etc.
+
+| Name       | CPU       |
+|------------|-----------|
+{{#runnerTypes}}
+|{{id}} | {{cpu}} |
+{{/runnerTypes}}
+
+## Runner images
+
+Those are the default runner images available. You can also choose to define custom runner images, for instance to use a specific AMI in your AWS account.
+
+| Name       | Architecture |
+|------------|--------------|
+{{#runnerImages}}
+|{{id}} | {{arch}} |
+{{/runnerImages}}
+
+## Usage
+
+```diff
+- runs-on: ubuntu-latest
++ runs-on: runs-on,image={{defaultImage}},runner={{defaultRunner}}
+```
+
+More details on [runs-on].
+
+## Daily costs
+
+Note: costs are fetched from the AWS Cost Explorer API and may be delayed by up to 24 hours. We only display costs associated with the `{{stackTagKey}}:{{stackTagName}}` tag, so currently the costs are for the whole organization, not this single repository. You can also filters costs for this stack using the Cost Explorer AWS UI.
+
+| Date       | Cost       |
+|------------|------------|
+{{#costs}}
+| {{TimePeriod.End}} | {{round Total.BlendedCost.Amount}} |
+{{/costs}}
+
+You can close this issue, but it will be reopened whenever an error occurs.
+
+Ping @crohr or open an issue on [runs-on] if you need help.
+
+[runs-on]: https://github.com/runs-on/runs-on

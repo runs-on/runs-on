@@ -1,0 +1,35 @@
+{
+  "name": "runs-on",
+  "version": "v1.3.8",
+  "private": true,
+  "description": "Deploy ephemeral and cheap self-hosted runners for your GitHub Action workflows, in your AWS account",
+  "author": "Cyril Rohr",
+  "license": "Prosperity Public License 3.0.0",
+  "homepage": "https://github.com/runs-on/runs-on",
+  "scripts": {
+    "synchronize": "node -e 'require(\"./src/config\").fetch(\".env\")'",
+    "md-specs": "./bin/md-specs",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cost-explorer": "^3.470.0",
+    "@aws-sdk/client-ec2": "^3.468.0",
+    "@aws-sdk/client-s3": "^3.470.0",
+    "envsub": "^4.1.0",
+    "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.8",
+    "nodemon": "^3.0.2",
+    "probot": "^12.2.4"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "nock": "^13.0.5",
+    "smee-client": "^1.2.2"
+  },
+  "engines": {
+    "node": ">= 20.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}

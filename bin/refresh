@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# this is a dummy refresh script so that we can use PROJECT_DOMAIN env variable
+echo "OK"

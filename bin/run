@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+RUNS_ON_APP_VERSION=$(node -p "require('./package.json').version")
+export RUNS_ON_APP_VERSION
+echo "App version=$RUNS_ON_APP_VERSION"
+
+if [ "$NODE_ENV" = "apprunner" ]; then
+  NODEMON_CONFIG="nodemon/prod.json"
+  export NO_SMEE_SETUP="true"
+  export RUNS_ON_VERSION_CHECK_URL=https://runs-on.com/versions
+
+  # override with .env from s3 bucket if possible
+  npm run synchronize || true
+
+  if [ -s .env ]; then
+    echo "File .env already exists and is not empty, starting in production mode..."
+    export NODE_ENV=production
+  else
+    echo "File .env does not exist or is empty, creating one..."
+    # create dummy file so that nodemon can watch it
+    touch .env
+    export RUNS_ON_FIRST_RUN=true
+  fi
+else
+  NODEMON_CONFIG="nodemon/dev.json"
+  export RUNS_ON_VERSION_CHECK_URL=http://localhost:8788/versions
+fi
+
+exec npx nodemon --config $NODEMON_CONFIG --exec "./bin/install-assets && probot run ./app.js"

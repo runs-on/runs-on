@@ -1,0 +1,108 @@
+#!/bin/bash
+set -e
+set -o pipefail
+set -x
+
+# Note: this template must be valid for all linux variants (ubuntu, centos, etc), and all supported architectures (x64, arm64, etc)
+
+# automatically shut down instance after job exits
+_the_end() {
+	echo "Going to shut down in a few seconds..."
+  sleep 1m
+  shutdown -h now
+}
+trap _the_end EXIT INT TERM
+
+RUNS_ON_AGENT_FULL_TIMEOUT=12h
+RUNS_ON_AGENT_WAIT_TIMEOUT=20m
+RUNS_ON_AGENT_USER="{{{runnerUser}}}"
+RUNS_ON_AGENT_DIR=/opt/runner
+
+_setup_watchdogs() {
+  echo "Installing watchdogs..."
+  sleep $RUNS_ON_AGENT_WAIT_TIMEOUT && \
+    if ! ( grep "ProcessChannel" $RUNS_ON_AGENT_DIR/_diag/*.log | grep "Receiving message" ) ; then echo "Wait timeout reached. Shutting down instance." && _the_end ; fi &
+
+  sleep $RUNS_ON_AGENT_FULL_TIMEOUT && \
+    echo "Full timeout reached. Shutting down instance." && _the_end &
+}
+
+_setup_watchdogs
+
+echo "Storing SSH keys..."
+mkdir -p /root/runs-on/
+RUNS_ON_SSH_KEYS_FILE=/root/runs-on/authorized_keys
+{{#sshKeys}}
+echo "{{{.}}}" >> $RUNS_ON_SSH_KEYS_FILE
+{{/sshKeys}}
+
+_setup_ssh() {
+  local homeUser="$RUNS_ON_AGENT_USER"
+  local homeDir="/home/$homeUser"
+  echo "Setting up SSH access..."
+  mkdir -p "$homeDir"/.ssh
+  chown "$homeUser":"$homeUser" "$homeDir"
+  cat "$RUNS_ON_SSH_KEYS_FILE" >> "$homeDir"/.ssh/authorized_keys
+  chown -R "$homeUser":"$homeUser" "$homeDir"/.ssh
+  chmod 700 "$homeDir"/.ssh && chmod 600 "$homeDir"/.ssh/authorized_keys
+}
+
+_setup_ssh || true
+
+echo "Removing useless stuff..."
+rm -rf /etc/cron.d/* /etc/cron.hourly/* /etc/cron.daily/* /etc/cron.monthly/* /etc/cron.weekly/*
+
+echo "Storing preinstall scripts..."
+mkdir -p /root/runs-on/preinstall
+{{#preinstallScripts}}
+echo "{{{.}}}" | base64 -d > /root/runs-on/preinstall/{{@index}}-script.sh
+chmod a+x /root/runs-on/preinstall/{{@index}}-script.sh
+{{/preinstallScripts}}
+
+if [ "$(uname -i)" = "aarch64" ]; then
+  echo "Detected arm64 architecture"
+  RUNS_ON_AGENT_ARCH="arm64"
+else
+  echo "Detected x64 architecture"
+  RUNS_ON_AGENT_ARCH="x64"
+fi
+
+cat >> /etc/environment <<EOF
+RUNS_ON_RUNNER_NAME="{{{runnerName}}}"
+RUNS_ON_RUNNER_IP="$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
+RUNS_ON_AGENT_USER="$RUNS_ON_AGENT_USER"
+RUNS_ON_AGENT_DIR="$RUNS_ON_AGENT_DIR"
+RUNS_ON_AGENT_VERSION="{{{runnerAgentVersion}}}"
+RUNS_ON_AGENT_JIT_CONFIG="{{{runnerJitConfig}}}"
+RUNS_ON_AGENT_ARCH="$RUNS_ON_AGENT_ARCH"
+EOF
+
+set -o allexport
+source /etc/environment
+set +o allexport
+
+_setup_hostname() {
+  echo "Setting up hostname..."
+  hostnamectl set-hostname --pretty "$RUNS_ON_AGENT_USER@$RUNS_ON_RUNNER_IP[$RUNS_ON_RUNNER_NAME]"
+  # echo "127.0.0.1 localhost $runnerName" >> /etc/hosts
+}
+
+_setup_agent() {
+  echo "Installing agent..."
+  mkdir -p "$RUNS_ON_AGENT_DIR"
+  time curl -o "actions-runner-linux.tar.gz" \
+    -L "https://github.com/actions/runner/releases/download/v$RUNS_ON_AGENT_VERSION/actions-runner-linux-$RUNS_ON_AGENT_ARCH-$RUNS_ON_AGENT_VERSION.tar.gz"
+  time tar xzf "./actions-runner-linux.tar.gz" -C $RUNS_ON_AGENT_DIR
+  chown -R $RUNS_ON_AGENT_USER:$RUNS_ON_AGENT_USER $RUNS_ON_AGENT_DIR
+}
+
+_setup_preinstall() {
+  find /root/runs-on/preinstall -type f -print0 -name "*.sh" | sort --zero-terminated | xargs -r bash
+}
+
+_setup_hostname || true
+_setup_agent
+_setup_preinstall || true
+
+echo "Launching agent..."
+su - $RUNS_ON_AGENT_USER -c "cd $RUNS_ON_AGENT_DIR  && ./run.sh --jitconfig $RUNS_ON_AGENT_JIT_CONFIG"

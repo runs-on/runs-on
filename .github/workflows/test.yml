@@ -1,0 +1,36 @@
+name: Test dev
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  test-linux:
+    if: ${{ contains(github.event.head_commit.message, '[dev]') || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - runs-on,env=dev
+          - runs-on,cpu=1,env=dev
+          - runs-on,runner=2cpu-linux,iops=800,env=dev
+          - runs-on,runner=gofast,image=custom,env=dev
+          - runs-on,runner=gofast,cpu=1,env=dev
+          - runs-on,cpu=1,env=dev,image=ubuntu22-base-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup
+        run: |
+          sudo apt-get update -qq && sudo apt-get install build-essential -y
+          # source RUNS_ON env vars
+          . /etc/environment
+          curl https://nodejs.org/dist/v20.10.0/node-v20.10.0-linux-$RUNS_ON_AGENT_ARCH.tar.gz | sudo tar -xzf - -C /usr/local --strip-components=1
+      - name: Environment Information
+        run: npx envinfo

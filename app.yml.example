@@ -1,0 +1,39 @@
+# This is a GitHub App Manifest. These settings will be used by default when
+# initially configuring your GitHub App.
+#
+# NOTE: changing this file will not update your GitHub App settings.
+# You must visit github.com/settings/apps/your-app-name to edit them.
+#
+# Read more about configuring your GitHub App:
+# https://probot.github.io/docs/development/#configuring-a-github-app
+#
+# Read more about GitHub App Manifests:
+# https://developer.github.com/apps/building-github-apps/creating-github-apps-from-a-manifest/
+
+# The list of events the GitHub App subscribes to.
+default_events:
+ - workflow_job
+ - meta
+
+default_permissions:
+  # required for registering runners
+  administration: write
+  # required to access config file
+  single_file: write
+  # required to report on errors
+  issues: write
+  # required to access collaborators and repository metadata
+  metadata: read
+  # Organization members and teams.
+  # https://developer.github.com/v3/apps/permissions/#permission-on-members
+  members: read
+  # required to manage workflow runs
+  actions: read
+
+single_file_paths:
+  - .github/runs-on.yml
+
+name: runs-on
+
+# Set to true when your GitHub App is available to the public or false when it is only accessible to the owner of the app.
+public: false

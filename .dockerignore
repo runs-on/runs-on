@@ -1,0 +1,17 @@
+**/node_modules/
+**/.git
+**/.vscode
+**/npm-debug.log
+**/coverage
+**/.env*
+**/app.yml
+**/.editorconfig
+**/dist
+**/*.pem
+Dockerfile
+**/.github
+**/.dockerignore
+**/.tool-version
+**/docs
+**/test
+**/Makefile
