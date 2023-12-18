@@ -77,6 +77,8 @@ For example:
 
 ## Installation
 
+<a href="https://customer-uzqf0auvx7908j5z.cloudflarestream.com/9cfea1331e6f1da9cd4432e275b1a214/watch"><img width="815" alt="image" src="https://github.com/runs-on/runs-on/assets/6114/9592add3-71a6-4047-9554-a32241f896a1"></a>
+
 RunsOn can be installed in one click in your AWS account, using the CloudFormation template:
 
 | Region | |
