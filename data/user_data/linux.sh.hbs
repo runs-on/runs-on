@@ -104,5 +104,10 @@ _setup_hostname || true
 _setup_agent
 _setup_preinstall || true
 
+if grep -E '^docker:' /etc/group &>/dev/null ; then
+  echo "Adding $RUNS_ON_AGENT_USER to docker group..."
+  usermod -aG docker $RUNS_ON_AGENT_USER || true
+fi
+
 echo "Launching agent..."
 su - $RUNS_ON_AGENT_USER -c "cd $RUNS_ON_AGENT_DIR  && ./run.sh --jitconfig $RUNS_ON_AGENT_JIT_CONFIG"

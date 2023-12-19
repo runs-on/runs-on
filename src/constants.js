@@ -23,8 +23,9 @@ const PLATFORM_WINDOWS = "Windows";
 
 const DEFAULT_ARCHITECTURE = "x86_64";
 const DEFAULT_CPU = 2;
-const DEFAULT_HDD = 120;
-const DEFAULT_IOPS = 400;
+const DEFAULT_HDD = 80;
+const DEFAULT_IOPS = 0;
+const DEFAULT_THROUGHPUT = 400;
 const DEFAULT_FAMILY_FOR_PLATFORM = {
   PLATFORM_LINUX: "c*",
   PLATFORM_MACOS: "mac*",
@@ -123,47 +124,53 @@ const RUNNER_ATTRIBUTES = [
   "iops"
 ]
 
+// assuming gp3 and no additional IOPS
+const STORAGE_PRICE_PER_MIN_US = (DEFAULT_THROUGHPUT - 125) * 0.040 / (60 * 24 * 30) + DEFAULT_HDD * 0.08 / (60 * 24 * 30)
+// for m7a / c7a families
+const ON_DEMAND_PRICE_PER_MIN_LINUX_US = {
+  1: [0.000966, 0.000383],      // m7a
+  2: [0.001932, 0.000735],      // m7a
+  4: [0.003864, 0.001820],      // m7a
+  8: [0.006843, 0.003097],      // c7a
+  16: [0.013685, 0.006415],     // c7a
+  32: [0.027371, 0.012808],     // c7a
+  48: [0.041056, 0.016577],     // c7a
+  64: [0.054741, 0.019182],     // c7a
+}
+
 // TODO: macos - https://aws.amazon.com/ec2/faqs/#macos_workloads, 24h min dedicated host
 const RUNNERS = {
   "1cpu-linux": {
     "cpu": 1,
     "family": ["m7a", "c7a"],
-    "iops": DEFAULT_IOPS,
   },
   "2cpu-linux": {
     "cpu": 2,
     "family": ["m7a", "c7a"],
-    "iops": DEFAULT_IOPS,
   },
   "4cpu-linux": {
     "cpu": 4,
     "family": ["m7a", "c7a"],
-    "iops": DEFAULT_IOPS,
   },
   "8cpu-linux": {
     "cpu": 8,
     "family": ["c7a", "m7a"],
-    "iops": DEFAULT_IOPS,
   },
   "16cpu-linux": {
     "cpu": 16,
     "family": ["c7a", "m7a"],
-    "iops": DEFAULT_IOPS * 1.5,
   },
   "32cpu-linux": {
     "cpu": 32,
     "family": ["c7a", "m7a"],
-    "iops": DEFAULT_IOPS * 1.5,
   },
   "48cpu-linux": {
     "cpu": 48,
     "family": ["c7a", "m7a"],
-    "iops": DEFAULT_IOPS * 1.5,
   },
   "64cpu-linux": {
     "cpu": 64,
     "family": ["c7a", "m7a"],
-    "iops": DEFAULT_IOPS * 1.5,
   },
   // "1cpu-windows": {
   //   "cpu": 1,
@@ -206,6 +213,17 @@ const RUNNERS = {
   //   "iops": DEFAULT_IOPS * 1.5,
   // },
 }
+Object.keys(RUNNERS).forEach(key => {
+  const onDemandPrice = ON_DEMAND_PRICE_PER_MIN_LINUX_US[RUNNERS[key].cpu][0]
+  const spotPrice = ON_DEMAND_PRICE_PER_MIN_LINUX_US[RUNNERS[key].cpu][1]
+  RUNNERS[key].on_demand_price_per_min = (STORAGE_PRICE_PER_MIN_US + onDemandPrice).toFixed(4)
+  RUNNERS[key].spot_price_per_min = (STORAGE_PRICE_PER_MIN_US + spotPrice).toFixed(4)
+  if (RUNNERS[key].cpu <= 32 && RUNNERS[key].cpu >= 2) {
+    RUNNERS[key].github_price_per_min = (RUNNERS[key].cpu / 2) * 0.008
+    RUNNERS[key].github_ratio = (RUNNERS[key].github_price_per_min / RUNNERS[key].spot_price_per_min).toFixed(0)
+  }
+})
+
 const DEFAULT_RUNNER_SPEC_KEY = "2cpu-linux"
 const DEFAULT_RUNNER_SPEC = RUNNERS[DEFAULT_RUNNER_SPEC_KEY];
 
@@ -220,6 +238,7 @@ module.exports = {
   DEFAULT_PLATFORM,
   DEFAULT_RUNNER_SPEC,
   DEFAULT_RUNNER_SPEC_KEY,
+  DEFAULT_THROUGHPUT,
   DEFAULT_USER,
   IMAGE_ATTRIBUTES,
   IMAGES,

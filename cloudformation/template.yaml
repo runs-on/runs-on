@@ -201,23 +201,31 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:Describe*
-                  - ec2:RunInstances
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
+                  - iam:CreateServiceLinkedRole
                 Resource: "*"
               - Effect: Allow
-                Action: ec2:CreateTags
+                Action:
+                  - ec2:RunInstances
+                Resource:
+                  - arn:aws:ec2:*:*:network-interface/*
+                  - arn:aws:ec2:*:*:volume/*
+                  - arn:aws:ec2:*:*:security-group/*
+                  - arn:aws:ec2:*::image/ami-*
+                  - Fn::Sub: arn:aws:ec2:*:*:subnet/${PublicSubnet}
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:RunInstances
                 Resource: arn:aws:ec2:*:*:instance/*
-                Condition:
-                  StringEquals:
-                    "ec2:CreateAction": "RunInstances"
               - Effect: Allow
                 Action:
                   - ec2:TerminateInstances
-                Resource: "*"
+                Resource: "arn:aws:ec2:*:*:instance/*"
                 Condition:
                   StringEquals:
-                    "aws:RequestTag/stack": !Ref AWS::StackName
+                    "aws:ResourceTag/stack": !Ref AWS::StackName
               - Effect: Allow
                 Action:
                   - s3:GetObject

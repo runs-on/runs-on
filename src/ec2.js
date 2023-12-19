@@ -13,7 +13,8 @@ const {
   SUPPORTED_ARCHITECTURES,
   STACK_FILTERS,
   DEFAULT_USER,
-  DEFAULT_FAMILY_FOR_PLATFORM
+  DEFAULT_FAMILY_FOR_PLATFORM,
+  DEFAULT_THROUGHPUT
 } = require("./constants");
 
 const { isStringFloat } = require("./utils");
@@ -223,6 +224,7 @@ async function createEC2Instance({
 }) {
   const { subnetId, securityGroupId } = app.state.custom;
   const { cpu = DEFAULT_CPU, ram, iops = DEFAULT_IOPS, hdd = DEFAULT_HDD, family = "c" } = runnerSpec;
+  // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
   const storageType = iops && parseInt(iops) > 0 ? "io2" : "gp3";
 
   app.log.info(`Attempting to find image for ${JSON.stringify(imageSpec)}...`);
@@ -245,8 +247,6 @@ async function createEC2Instance({
     preinstallScripts: base64Scripts(preinstall),
   });
 
-  console.log("userData", userData);
-
   // Create the instance
   let instanceParams = {
     SubnetId: subnetId,
@@ -265,12 +265,21 @@ async function createEC2Instance({
     BlockDeviceMappings: [{
       DeviceName: '/dev/sda1', // Device name for the root volume
       Ebs: {
+        // gp3 storage is $0.08/GB-month, i.e. for 100GB: 100*0.08/(60*24*30)=$0.000185/min
         VolumeSize: String(hdd), // Size of the root EBS volume in GB
         VolumeType: String(storageType),
       },
       TagSpecifications: [{ ResourceType: 'volume', Tags: [...STACK_TAGS, ...tags] }]
     }]
   };
+
+  if (["gp3"].includes(storageType)) {
+    // set min throughput to 400 MB/s so that we can fetch EBS blocks from S3 more quickly
+    // especially useful for full image
+    // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
+    // Throughput costs $0.040/MB/s-month over 125, i.e. for 400MB/s: (400-125)*0.040/(60*24*30)=$0.00025/min
+    instanceParams.BlockDeviceMappings[0].Ebs.Throughput = DEFAULT_THROUGHPUT;
+  }
 
   if (["io2", "io1"].includes(storageType) && iops > 0) {
     instanceParams.BlockDeviceMappings[0].Ebs.Iops = String(iops);

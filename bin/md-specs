@@ -9,9 +9,12 @@ default_runner=$(node -e 'console.log(require("./src/constants").DEFAULT_RUNNER_
 echo "Default if no \`runner\` label provided: \`$default_runner\`."
 echo ""
 node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require("./src/constants").RUNNERS)))' | jq -r '
-  ["key", "cpu", "family", "iops"],
-  ["---", "---", "---"],
-  (.[] | [.key, .cpu, (.family | join(", ")), .iops])
+  ["key", "cpu", "family", "$/min (spot)", "$/min (on-demand)", "$/min (github)", "GitHub vs RunsOn"],
+  ["---", "---", "---", "---", "---", "---", "---"],
+  (.[] | [
+    (.key | "`" + . + "`"), .cpu, (.family | join(", ")), .spot_price_per_min, .on_demand_price_per_min,
+    .github_price_per_min, (.github_ratio | select(. != null) | . + "x more expensive")
+  ])
   | @tsv | gsub("\t"; " | ") | "| " + . + " |"
 '
 
@@ -24,6 +27,6 @@ echo ""
 node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require("./src/constants").IMAGES)))' | jq -r '
   ["key", "platform", "arc", "owner", "user", "name"],
   ["---", "---", "---", "---", "---", "---"],
-  (.[] | [.key, .platform, .arch, .owner, .user, .name])
+  (.[] | [(.key | "`" + . + "`"), .platform, .arch, .owner, .user, .name])
   | @tsv | gsub("\t"; " | ") | "| " + . + " |"
 '
