@@ -11,7 +11,7 @@ Deploy ephemeral, cheap and fast self-hosted runners for your GitHub Action work
 
 <br>
 
-For a similar vCPU count, RunsOn instances will be 4 to 10x cheaper than GitHub provided runners.
+For a similar vCPU count, RunsOn instances are 4 to 10x cheaper than GitHub provided runners.
 
 ## Table of contents
 
