@@ -1,6 +1,8 @@
-# runs-on
+# runs-on: 10x cheaper GitHub Action runners
 
-Deploy ephemeral, cheap and fast self-hosted runners for your GitHub Action workflows, in your own AWS account. Supports x64 and arm64 runners.
+Get on-demand self-hosted runners for your GitHub Action workflows, of any size, at the cheapest price available.
+
+Runs in your own AWS account. Supports x64 and arm64 runners. Each workflow job triggers a fresh new runner (i.e. ephemeral).
 
 ```diff
 - runs-on: ubuntu-latest
