@@ -11,7 +11,7 @@ const { DEFAULT_RUNNER_SPEC, DEFAULT_IMAGE_SPEC, IMAGES, RUNNERS, RUNS_ON_LABEL,
  */
 module.exports = async (app) => {
   app.log.info("Yay, the app was loaded!");
-  app.state.custom = {}
+  app.state.custom = { costTags: [] }
 
   await ec2.init(app);
   await config.init(app);

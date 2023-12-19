@@ -7,7 +7,11 @@ let app;
 
 async function init(probotApp) {
   app = probotApp;
-  await registerAllocationTag();
+  try {
+    await registerAllocationTag();
+  } catch (error) {
+    app.log.error("❌ Error when attempting to register cost allocation tag. Assuming we are in a sub-account, and as such will report all costs without tagging.", error);
+  }
 }
 
 async function registerAllocationTag() {
@@ -20,8 +24,13 @@ async function registerAllocationTag() {
     app.log.error("❌ Cost Allocation Tags Status:", response.Errors.join(", "));
   } else {
     app.log.info(`✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`);
+    app.state.custom.costTags = [{
+      Key: STACK_TAG_KEY,
+      Values: [STACK_NAME],
+    }]
   }
 }
+
 async function getDailyCosts({ start, end, granularity = 'DAILY' }) {
   // Define parameters for the GetCostAndUsage command
   const params = {
@@ -29,10 +38,7 @@ async function getDailyCosts({ start, end, granularity = 'DAILY' }) {
     Granularity: granularity,
     Metrics: ['BlendedCost'],
     Filter: {
-      Tags: {
-        Key: STACK_TAG_KEY,
-        Values: [STACK_NAME],
-      },
+      Tags: app.state.custom.costTags,
     },
   };
 
