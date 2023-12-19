@@ -11,9 +11,7 @@ Deploy ephemeral, cheap and fast self-hosted runners for your GitHub Action work
 
 <br>
 
-For a similar vCPU count, RunsOn instances will be 4 to 10x cheaper than GitHub provided runners, and much faster*.
-
-<sub>*except for the initial boot on x64 arch, which takes ~1min vs 10-20s for GitHub (no pre-warmed runner for RunsOn yet), so if you're only after reducing total time instead of price, you will probably want to use RunsOn runners for >5 min workflows.</sub>
+For a similar vCPU count, RunsOn instances will be 4 to 10x cheaper than GitHub provided runners.
 
 ## Table of contents
 
@@ -74,14 +72,16 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 | `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
 | `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
 
+Prices nclude EBS volume costs (disk + throughput).
+
 For example:
 
-* for 40 000 standard GitHub Runner minutes, you currently pay $320. With RunsOn you would pay $80 (on-demand) or most likely $28 (spot).
-* for 40 000 16cpu GitHub Runner minutes, you currently pay $2560. With RunsOn you would pay $640 (on-demand) or most likely $280 (spot).
+* for 40 000 standard GitHub Runner minutes, you currently pay $320. With RunsOn you would pay $92 (on-demand) or most likely $44 (spot).
+* for 40 000 16cpu GitHub Runner minutes, you currently pay $2560. With RunsOn you would pay $564 (on-demand) or most likely $272 (spot).
 
 ## Installation
 
-<a href="https://customer-uzqf0auvx7908j5z.cloudflarestream.com/9cfea1331e6f1da9cd4432e275b1a214/watch"><img width="815" alt="image" src="https://github.com/runs-on/runs-on/assets/6114/9592add3-71a6-4047-9554-a32241f896a1"></a>
+<a href="https://customer-uzqf0auvx7908j5z.cloudflarestream.com/9cfea1331e6f1da9cd4432e275b1a214/watch"><img width="800" alt="image" src="https://github.com/runs-on/runs-on/assets/6114/9592add3-71a6-4047-9554-a32241f896a1"></a>
 
 RunsOn can be installed in one click in your AWS account, using the CloudFormation template:
 
@@ -100,19 +100,19 @@ As always with CloudFormation, the first install will take a few minutes.
 
 At the end, the HTTPS URL to your RunsOn instance will be displayed in the stack _Outputs_:
 
-<img width="1299" alt="CloudFormation Output" src="https://github.com/runs-on/runs-on/assets/6114/b3f96f81-2aba-45b8-85f2-1ee810c57af7">
+<img width="580" alt="CloudFormation Output" src="https://github.com/runs-on/runs-on/assets/6114/b3f96f81-2aba-45b8-85f2-1ee810c57af7">
 
 To finish the installation, simply visit the page link, and click "Register app":
 
-<img width="897" alt="Register GitHub App" src="https://github.com/runs-on/runs-on/assets/6114/92042553-5d0c-4d38-b535-3354ed649c34">
+<img width="580" alt="Register GitHub App" src="https://github.com/runs-on/runs-on/assets/6114/92042553-5d0c-4d38-b535-3354ed649c34">
 
 You will then be directed to a screen where you can adjust your app name, and then select the repositories you want this app to be installed on:
 
-<img width="1032" alt="Permissions" src="https://github.com/runs-on/runs-on/assets/6114/235795d5-a514-46ed-8bb0-d0bf1b315d7d">
+<img width="580" alt="Permissions" src="https://github.com/runs-on/runs-on/assets/6114/235795d5-a514-46ed-8bb0-d0bf1b315d7d">
 
 Finally, refresh your RunsOn entrypoint page until you see the following success screen:
 
-<img width="944" alt="Success" src="https://github.com/runs-on/runs-on/assets/6114/40ffe3ba-2b61-4325-ae03-0db5e539098c">
+<img width="580" alt="Success" src="https://github.com/runs-on/runs-on/assets/6114/40ffe3ba-2b61-4325-ae03-0db5e539098c">
 
 ## Usage
 
