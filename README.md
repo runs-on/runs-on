@@ -9,11 +9,7 @@ Runs in your own AWS account. Supports x64 and arm64 runners. Each workflow job 
 + runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-full-x64
 ```
 
-<img width="697" alt="tl;dr" src="https://github.com/runs-on/runs-on/assets/6114/d0d2f974-fc97-4f92-b217-f9ce016227d7">
-
-<br>
-
-For a similar vCPU count, RunsOn instances are 4 to 10x cheaper than GitHub provided runners.
+<img width="600" alt="tl;dr" src="https://github.com/runs-on/runs-on/assets/6114/d0d2f974-fc97-4f92-b217-f9ce016227d7">
 
 ## Table of contents
 
@@ -249,7 +245,7 @@ All instances are bootstraped with 2 watchdogs, to ensure they are not left runn
 
 To ensure your team stays up to date regarding costs incurred by your self-hosted runners, RunsOn automatically reports daily costs for the RunsOn resources in a special GitHub issue. This issue is updated every 24h.
 
-<img width="994" alt="cost report" src="https://github.com/runs-on/runs-on/assets/6114/dbbdb570-d82b-45c9-96bf-153048d45f60">
+<img width="600" alt="cost report" src="https://github.com/runs-on/runs-on/assets/6114/dbbdb570-d82b-45c9-96bf-153048d45f60">
 
 ## Troubleshooting
 
@@ -257,7 +253,7 @@ GitHub App are great, but compared to a GitHub Action you cannot easily see the 
 
 That's why RunsOn comes with an innovative feature where any error triggered within the GitHub App is automatically added as a comment to the special RunsOn GitHub issue in your repository!
 
-<img width="994" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/f90a1a9b-c1cf-4d0d-a93a-5974cdac0775">
+<img width="600" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/f90a1a9b-c1cf-4d0d-a93a-5974cdac0775">
 
 ## License
 
