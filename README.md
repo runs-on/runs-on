@@ -70,7 +70,7 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 | `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
 | `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
 
-Prices nclude EBS volume costs (disk + throughput).
+Prices include EBS volume costs (disk + throughput).
 
 For example:
 
