@@ -62,13 +62,16 @@ Using self-hosted runners can be useful if:
 
 The crazy thing is that even if you use larger instance types (e.g. 16cpu) for your workflows, it might actually be cheaper than using a 2cpu instance since your workflow _should_ finish much more quickly (assuming you can take advantage of the higher core number).
 
-| Size | runs-on 🤘 | buildjet | warpbuild | github |
-|---|---|---|---|---|
-| 2vcpu 8GB ram SSD<br>(m7a.large) | **$0.0007** / min (spot)<br>**$0.002** / min (on-demand) | $0.004 / min | $0.004 / min | $0.008 / min |
-| 4vcpu 16GB ram SSD<br>(m7a.xlarge) | **$0.002** / min (spot)<br>**$0.004**  / min (on-demand) | $0.008 / min | $0.008 / min | $0.016 / min |
-| 16vcpu 64GB ram SSD<br>(m7a.4xlarge) | **$0.007** / min (spot)<br>**$0.016** / min (on-demand) | $0.032 / min | $0.032 / min | $0.064 / min |
-| 32vcpu 64GB ram SSD<br>(c7a.8xlarge) | **$0.013** / min (spot)<br>**$0.028**  / min (on-demand) | $0.048 / min | N/A | $0.128 / min |
-| 128vcpu 64GB ram SSD<br>(c7a.32xlarge) | **$0.020** / min (spot)<br>**$0.055** / min (on-demand) | N/A | N/A | N/A |
+| key | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
+| `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
+| `4cpu-linux` | 4 | m7a, c7a | 0.0022 | 0.0043 | 0.016 | 7x more expensive |
+| `8cpu-linux` | 8 | c7a, m7a | 0.0035 | 0.0072 | 0.032 | 9x more expensive |
+| `16cpu-linux` | 16 | c7a, m7a | 0.0068 | 0.0141 | 0.064 | 9x more expensive |
+| `32cpu-linux` | 32 | c7a, m7a | 0.0132 | 0.0278 | 0.128 | 10x more expensive |
+| `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
+| `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
 
 For example:
 
@@ -116,31 +119,7 @@ In your workflow files, simply specify the runs-on config you want to use:
 
 ```diff
 - runs-on: ubuntu-latest
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64
-```
-
-Default runner is `8cpu-linux`. You can change that with the `runner` label (see next section for runner types):
-
-```diff
-+ runs-on: runs-on,runner=2cpu-linux,image=ubuntu22-base-x64
-```
-
-Default image is `ubuntu22-full-x64`. You can change that with the `image` label (see next section for runner images):
-
-```diff
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64
-```
-
-Default launch type is `spot` (i.e. 66% cheaper than on-demand, at the risk of being interrupted). If no instance is available at spot price, then the instance will be launched at on-demand price. You can disable `spot` by using `spot=false` in the labels:
-
-```diff
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64,spot=false
-```
-
-By default, SSH access to the runners is enabled for the repository collaborators with PUSH permission. You can disable that with:
-
-```diff
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64,ssh=false
++ runs-on: runs-on,runner=8cpu-linux
 ```
 
 ## Configuration
@@ -150,8 +129,8 @@ By default, SSH access to the runners is enabled for the repository collaborator
 RunsOn comes with preconfigured runner types, which you can select with the `runner` label:
 
 ```diff
-- runs-on: runs-on,image=ubuntu22-base-x64
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64
+- runs-on: ubuntu-latest
++ runs-on: runs-on,runner=16cpu-linux
 ```
 
 > [!TIP]
@@ -186,42 +165,21 @@ And then in your workflows:
 runs-on: runs-on,runner=gofast
 ```
 
-You can also choose to override specific aspects of a runner, using the `cpu`, `ram, `hdd`, `iops` attributes:
-
-```diff
-- runs-on: runs-on,runner=16cpu-x64
-+ runs-on: runs-on,runner=16cpu-x64,family=c7a+c6a
-```
-
-```diff
-- runs-on: runs-on,runner=16cpu-x64
-+ # 400GB disk instead of the default 120
-+ runs-on: runs-on,runner=16cpu-x64,hdd=400
-```
-
-```diff
-- runs-on: runs-on,runner=16cpu-x64
-+ # fully custom config
-+ runs-on: runs-on,cpu=32,ram=128,hdd=200,iops=400,family=c7+m7
-```
-
 ### Runner images
+
+Default if no `image` label provided: `ubuntu22-full-x64`.
 
 | key | platform | arc | owner | user | name |
 | --- | --- | --- | --- | --- | --- |
-| ubuntu22-full-x64 | linux | x64 | 135269210855 | ubuntu | runner-ubuntu22-* |
-| ubuntu22-docker-x64 | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
-| ubuntu22-base-x64 | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
-| ubuntu22-docker-arm64 | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
-| ubuntu22-base-arm64 | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
-
-> [!TIP]
-> Default if no `image` label provided: `ubuntu22-full-x64`.
+| `ubuntu22-full-x64` | linux | x64 | 135269210855 | ubuntu | runner-ubuntu22-* |
+| `ubuntu22-docker-x64` | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
+| `ubuntu22-base-x64` | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
+| `ubuntu22-docker-arm64` | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
+| `ubuntu22-base-arm64` | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
 
 If you want the exact same runner image as what is provided by GitHub, you must use `ubuntu22-full-x64`. Those are refreshed by [runs-on/runner-images-for-aws](https://github.com/runs-on/runner-images-for-aws) every time a new image version is pushed by [GitHub](http://github.com/actions/runner-images).
 
-> [!NOTE] 
-> The downside of `ubuntu22-full-x64` is that due to how Amazon EBS volumes work, the larger the volume size (and this one is large due to the number of default software instaslled), the slower the boot time and initial usage while the blocks are fetched from the underlying S3 storage.
+The downside of `ubuntu22-full-x64` is that due to how Amazon EBS volumes work, the larger the volume size (and this one is large due to the number of default software installed), the slower the boot time and initial usage while the blocks are fetched from the underlying S3 storage.
 
 All the other images are variants of the bare ubuntu22 official image as provided by canonical. The only additional thing installed is the runner binary. The `ubuntu` user has full `sudo` access if you want to install more things.
 
@@ -239,12 +197,45 @@ images:
     preinstall: |
       #!/bin/bash
       curl -fsSL https://get.docker.com | sh
-      usermod -aG docker $_AGENT_USER
+      usermod -aG docker $RUNS_ON_AGENT_USER
   
   otherimage:
     platform: linux
     arch: x64
     ami: ami-abcdef1234
+```
+
+### Additional settings
+
+You can choose to override specific aspects of a runner, using the `cpu`, `ram, `hdd` attributes:
+
+```diff
+- runs-on: runs-on,runner=16cpu-linux
++ runs-on: runs-on,runner=16cpu-linux,family=c7a+c6a
+```
+
+```diff
+- runs-on: runs-on,runner=16cpu-linux
++ # 400GB disk instead of the default 120
++ runs-on: runs-on,runner=16cpu-linux,hdd=400
+```
+
+```diff
+- runs-on: runs-on,runner=16cpu-linux
++ # fully custom config
++ runs-on: runs-on,cpu=32,ram=128,hdd=200,family=c7+m7
+```
+
+Default launch type is `spot` (i.e. 66% cheaper than on-demand, at the risk of being interrupted). If no instance is available at spot price, then the instance will be launched at on-demand price. You can disable `spot` by using `spot=false` in the labels:
+
+```diff
++ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64,spot=false
+```
+
+By default, SSH access to the runners is enabled for the repository collaborators with PUSH permission. You can disable that with:
+
+```diff
++ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64,ssh=false
 ```
 
 ## Cost control
