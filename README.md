@@ -61,7 +61,7 @@ Using self-hosted runners can be useful if:
 
 The crazy thing is that even if you use larger instance types (e.g. 16cpu) for your workflows, it might actually be cheaper than using a 2cpu instance since your workflow _should_ finish much more quickly (assuming you can take advantage of the higher core number).
 
-| key | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
 | --- | --- | --- | --- | --- | --- | --- |
 | `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
 | `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
@@ -136,7 +136,7 @@ RunsOn comes with preconfigured runner types, which you can select with the `run
 
 Default if no `runner` label provided: `2cpu-linux`.
 
-| key | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
 | --- | --- | --- | --- | --- | --- | --- |
 | `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
 | `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
@@ -169,7 +169,7 @@ runs-on: runs-on,runner=gofast
 
 Default if no `image` label provided: `ubuntu22-full-x64`.
 
-| key | platform | arc | owner | user | name |
+| image | platform | arc | owner | user | name |
 | --- | --- | --- | --- | --- | --- |
 | `ubuntu22-full-x64` | linux | x64 | 135269210855 | ubuntu | runner-ubuntu22-* |
 | `ubuntu22-docker-x64` | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
