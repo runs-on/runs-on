@@ -83,22 +83,16 @@ For example:
 
 <a href="https://customer-uzqf0auvx7908j5z.cloudflarestream.com/9cfea1331e6f1da9cd4432e275b1a214/watch"><img width="800" alt="image" src="https://github.com/runs-on/runs-on/assets/6114/9592add3-71a6-4047-9554-a32241f896a1"></a>
 
-RunsOn can be installed in one click in your AWS account, using the CloudFormation template:
+RunsOn can be installed in one click in your AWS account, using the [CloudFormation template](cloudformation/template.yaml):
 
 | Region | |
 |---|---|
 | us-east-1 (North Virginia) | <a href="https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
 | eu-west-1 (Ireland) | <a href="https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
 
-The stack will be set up using a single [CloudFormation template](cloudformation/template.yaml) and is comprised of the following components:
+The stack will setup a dedicated VPC / Subnet / Security Group / Restricted IAM Role / AppRunner Service, for a monthly cost of ~$14.
 
-* a dedicated VPC with dedicated public subnet and security group.
-* an apprunner service, with 0.25 CPU units and 512MB RAM (~$10/month), which will answer GitHub webhooks for starting workflows.
-* the relevant IAM roles and policies with the minimum amount of permissions for runs-on (can only run and terminate instances it has created).
-
-As always with CloudFormation, the first install will take a few minutes.
-
-At the end, the HTTPS URL to your RunsOn instance will be displayed in the stack _Outputs_:
+Once the stack creation is complete, the HTTPS URL to your RunsOn instance will be displayed in the stack _Outputs_:
 
 <img width="580" alt="CloudFormation Output" src="https://github.com/runs-on/runs-on/assets/6114/b3f96f81-2aba-45b8-85f2-1ee810c57af7">
 
