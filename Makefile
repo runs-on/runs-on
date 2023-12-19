@@ -1,4 +1,4 @@
-VERSION=v1.3.8
+VERSION=v1.3.9
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
 

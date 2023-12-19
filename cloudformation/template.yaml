@@ -54,7 +54,7 @@ Parameters:
 
   AppImageVersion:
     Type: String
-    Default: "v1.3.8"
+    Default: "v1.3.9"
     Description: Version of the app in the AppImageRepository
 
 Resources:
