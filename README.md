@@ -25,6 +25,7 @@ For a similar vCPU count, RunsOn instances will be 4 to 10x cheaper than GitHub 
 - [Configuration](#configuration)
   - [Runner types](#runner-types)
   - [Runner images](#runner-images)
+  - [Additional settings](#additional-settings)
 - [Cost control](#cost-control)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
@@ -133,19 +134,18 @@ RunsOn comes with preconfigured runner types, which you can select with the `run
 + runs-on: runs-on,runner=16cpu-linux
 ```
 
-> [!TIP]
-> Default if no `runner` label provided: `2cpu-linux`.
+Default if no `runner` label provided: `2cpu-linux`.
 
-| key | cpu | family | iops |
-| --- | --- | --- |--- |
-| 1cpu-linux | 1 | m7a, c7a | 400 |
-| 2cpu-linux | 2 | m7a, c7a | 400 |
-| 4cpu-linux | 4 | m7a, c7a | 400 |
-| 8cpu-linux | 8 | c7a, m7a | 400 |
-| 16cpu-linux | 16 | c7a, m7a | 600 |
-| 32cpu-linux | 32 | c7a, m7a | 600 |
-| 48cpu-linux | 48 | c7a, m7a | 600 |
-| 64cpu-linux | 64 | c7a, m7a | 600 |
+| key | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
+| `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
+| `4cpu-linux` | 4 | m7a, c7a | 0.0022 | 0.0043 | 0.016 | 7x more expensive |
+| `8cpu-linux` | 8 | c7a, m7a | 0.0035 | 0.0072 | 0.032 | 9x more expensive |
+| `16cpu-linux` | 16 | c7a, m7a | 0.0068 | 0.0141 | 0.064 | 9x more expensive |
+| `32cpu-linux` | 32 | c7a, m7a | 0.0132 | 0.0278 | 0.128 | 10x more expensive |
+| `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
+| `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
 
 You can also define your own custom runner types using the `.github/runs-on.yml` config file:
 
