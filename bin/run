@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+export AWS_MAX_ATTEMPTS=3
+export AWS_RETRY_MODE=standard
+
 RUNS_ON_APP_VERSION=$(node -p "require('./package.json').version")
 export RUNS_ON_APP_VERSION
 echo "App version=$RUNS_ON_APP_VERSION"

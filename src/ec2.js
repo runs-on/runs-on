@@ -1,6 +1,7 @@
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
 const { defaultProvider } = require("@aws-sdk/credential-provider-node");
 const { DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
+const memoize = require('lru-memoize').default;
 
 const {
   DEFAULT_ARCHITECTURE,
@@ -109,8 +110,7 @@ function flatMapInput(input) {
   return [input].flat().filter(i => i).map(n => String(n).split("+")).flat().filter(i => i);
 }
 
-// TODO: store instance types in cache for at least 1 hour
-async function findInstanceTypesMatching(inputs) {
+const _findInstanceTypesMatching = async function (inputs) {
   const { arch, platform, cpu, ram, family } = inputs;
 
   const familyValues = flatMapInput(family);
@@ -208,6 +208,8 @@ async function findInstanceTypesMatching(inputs) {
 
   return selectedInstanceTypes;
 }
+
+const findInstanceTypesMatching = memoize(40)(_findInstanceTypesMatching);
 
 function base64Scripts(scripts = []) {
   return Array(scripts).flat().filter(i => i).map(script => Buffer.from(script).toString('base64'));
