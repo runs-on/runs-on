@@ -13,6 +13,12 @@ module.exports = async (app) => {
   app.log.info("Yay, the app was loaded!");
   app.state.custom = { costTags: [] }
 
+  // concurrency 4
+  const ec2RunQueue = require('fastq').promise(ec2.createEC2Instance, 4);
+  ec2RunQueue.error((error, task) => {
+    if (error) { app.log.error(error); }
+  });
+
   await ec2.init(app);
   await config.init(app);
 
@@ -99,10 +105,9 @@ module.exports = async (app) => {
       // Create EC2 instance
       const runnerAgentVersion = "2.311.0"
       const userDataConfig = { runnerJitConfig, sshKeys, runnerName, runnerAgentVersion }
-      const tags = [{ Key: "github-org", Value: owner }, { Key: "github-repo", Value: repo }, { Key: "github-repo-full-name", Value: repository.full_name }]
+      const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
       const createEc2InstanceParams = { instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot };
-      const instance = await ec2.createEC2Instance(createEc2InstanceParams);
-
+      const instance = await ec2RunQueue.push(createEc2InstanceParams);
       if (instance) {
         await ec2.waitForInstance(instance.InstanceId);
         const instanceDetails = await ec2.fetchInstanceDetails(instance.InstanceId);
@@ -110,7 +115,6 @@ module.exports = async (app) => {
       } else {
         throw new Error(`❌ Error creating EC2 instance with the following configuration: ${JSON.stringify(createEc2InstanceParams)}`);
       }
-
     } catch (error) {
       context.log.error(`❌ Error when attempting to launch workflow job: ${error.message}`)
       console.error(error)

@@ -215,7 +215,8 @@ function base64Scripts(scripts = []) {
   return Array(scripts).flat().filter(i => i).map(script => Buffer.from(script).toString('base64'));
 }
 
-async function createEC2Instance({
+// https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html
+const createEC2Instance = async function ({
   dryRun = false,
   tags = [],
   spot,
