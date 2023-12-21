@@ -88,7 +88,7 @@ RunsOn can be installed in one click in your AWS account, using the [CloudFormat
 | us-east-1 (North Virginia) | <a href="https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
 | eu-west-1 (Ireland) | <a href="https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
 
-The stack will setup a dedicated VPC / Subnet / Security Group / Restricted IAM Role / AppRunner Service, for a monthly cost of ~$14.
+The stack will setup a dedicated VPC / Subnet / Security Group / Restricted IAM Role / SNS Topic for Alerts / AppRunner Service, for a monthly cost of ~$10.
 
 Once the stack creation is complete, the HTTPS URL to your RunsOn instance will be displayed in the stack _Outputs_:
 
@@ -105,6 +105,10 @@ You will then be directed to a screen where you can adjust your app name, and th
 Finally, refresh your RunsOn entrypoint page until you see the following success screen:
 
 <img width="580" alt="Success" src="https://github.com/runs-on/runs-on/assets/6114/40ffe3ba-2b61-4325-ae03-0db5e539098c">
+
+You will also receive a few emails once the installation is completed:
+
+<img width="674" alt="first emails" src="https://github.com/runs-on/runs-on/assets/6114/ea32afc2-4c76-4262-915b-29588cbde183">
 
 ## Usage
 
@@ -240,19 +244,19 @@ All instances are bootstraped with 2 watchdogs, to ensure they are not left runn
 * instance will automatically terminate after 8 hours, no matter whether a workflow is still running on the machine.
 * instance will automatically terminate after 20 minutes, if a workflow job has not been scheduled on the machine.
 
-### Cost reports right in your repository
+### Cost reports right in your inbox
 
-To ensure your team stays up to date regarding costs incurred by your self-hosted runners, RunsOn automatically reports daily costs for the RunsOn resources in a special GitHub issue. This issue is updated every 24h.
+RunsOn automatically reports daily costs for the RunsOn resources, and send them to email configured at installation time:
 
-<img width="600" alt="cost report" src="https://github.com/runs-on/runs-on/assets/6114/dbbdb570-d82b-45c9-96bf-153048d45f60">
+<img width="600" alt="cost report" src="https://github.com/runs-on/runs-on/assets/6114/5c3cc9d0-bf10-467d-bf74-1f731b8524e6">
 
 ## Troubleshooting
 
 GitHub App are great, but compared to a GitHub Action you cannot easily see the reason of a failure, without looking at the app logs.
 
-That's why RunsOn comes with an innovative feature where any error triggered within the GitHub App is automatically added as a comment to the special RunsOn GitHub issue in your repository!
+That's why RunsOn automatically reports errors by sending them to the configured email. Inc ase lots of errors occur in a short time, errors will be batched in a single email:
 
-<img width="600" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/f90a1a9b-c1cf-4d0d-a93a-5974cdac0775">
+<img width="600" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/d655d6dc-5b7f-4beb-985d-5cda174dd9e0">
 
 ## License
 
