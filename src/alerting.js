@@ -26,7 +26,7 @@ async function init(probotApp) {
   const topicArn = await findTopicArn();
   Object.assign(app.state.custom, { topicArn });
 
-  await publishAlert("🎉 RunsOn Application is online", `Congrats, your RunsOn installation for ${app.state.custom.appOwner} is up and running.`)
+  await publishAlert("🎉 RunsOn Application is online", `Congrats, your RunsOn installation is up and running.`)
 
   setInterval(() => {
     const content = []
