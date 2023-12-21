@@ -4,6 +4,7 @@ set -o pipefail
 
 # Define default values for stack parameters
 default_template_url="https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
+default_dev_template_url="https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 param_overrides=""
 
 # Parse command-line arguments

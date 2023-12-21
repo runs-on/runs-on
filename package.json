@@ -12,16 +12,19 @@
     "test": "jest"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.478.0",
     "@aws-sdk/client-cost-explorer": "^3.470.0",
     "@aws-sdk/client-ec2": "^3.468.0",
     "@aws-sdk/client-s3": "^3.470.0",
+    "@aws-sdk/client-sns": "^3.478.0",
     "envsub": "^4.1.0",
     "fastq": "^1.16.0",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
     "lru-memoize": "^1.1.0",
     "nodemon": "^3.0.2",
-    "probot": "^12.2.4"
+    "p-throttle": "^4.1.1",
+    "probot": "^12.3.3"
   },
   "devDependencies": {
     "jest": "^29.0.0",

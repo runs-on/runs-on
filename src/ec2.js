@@ -1,8 +1,10 @@
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
-const { defaultProvider } = require("@aws-sdk/credential-provider-node");
-const { DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
+const { DescribeSubnetsCommand, DescribeSecurityGroupsCommand, DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
 const memoize = require('lru-memoize').default;
+const pThrottle = require('p-throttle');
 
+const costs = require("./costs");
+const { isStringFloat } = require("./utils");
 const {
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
@@ -18,19 +20,51 @@ const {
   DEFAULT_THROUGHPUT
 } = require("./constants");
 
-const { isStringFloat } = require("./utils");
-
-let ec2Client;
+const ec2Client = new EC2Client();
 let region;
 let app;
 
+async function findSubnetId() {
+  let subnetId = process.env["RUNS_ON_SUBNET_ID"];
+  if (!subnetId || subnetId === "") {
+    const command = new DescribeSubnetsCommand({ Filters: [...STACK_FILTERS] });
+    const response = await ec2Client.send(command);
+    subnetId = response.Subnets.length > 0 ? response.Subnets[0].SubnetId : null;
+  }
+  return subnetId;
+}
+
+async function findSecurityGroupId() {
+  let securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
+  if (!securityGroupId || securityGroupId === "") {
+    const command = new DescribeSecurityGroupsCommand({ Filters: [...STACK_FILTERS] });
+    const response = await ec2Client.send(command);
+    securityGroupId = response.SecurityGroups.length > 0 ? response.SecurityGroups[0].GroupId : null;
+  }
+  return securityGroupId
+}
+
 async function init(probotApp) {
   app = probotApp;
-  const credentials = await defaultProvider();
-  ec2Client = new EC2Client({ credentials });
   region = await ec2Client.config.region();
+  const subnetId = await findSubnetId();
+  const securityGroupId = await findSecurityGroupId();
+
+  if (subnetId) {
+    app.log.info(`✅ Subnet ID: ${subnetId}`);
+  } else {
+    app.log.error("❌ Can't find subnet ID");
+  }
+
+  if (securityGroupId) {
+    app.log.info(`✅ Security Group ID: ${securityGroupId}`);
+  } else {
+    app.log.error("❌ Can't find security group ID");
+  }
+
+  Object.assign(app.state.custom, { region, subnetId, securityGroupId });
   app.log.info(`✅ EC2 client initialized for region ${region}`);
-  app.state.custom.region = region;
+
   return app;
 }
 
@@ -311,11 +345,7 @@ const createEC2Instance = async function ({
     instance = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
   }
 
-  if (instance) {
-    return instance;
-  } else {
-    throw new Error("❌ Failed to create instance with any of the provided instance types");
-  }
+  return instance;
 }
 
 async function fetchInstanceDetails(instanceId) {
@@ -393,14 +423,15 @@ async function terminateInstance(instanceName) {
     const describeInstancesResponse = await ec2Client.send(new DescribeInstancesCommand(describeParams));
 
     if (describeInstancesResponse.Reservations.length > 0) {
-      const instanceId = describeInstancesResponse.Reservations[0].Instances[0].InstanceId;
+      const instanceDetails = describeInstancesResponse.Reservations[0].Instances[0];
 
       const terminateParams = {
-        InstanceIds: [instanceId],
+        InstanceIds: [instanceDetails.InstanceId],
       };
 
       await ec2Client.send(new TerminateInstancesCommand(terminateParams));
-      app.log.info(`✅ Instance terminated: ${instanceId}`);
+      app.log.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
+      return instanceDetails;
     } else {
       app.log.warn('No instances found with the specified name.');
     }
@@ -409,4 +440,38 @@ async function terminateInstance(instanceName) {
   }
 }
 
-module.exports = { init, region, createEC2Instance, terminateInstance, fetchInstanceDetails, waitForInstance }
+const awsRateLimit = pThrottle({ limit: 3, interval: 1000 })
+
+const runQueue = awsRateLimit((inputs) => {
+  return createEC2Instance(inputs);
+});
+
+async function createAndWaitForInstance(inputs) {
+  const instance = await runQueue(inputs);
+  if (instance) {
+    await waitForInstance(instance.InstanceId);
+    const instanceDetails = await fetchInstanceDetails(instance.InstanceId);
+    return instanceDetails;
+  } else {
+    return null;
+  }
+}
+
+const terminateQueue = awsRateLimit((instanceName) => {
+  return terminateInstance(instanceName);
+});
+
+
+const metricsQueue = awsRateLimit((inputs) => {
+  return costs.postWorkflowUsage(inputs);
+});
+
+async function terminateInstanceAndPostCosts(instanceName) {
+  const instanceDetails = await terminateQueue(instanceName)
+  if (instanceDetails) {
+    console.log(instanceDetails)
+    await metricsQueue({ ...instanceDetails, AssumedTerminationTime: new Date() });
+  }
+}
+
+module.exports = { init, region, createAndWaitForInstance, terminateInstanceAndPostCosts }

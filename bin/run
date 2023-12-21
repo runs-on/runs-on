@@ -8,6 +8,8 @@ RUNS_ON_APP_VERSION=$(node -p "require('./package.json').version")
 export RUNS_ON_APP_VERSION
 echo "App version=$RUNS_ON_APP_VERSION"
 
+export GH_ORG="$RUNS_ON_ORG"
+
 if [ "$NODE_ENV" = "apprunner" ]; then
   NODEMON_CONFIG="nodemon/prod.json"
   export NO_SMEE_SETUP="true"

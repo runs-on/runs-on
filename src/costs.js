@@ -1,17 +1,64 @@
 const { CostExplorerClient, GetCostAndUsageCommand, UpdateCostAllocationTagsStatusCommand } = require("@aws-sdk/client-cost-explorer");
-const { STACK_TAG_KEY, STACK_NAME } = require("./constants");
+const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
+const { STACK_TAG_KEY, STACK_NAME, EMAIL_COSTS_TEMPLATE } = require("./constants");
+const { getLast15DaysPeriod } = require('./utils');
+const alerting = require("./alerting");
 
-// Create an instance of the CostExplorerClient
 const client = new CostExplorerClient();
+const cloudWatchClient = new CloudWatchClient();
 let app;
+
+async function getDailyCosts({ start, end, granularity = 'DAILY' } = {}) {
+  const { start: defaultStart, end: defaultEnd } = getLast15DaysPeriod();
+  // Define parameters for the GetCostAndUsage command
+  const params = {
+    TimePeriod: { Start: start || defaultStart, End: end || defaultEnd, },
+    Granularity: granularity,
+    Metrics: ['BlendedCost'],
+    Filter: { Tags: { Key: STACK_TAG_KEY, Values: [STACK_NAME] } },
+  };
+
+  // Call the GetCostAndUsage command to retrieve cost and usage data
+  const getCostAndUsageCommand = new GetCostAndUsageCommand(params);
+
+  const response = await client.send(getCostAndUsageCommand)
+  const { ResultsByTime } = response;
+  return ResultsByTime;
+}
 
 async function init(probotApp) {
   app = probotApp;
   try {
     await registerAllocationTag();
   } catch (error) {
-    app.log.error("❌ Error when attempting to register cost allocation tag. Assuming we are in a sub-account, and as such will report all costs without tagging.", error);
+    alerting.sendError([
+      `❌ Unable to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
+      ``,
+      `This is expected if you are running RunsOn in an AWS sub-account.`,
+      ``,
+      `However, for cost reports to work, you will have to manually enable cost allocation tags in the parent account for the \`${STACK_TAG_KEY}\` tag key.`,
+      ``,
+      `See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.`
+    ]);
   }
+
+  setInterval(async () => {
+    await sendEmailCosts();
+  }, 1000 * 60 * 60 * 24);
+
+  await sendEmailCosts();
+}
+
+async function sendEmailCosts() {
+  if (process.env["RUNS_ON_ENV"] === "dev") {
+    app.log.info(`[dev] Would have sent email costs`);
+    return;
+  }
+  const lastUpdated = new Date().toISOString();
+  const { start, end } = getLast15DaysPeriod();
+  const costs = await getDailyCosts({ start, end });
+  const content = EMAIL_COSTS_TEMPLATE({ lastUpdated, costs, stackTagKey: STACK_TAG_KEY, stackTagName: STACK_NAME })
+  alerting.publishAlert(`📈 RunsOn costs for ${STACK_NAME}`, content);
 }
 
 async function registerAllocationTag() {
@@ -24,30 +71,74 @@ async function registerAllocationTag() {
     app.log.error("❌ Cost Allocation Tags Status:", response.Errors.join(", "));
   } else {
     app.log.info(`✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`);
-    app.state.custom.costTags = [{
-      Key: STACK_TAG_KEY,
-      Values: [STACK_NAME],
-    }]
   }
 }
 
-async function getDailyCosts({ start, end, granularity = 'DAILY' }) {
-  // Define parameters for the GetCostAndUsage command
-  const params = {
-    TimePeriod: { Start: start, End: end, },
-    Granularity: granularity,
-    Metrics: ['BlendedCost'],
-    Filter: {
-      Tags: app.state.custom.costTags,
-    },
-  };
+async function postWorkflowUsage({ InstanceType, LaunchTime, InstanceLifecycle, PlatformDetails, Architecture, StateTransitionReason, AssumedTerminationTime, Tags }) {
+  let TerminationTime = AssumedTerminationTime;
+  try {
+    // ensure we take the actual termination time if available
+    if (StateTransitionReason && StateTransitionReason !== "") {
+      // e.g. 'User initiated (2023-12-21 15:14:24 GMT)'
+      const match = StateTransitionReason.match(/\((.*)\)/);
+      if (match) {
+        TerminationTime = new Date(match[1]);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  const minutes = Math.round((TerminationTime - new Date(LaunchTime)) / 1000 / 60);
+  try {
+    // Define the metric data
+    const metricData = [
+      {
+        MetricName: "minutes",
+        Dimensions: [
+          {
+            Name: "InstanceType",
+            Value: InstanceType || "unknown",
+          },
+          {
+            Name: "InstanceLifecycle",
+            Value: InstanceLifecycle || "unknown",
+          },
+          {
+            Name: "PlatformDetails",
+            Value: PlatformDetails || "unknown",
+          },
+          {
+            Name: "Architecture",
+            Value: Architecture || "unknown",
+          },
+          {
+            Name: "Organization",
+            Value: Tags.find(tag => tag.Key === "runs-on-github-org")?.Value || "unknown",
+          },
+          {
+            Name: "Repository",
+            Value: Tags.find(tag => tag.Key === "runs-on-github-repo")?.Value || "unknown",
+          }
+        ],
+        Timestamp: TerminationTime,
+        Unit: "Count",
+        Value: minutes,
+      },
+    ];
 
-  // Call the GetCostAndUsage command to retrieve cost and usage data
-  const getCostAndUsageCommand = new GetCostAndUsageCommand(params);
+    // Create the PutMetricData command
+    const command = new PutMetricDataCommand({
+      MetricData: metricData,
+      Namespace: "RunsOn",
+    });
 
-  const response = await client.send(getCostAndUsageCommand)
-  const { ResultsByTime } = response;
-  return ResultsByTime;
+    // Send the command to CloudWatch
+    await cloudWatchClient.send(command);
+
+    console.log(`Posted ${minutes} minute(s) of workflow usage.`);
+  } catch (error) {
+    console.error("Error posting workflow usage:", error);
+  }
 }
 
-module.exports = { init, getDailyCosts }
+module.exports = { init, getDailyCosts, postWorkflowUsage }

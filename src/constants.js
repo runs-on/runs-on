@@ -15,7 +15,7 @@ const STACK_FILTERS = [{ Name: `tag:${STACK_TAG_KEY}`, Values: [STACK_NAME] }];
 const RUNS_ON_LABEL = process.env["RUNS_ON_LABEL"] || "runs-on";
 const RUNS_ON_ENV = process.env["RUNS_ON_ENV"] || "development";
 
-const ISSUE_TEMPLATE = Handlebars.compile(fs.readFileSync(path.join(__dirname, '..', 'data', 'issue_template.md.hbs')).toString());
+const EMAIL_COSTS_TEMPLATE = Handlebars.compile(fs.readFileSync(path.join(__dirname, '..', 'data', 'email_costs_template.md.hbs')).toString());
 
 const PLATFORM_MACOS = "MacOS";
 const PLATFORM_LINUX = "Linux/UNIX";
@@ -240,9 +240,9 @@ module.exports = {
   DEFAULT_RUNNER_SPEC_KEY,
   DEFAULT_THROUGHPUT,
   DEFAULT_USER,
+  EMAIL_COSTS_TEMPLATE,
   IMAGE_ATTRIBUTES,
   IMAGES,
-  ISSUE_TEMPLATE,
   PLATFORM_MACOS,
   PLATFORM_LINUX,
   PLATFORM_WINDOWS,

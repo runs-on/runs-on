@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs').promises;
+const alerting = require("./alerting");
 
 const s3Client = new S3Client();
 const s3Bucket = process.env['RUNS_ON_S3_BUCKET'];
@@ -48,19 +49,6 @@ async function update(filePath) {
 }
 
 async function load() {
-  const subnetId = process.env["RUNS_ON_SUBNET_ID"];
-  if (subnetId) {
-    app.log.info(`Subnet ID: ${subnetId}`);
-  } else {
-    app.log.error("❌ Missing RUNS_ON_SUBNET_ID environment variable");
-  }
-  const securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
-  if (securityGroupId) {
-    app.log.info(`Security Group ID: ${securityGroupId}`);
-  } else {
-    app.log.error("❌ Missing RUNS_ON_SECURITY_GROUP_ID environment variable");
-  }
-
   const appDetails = (await app.state.octokit.apps.getAuthenticated()).data;
   app.log.info(`App Details: ${JSON.stringify(appDetails)}`)
 
@@ -68,7 +56,11 @@ async function load() {
   const appBotLogin = [appDetails.slug, "[bot]"].join("");
   app.log.info(`App Bot Login: ${appBotLogin}`);
 
-  Object.assign(app.state.custom, { appBotLogin, appOwner, subnetId, securityGroupId });
+  Object.assign(app.state.custom, { appBotLogin, appOwner });
+
+  if (app.state.custom.appOwner !== process.env["RUNS_ON_ORG"]) {
+    alerting.sendError(`❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}.`)
+  }
 
   return appDetails;
 }
