@@ -35,7 +35,10 @@ async function init(probotApp) {
     }
     if (content.length > 0) {
       app.log.info(`Batching and sending ${content.length} errors...`)
-      publishAlert(`👀 ${content.length} new RunsOn errors`, `Hello, here are the last ${content.length} errors for RunsOn: \n\n${content.join("\n\n-------------------------------\n\n")}`);
+      publishAlert(
+        `👀 ${content.length} new RunsOn errors`,
+        `Hello, here are the last ${content.length} errors for RunsOn: \n\n${content.map((c) => [c].flat().join("\n")).join("\n\n-------------------------------\n\n")}`
+      );
     }
   }, 8000);
 }

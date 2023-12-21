@@ -145,7 +145,7 @@ module.exports = async (app) => {
     context.log.info(`workflow job completed for ${workflow_name} on ${runner_name} with labels ${labels.join(", ")}`)
 
     try {
-      await ec2.terminateInstance(runner_name);
+      await ec2.terminateInstanceAndPostCosts(runner_name);
     } catch (error) {
       alerting.sendError(contextualizedError(context, "Error when attempting to terminate instance", error));
     }

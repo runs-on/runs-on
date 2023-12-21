@@ -1,8 +1,10 @@
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
 const { DescribeSubnetsCommand, DescribeSecurityGroupsCommand, DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
 const memoize = require('lru-memoize').default;
-const fastq = require('fastq');
+const pThrottle = require('p-throttle');
 
+const costs = require("./costs");
+const { isStringFloat } = require("./utils");
 const {
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
@@ -17,8 +19,6 @@ const {
   DEFAULT_FAMILY_FOR_PLATFORM,
   DEFAULT_THROUGHPUT
 } = require("./constants");
-
-const { isStringFloat } = require("./utils");
 
 const ec2Client = new EC2Client();
 let region;
@@ -423,14 +423,15 @@ async function terminateInstance(instanceName) {
     const describeInstancesResponse = await ec2Client.send(new DescribeInstancesCommand(describeParams));
 
     if (describeInstancesResponse.Reservations.length > 0) {
-      const instanceId = describeInstancesResponse.Reservations[0].Instances[0].InstanceId;
+      const instanceDetails = describeInstancesResponse.Reservations[0].Instances[0];
 
       const terminateParams = {
-        InstanceIds: [instanceId],
+        InstanceIds: [instanceDetails.InstanceId],
       };
 
       await ec2Client.send(new TerminateInstancesCommand(terminateParams));
-      app.log.info(`✅ Instance terminated: ${instanceId}`);
+      app.log.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
+      return instanceDetails;
     } else {
       app.log.warn('No instances found with the specified name.');
     }
@@ -439,10 +440,14 @@ async function terminateInstance(instanceName) {
   }
 }
 
-const runQueue = fastq.promise(createEC2Instance, 4);
+const awsRateLimit = pThrottle({ limit: 3, interval: 1000 })
+
+const runQueue = awsRateLimit((inputs) => {
+  return createEC2Instance(inputs);
+});
 
 async function createAndWaitForInstance(inputs) {
-  const instance = await runQueue.push(inputs);
+  const instance = await runQueue(inputs);
   if (instance) {
     await waitForInstance(instance.InstanceId);
     const instanceDetails = await fetchInstanceDetails(instance.InstanceId);
@@ -452,4 +457,21 @@ async function createAndWaitForInstance(inputs) {
   }
 }
 
-module.exports = { init, region, createAndWaitForInstance, terminateInstance }
+const terminateQueue = awsRateLimit((instanceName) => {
+  return terminateInstance(instanceName);
+});
+
+
+const metricsQueue = awsRateLimit((inputs) => {
+  return costs.postWorkflowUsage(inputs);
+});
+
+async function terminateInstanceAndPostCosts(instanceName) {
+  const instanceDetails = await terminateQueue(instanceName)
+  if (instanceDetails) {
+    console.log(instanceDetails)
+    await metricsQueue({ ...instanceDetails, AssumedTerminationTime: new Date() });
+  }
+}
+
+module.exports = { init, region, createAndWaitForInstance, terminateInstanceAndPostCosts }
