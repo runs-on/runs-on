@@ -147,7 +147,6 @@ runners:
   gofast:
     cpu: 32
     hdd: 200
-    iops: 400 # can set to 0 to disable IOPS and save a bit more. It is mainly useful for the full image.
     family: ["c7a", "m7a"]
 ```
 
