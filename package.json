@@ -15,6 +15,7 @@
     "@aws-sdk/client-cost-explorer": "^3.470.0",
     "@aws-sdk/client-ec2": "^3.468.0",
     "@aws-sdk/client-s3": "^3.470.0",
+    "@aws-sdk/client-sns": "^3.478.0",
     "envsub": "^4.1.0",
     "fastq": "^1.16.0",
     "fs-extra": "^11.2.0",

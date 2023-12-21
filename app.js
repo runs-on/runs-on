@@ -2,8 +2,30 @@ const ec2 = require("./src/ec2");
 const config = require("./src/config");
 const costs = require("./src/costs");
 const github = require("./src/github");
+const alerting = require("./src/alerting");
 const { extractLabels, sanitizeImageSpec, sanitizeRunnerSpec } = require("./src/utils");
 const { DEFAULT_RUNNER_SPEC, DEFAULT_IMAGE_SPEC, IMAGES, RUNNERS, RUNS_ON_LABEL, RUNS_ON_ENV } = require("./src/constants");
+
+const { getDefaultRoleAssumerWithWebIdentity, getDefaultRoleAssumer } = require('@aws-sdk/client-sts');
+const { defaultProvider } = require("@aws-sdk/credential-provider-node");
+
+const contextualizedError = (context, message, error) => {
+  const { action, enterprise, installation, sender, workflow_job, deployment } = context.payload;
+  const { id, name, run_id, runner_id, runner_name, workflow_name, labels, steps } = workflow_job;
+  const { repo, owner } = context.repo();
+  return [
+    `${owner}/${repo} - ${message}:`,
+    `* Workflow: [\`${workflow_name}\`](${workflow_job.html_url})`,
+    `* Job name: \`${name}\``,
+    `* Labels \`${labels.join(", ")}\``,
+    "",
+    "```",
+    `${error}`,
+    "```",
+  ].join("\n");
+}
+
+const errorQueue = [];
 
 /**
  * This is the main entrypoint to your Probot app
@@ -11,35 +33,54 @@ const { DEFAULT_RUNNER_SPEC, DEFAULT_IMAGE_SPEC, IMAGES, RUNNERS, RUNS_ON_LABEL,
  */
 module.exports = async (app) => {
   app.log.info("Yay, the app was loaded!");
-  app.state.custom = { costTags: [] }
 
-  // concurrency 4
-  const ec2RunQueue = require('fastq').promise(ec2.createEC2Instance, 4);
-  ec2RunQueue.error((error, task) => {
-    if (error) { app.log.error(error); }
-  });
-
-  await ec2.init(app);
-  await config.init(app);
-
-  if (app.state.custom.appOwner !== process.env["GH_ORG"]) {
-    app.log.error(`❌ App owner does not match GH_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}. Not processing any events until this is fixed.`)
-    return;
+  app.state.custom = {
+    awsCredentials: defaultProvider({
+      roleAssumerWithWebIdentity: getDefaultRoleAssumerWithWebIdentity(),
+      roleAssumer: getDefaultRoleAssumer(),
+    })
   }
 
-  await github.init(app);
-  await costs.init(app);
+  app.sendError = (message) => {
+    app.log.error(message);
+    errorQueue.push(message);
+  }
+
+  setInterval(() => {
+    const content = []
+    while (errorQueue.length) {
+      content.push(errorQueue.pop());
+    }
+    if (content.length > 0) {
+      app.log.info(`Batching and sending ${content.length} errors...`)
+      alerting.publishAlert(`👀 ${content.length} new RunsOn errors`, `Hello, here are the last ${content.length} errors for RunsOn: \n\n${content.join("\n\n-------------------------------\n\n")}`);
+    }
+  }, 8000);
+
+  // delay first initialization to bind socket asap
+  setTimeout(async () => {
+    await alerting.init(app);
+    await config.init(app);
+    if (app.state.custom.appOwner !== process.env["RUNS_ON_ORG"]) {
+      app.sendError(`❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}. Not processing any events until this is fixed.`)
+      process.exit(1);
+    }
+    await ec2.init(app);
+    await costs.init(app);
+  }, 100);
 
   app.on("installation.created", async (context) => {
-    const { action, enterprise, installation, organization, repository, sender, workflow_job, deployment } = context.payload;
-    context.log.info(`meta: ${JSON.stringify(context.payload)}`)
-    await github.updateIssuesForInstallations(installation.id);
+    if (invalidContext(context)) { return; }
+
+    const { installation } = context.payload;
+    context.log.info(`meta: ${JSON.stringify(context.payload)}`);
+    // await github.updateIssuesForInstallations(installation.id);
   });
 
   app.on("workflow_job.queued", async (context) => {
     // https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
-    const { action, enterprise, installation, organization, repository, sender, workflow_job, deployment } = context.payload;
-    const { id, name, run_id, runner_id, runner_name, workflow_name, labels, steps } = workflow_job;
+    const { repository, workflow_job, deployment } = context.payload;
+    const { workflow_name, labels } = workflow_job;
     const { repo, owner } = context.repo();
 
     context.log.info(`workflow job queued: workflow_name=${workflow_name}, labels=${labels.join(", ")}`)
@@ -106,45 +147,32 @@ module.exports = async (app) => {
       const runnerAgentVersion = "2.311.0"
       const userDataConfig = { runnerJitConfig, sshKeys, runnerName, runnerAgentVersion }
       const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
-      const createEc2InstanceParams = { instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot };
-      const instance = await ec2RunQueue.push(createEc2InstanceParams);
+      const instance = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
       if (instance) {
-        await ec2.waitForInstance(instance.InstanceId);
-        const instanceDetails = await ec2.fetchInstanceDetails(instance.InstanceId);
         app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
       } else {
-        throw new Error(`❌ Error creating EC2 instance with the following configuration: ${JSON.stringify(createEc2InstanceParams)}`);
+        throw new Error(`Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}`);
       }
     } catch (error) {
-      context.log.error(`❌ Error when attempting to launch workflow job: ${error.message}`)
-      console.error(error)
-      const errorDescription = `
-Error when attempting to launch workflow job:
-* Workflow: [\`${workflow_name}\`](${workflow_job.html_url})
-* Job name: \`${name}\`:
-* Labels \`${labels.join(", ")}\`
-* Error:
-
-\`\`\`
-${error}
-\`\`\`
-      `
-      await github.reportError({ context, errorDescription });
+      app.sendError(contextualizedError(context, "Error when attempting to launch workflow job", error));
     }
   });
 
   app.on("workflow_job.in_progress", async (context) => {
-    const { action, enterprise, installation, organization, repository, sender, workflow_job, deployment } = context.payload;
-    const { id, name, run_id, runner_id, runner_name, workflow_name, labels, steps } = workflow_job;
+    const { workflow_job } = context.payload;
+    const { runner_name, workflow_name, labels } = workflow_job;
     context.log.info(`workflow job in_progress for ${workflow_name} on ${runner_name} with labels ${labels.join(", ")}`)
   });
 
   app.on("workflow_job.completed", async (context) => {
-    const { action, enterprise, installation, organization, repository, sender, workflow_job, deployment } = context.payload;
-    const { id, name, run_id, runner_id, runner_name, workflow_name, labels, steps } = workflow_job;
+    const { workflow_job } = context.payload;
+    const { runner_name, workflow_name, labels } = workflow_job;
     context.log.info(`workflow job completed for ${workflow_name} on ${runner_name} with labels ${labels.join(", ")}`)
 
-    // not required per se, but always better safe than sorry
-    await ec2.terminateInstance(runner_name)
+    try {
+      await ec2.terminateInstance(runner_name);
+    } catch (error) {
+      app.sendError(contextualizedError(context, "Error when attempting to terminate instance", error));
+    }
   });
 };
