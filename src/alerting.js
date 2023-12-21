@@ -6,6 +6,7 @@ const {
 
 let snsClient;
 let app;
+const errorQueue = [];
 
 async function findTopicArn() {
   let topicArn = process.env["RUNS_ON_TOPIC_ARN"];
@@ -25,13 +26,33 @@ async function init(probotApp) {
   const topicArn = await findTopicArn();
   Object.assign(app.state.custom, { topicArn });
 
-  if (process.env["RUNS_ON_ENV"] !== "dev") {
-    await publishAlert("🎉 RunsOn Application is online", `Congrats, your RunsOn installation for ${app.state.custom.appOwner} is up and running.`)
-  }
+  await publishAlert("🎉 RunsOn Application is online", `Congrats, your RunsOn installation for ${app.state.custom.appOwner} is up and running.`)
+
+  setInterval(() => {
+    const content = []
+    while (errorQueue.length) {
+      content.push(errorQueue.pop());
+    }
+    if (content.length > 0) {
+      app.log.info(`Batching and sending ${content.length} errors...`)
+      publishAlert(`👀 ${content.length} new RunsOn errors`, `Hello, here are the last ${content.length} errors for RunsOn: \n\n${content.join("\n\n-------------------------------\n\n")}`);
+    }
+  }, 8000);
+}
+
+function sendError(message) {
+  [message].flat().forEach((line) => {
+    app.log.error(line);
+  })
+  errorQueue.push(message);
 }
 
 // Define a function to publish a message to an SNS topic
 async function publishAlert(subject, message) {
+  if (process.env["RUNS_ON_ENV"] === "dev") {
+    app.log.info(`[dev] Would have published message to SNS: ${subject} - ${message}`);
+    return;
+  }
   try {
     const command = new PublishCommand({
       TopicArn: app.state.custom.topicArn,
@@ -44,4 +65,4 @@ async function publishAlert(subject, message) {
   }
 }
 
-module.exports = { init, publishAlert }
+module.exports = { init, publishAlert, sendError }

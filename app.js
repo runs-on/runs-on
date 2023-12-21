@@ -25,8 +25,6 @@ const contextualizedError = (context, message, error) => {
   ].join("\n");
 }
 
-const errorQueue = [];
-
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
@@ -41,40 +39,17 @@ module.exports = async (app) => {
     })
   }
 
-  app.sendError = (message) => {
-    app.log.error(message);
-    errorQueue.push(message);
-  }
-
-  setInterval(() => {
-    const content = []
-    while (errorQueue.length) {
-      content.push(errorQueue.pop());
-    }
-    if (content.length > 0) {
-      app.log.info(`Batching and sending ${content.length} errors...`)
-      alerting.publishAlert(`👀 ${content.length} new RunsOn errors`, `Hello, here are the last ${content.length} errors for RunsOn: \n\n${content.join("\n\n-------------------------------\n\n")}`);
-    }
-  }, 8000);
-
   // delay first initialization to bind socket asap
   setTimeout(async () => {
     await alerting.init(app);
     await config.init(app);
-    if (app.state.custom.appOwner !== process.env["RUNS_ON_ORG"]) {
-      app.sendError(`❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}. Not processing any events until this is fixed.`)
-      process.exit(1);
-    }
     await ec2.init(app);
     await costs.init(app);
   }, 100);
 
   app.on("installation.created", async (context) => {
-    if (invalidContext(context)) { return; }
-
     const { installation } = context.payload;
     context.log.info(`meta: ${JSON.stringify(context.payload)}`);
-    // await github.updateIssuesForInstallations(installation.id);
   });
 
   app.on("workflow_job.queued", async (context) => {
@@ -147,14 +122,14 @@ module.exports = async (app) => {
       const runnerAgentVersion = "2.311.0"
       const userDataConfig = { runnerJitConfig, sshKeys, runnerName, runnerAgentVersion }
       const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
-      const instance = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
-      if (instance) {
+      const instanceDetails = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
+      if (instanceDetails) {
         app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
       } else {
         throw new Error(`Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}`);
       }
     } catch (error) {
-      app.sendError(contextualizedError(context, "Error when attempting to launch workflow job", error));
+      alerting.sendError(contextualizedError(context, "Error when attempting to launch workflow job", error));
     }
   });
 
@@ -172,7 +147,7 @@ module.exports = async (app) => {
     try {
       await ec2.terminateInstance(runner_name);
     } catch (error) {
-      app.sendError(contextualizedError(context, "Error when attempting to terminate instance", error));
+      alerting.sendError(contextualizedError(context, "Error when attempting to terminate instance", error));
     }
   });
 };

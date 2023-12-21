@@ -1,8 +1,8 @@
 const { CostExplorerClient, GetCostAndUsageCommand, UpdateCostAllocationTagsStatusCommand } = require("@aws-sdk/client-cost-explorer");
-const { STACK_TAG_KEY, STACK_NAME } = require("./constants");
+const { STACK_TAG_KEY, STACK_NAME, EMAIL_COSTS_TEMPLATE } = require("./constants");
 const { getLast15DaysPeriod } = require('./utils');
+const alerting = require("./alerting");
 
-// Create an instance of the CostExplorerClient
 const client = new CostExplorerClient();
 let app;
 
@@ -29,8 +29,34 @@ async function init(probotApp) {
   try {
     await registerAllocationTag();
   } catch (error) {
-    app.log.error("❌ Error when attempting to register cost allocation tag. Assuming we are in a sub-account. You will have to manually enable cost allocation tags in the parent account for the `stack` tag key.", error);
+    alerting.sendError([
+      `❌ Unable to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
+      ``,
+      `This is expected if you are running RunsOn in an AWS sub-account.`,
+      ``,
+      `However, for cost reports to work, you will have to manually enable cost allocation tags in the parent account for the \`${STACK_TAG_KEY}\` tag key.`,
+      ``,
+      `See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.`
+    ]);
   }
+
+  setInterval(async () => {
+    await sendEmailCosts();
+  }, 1000 * 60 * 60 * 24);
+
+  await sendEmailCosts();
+}
+
+async function sendEmailCosts() {
+  if (process.env["RUNS_ON_ENV"] === "dev") {
+    app.log.info(`[dev] Would have sent email costs`);
+    return;
+  }
+  const lastUpdated = new Date().toISOString();
+  const { start, end } = getLast15DaysPeriod();
+  const costs = await getDailyCosts({ start, end });
+  const content = EMAIL_COSTS_TEMPLATE({ lastUpdated, costs, stackTagKey: STACK_TAG_KEY, stackTagName: STACK_NAME })
+  alerting.publishAlert(`📈 RunsOn costs for ${STACK_NAME}`, content);
 }
 
 async function registerAllocationTag() {

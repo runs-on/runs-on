@@ -1,0 +1,13 @@
+Hello, please find below the daily costs for the `{{stackTagKey}}:{{stackTagName}}` stack.
+
+## Daily costs
+
+| Date       | Cost       |
+|------------|------------|
+{{#costs}}
+| {{TimePeriod.End}} | {{round Total.BlendedCost.Amount}} |
+{{/costs}}
+
+Note: costs are fetched from the AWS Cost Explorer API and may be delayed by up to 24 hours. Costs are for the whole organization, and they are displayed only if you the Cost Allocation Tag for `{{stackTagKey}}:{{stackTagName}}` has been enabled in your AWS account. Once enabled, you can also filters costs for this tag using the Cost Explorer AWS UI.
+
+See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.

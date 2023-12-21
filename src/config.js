@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs').promises;
+const alerting = require("./alerting");
 
 const s3Client = new S3Client();
 const s3Bucket = process.env['RUNS_ON_S3_BUCKET'];
@@ -56,6 +57,10 @@ async function load() {
   app.log.info(`App Bot Login: ${appBotLogin}`);
 
   Object.assign(app.state.custom, { appBotLogin, appOwner });
+
+  if (app.state.custom.appOwner !== process.env["RUNS_ON_ORG"]) {
+    alerting.sendError(`❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}.`)
+  }
 
   return appDetails;
 }

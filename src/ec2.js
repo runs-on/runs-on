@@ -20,7 +20,7 @@ const {
 
 const { isStringFloat } = require("./utils");
 
-let ec2Client;
+const ec2Client = new EC2Client();
 let region;
 let app;
 
@@ -46,7 +46,6 @@ async function findSecurityGroupId() {
 
 async function init(probotApp) {
   app = probotApp;
-  ec2Client = new EC2Client({ credentials: app.state.custom.awsCredentials });
   region = await ec2Client.config.region();
   const subnetId = await findSubnetId();
   const securityGroupId = await findSecurityGroupId();
