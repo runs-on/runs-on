@@ -11,6 +11,11 @@ Metadata:
           - GithubOrganization
       - 
         Label: 
+          default: "Cost usage"
+        Parameters: 
+          - EmailAddress
+      - 
+        Label: 
           default: "App Configuration"
         Parameters: 
           - AppImageVersion
@@ -31,6 +36,10 @@ Parameters:
     Type: String
     Description: "For instance if your GitHub organization lives on https://github.com/my-org, then the value of this parameter should be: my-org"
     MinLength: 1
+
+  EmailAddress:
+    Type: String
+    Description: Email address for usage alerts (optional)
 
   SSHCidrRange:
     Type: String
@@ -165,6 +174,8 @@ Resources:
           ImageConfiguration:
             Port: 80
             RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_TOPIC_ARN
+                Value: !Ref AlertTopic
               - Name: RUNS_ON_S3_BUCKET
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_STACK_NAME
@@ -173,7 +184,7 @@ Resources:
                 Value: !Ref PublicSubnet
               - Name: RUNS_ON_SECURITY_GROUP_ID
                 Value: !Ref SecurityGroup
-              - Name: GH_ORG
+              - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
           ImageIdentifier: !Sub ${AppImageRepository}:${AppImageVersion}
           ImageRepositoryType: ECR_PUBLIC
@@ -204,6 +215,10 @@ Resources:
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
                   - iam:CreateServiceLinkedRole
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:DescribeAlarms
+                  - sns:ListTopics
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -234,6 +249,44 @@ Resources:
                 Resource: 
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref AlertTopic
+
+  MinutesPerDayAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alerts when the daily usage of the RunsOn service exceeds 6000 minutes
+      Namespace: RunsOn 
+      MetricName: minutes
+      Statistic: Sum   # Choose the appropriate statistic (e.g., Sum, Average, Maximum)
+      Period: 86400   # Set to 24 hours for 1-day periods (adjust as needed)
+      EvaluationPeriods: 1
+      Threshold: 40
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+      DisplayName: RunsOn Alerts
+
+  AlertTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AlertTopic
+      Endpoint: !If [EmailProvided, !Ref EmailAddress, '']
+
+Conditions:
+  EmailProvided: !Not [!Equals [!Ref EmailAddress, '']]
 
 Outputs:
   RunsOnEntryPoint:
