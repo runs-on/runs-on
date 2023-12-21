@@ -291,4 +291,4 @@ If you like DevOps tooling, you might also be interested in my other projects [P
 * windows support
 * MacOS support (looks hard since it requires dedicated hosts)
 * allow to set max daily budget and/or concurrency
-* find ways to make boot time faster for full x64 image
+* ~~find ways to make boot time faster for full x64 image~~
