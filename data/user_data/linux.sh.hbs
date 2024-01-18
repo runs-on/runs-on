@@ -125,24 +125,8 @@ _setup_infos() {
     "detail": "$RUNS_ON_AGENT_USER@$RUNS_ON_RUNNER_IP"
   },
   {
-    "group": "Runner name",
-    "detail": "$RUNS_ON_RUNNER_NAME"
-  },
-  {
-    "group": "Runner version",
-    "detail": "$RUNS_ON_AGENT_VERSION"
-  },
-  {
-    "group": "Instance type",
-    "detail": "$EC2_INSTANCE_TYPE"
-  },
-  {
-    "group": "Instance ID",
-    "detail": "$EC2_INSTANCE_ID"
-  },
-  {
-    "group": "Instance lifecycle",
-    "detail": "$EC2_INSTANCE_LIFE_CYCLE"
+    "group": "Runner",
+    "detail": "Name: $RUNS_ON_RUNNER_NAME\nArchitecture: $RUNS_ON_AGENT_ARCH\nInstance type: $EC2_INSTANCE_TYPE\nInstance ID: $EC2_INSTANCE_ID\nInstance lifecycle: $EC2_INSTANCE_LIFE_CYCLE"
   }
 ]
 EOF
