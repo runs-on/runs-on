@@ -22,6 +22,11 @@ Metadata:
           - AppImageRepository
           - AppCPU
           - AppMemory
+      -
+        Label:
+          default: "Network Configuration"
+        Parameters:
+          - AvailabilityZone
       - 
         Label: 
           default: "Security Configuration"
@@ -40,6 +45,10 @@ Parameters:
   EmailAddress:
     Type: String
     Description: Email address for usage alerts (optional)
+
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: "The availability zone where the stack will be created. You can update this at any time, for instance if you find out that some AZ does not have the latest instance types."
 
   SSHCidrRange:
     Type: String
@@ -63,8 +72,43 @@ Parameters:
 
   AppImageVersion:
     Type: String
-    Default: "v1.3.10"
+    Default: "v1.3.9"
     Description: Version of the app in the AppImageRepository
+
+
+Transform: 'AWS::LanguageExtensions'
+
+Mappings:
+  Networking:
+    AzSuffixToIndex:
+      1a: 0
+      1b: 1
+      1c: 2
+      1d: 3
+      1e: 4
+      1f: 5
+      1g: 6
+      2a: 0
+      2b: 1
+      2c: 2
+      2d: 3
+      2e: 4
+      2f: 5
+      2g: 6
+      3a: 0
+      3b: 1
+      3c: 2
+      3d: 3
+      3e: 4
+      3f: 5
+      3g: 6
+      4a: 0
+      4b: 1
+      4c: 2
+      4d: 3
+      4e: 4
+      4f: 5
+      4g: 6
 
 Resources:
   VPC:
@@ -82,12 +126,28 @@ Resources:
     Properties:
       VpcId:
         Ref: VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 10.0.0.0/24
+      AvailabilityZone:
+        Ref: AvailabilityZone
+      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
+      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
+      CidrBlock: !Select [
+        !FindInMap [Networking, AzSuffixToIndex, !Select [ 2, !Split [ "-", !Ref AvailabilityZone]]],
+        !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]
+      ]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName:
+        Fn::Sub: "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PublicRouteTable
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
