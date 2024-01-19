@@ -30,6 +30,7 @@ release: bump login build push s3-upload
 
 # DEV commands
 build-dev:
+	sed -i 's|Default: "v1.*|Default: "$(VERSION)"|' cloudformation/template-dev.yaml
 	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:dev-$(VERSION) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:dev-$(VERSION) sh -c "ls -al . && ! test -s .env"
 
