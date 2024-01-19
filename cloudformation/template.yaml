@@ -240,6 +240,8 @@ Resources:
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
+              - Name: RUNS_ON_AVAILABILITY_ZONE
+                Value: !Ref AvailabilityZone
               - Name: RUNS_ON_SUBNET_ID
                 Value: !Ref PublicSubnet
               - Name: RUNS_ON_SECURITY_GROUP_ID
