@@ -36,8 +36,9 @@ module.exports = async (app) => {
     awsCredentials: defaultProvider({
       roleAssumerWithWebIdentity: getDefaultRoleAssumerWithWebIdentity(),
       roleAssumer: getDefaultRoleAssumer(),
-    })
+    }),
   }
+  app.state.devMode = process.env["RUNS_ON_ENV"] === "dev"
 
   // delay first initialization to bind socket asap
   setTimeout(async () => {

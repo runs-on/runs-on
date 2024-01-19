@@ -7,6 +7,7 @@ const alerting = require("./alerting");
 const client = new CostExplorerClient();
 const cloudWatchClient = new CloudWatchClient();
 let app;
+let tagAllocationRegistrationAttempted = false;
 
 async function getDailyCosts({ start, end, granularity = 'DAILY' } = {}) {
   const { start: defaultStart, end: defaultEnd } = getLast15DaysPeriod();
@@ -28,29 +29,41 @@ async function getDailyCosts({ start, end, granularity = 'DAILY' } = {}) {
 
 async function init(probotApp) {
   app = probotApp;
-  try {
-    await registerAllocationTag();
-  } catch (error) {
-    alerting.sendError([
-      `❌ Unable to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
-      ``,
-      `This is expected if you are running RunsOn in an AWS sub-account.`,
-      ``,
-      `However, for cost reports to work, you will have to manually enable cost allocation tags in the parent account for the \`${STACK_TAG_KEY}\` tag key.`,
-      ``,
-      `See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.`
-    ]);
-  }
 
+  const WAIT_TIME_BEFORE_REGISTERING_COST_ALLOCATION_TAG = app.state.devMode ? 1000 * 10 : 1000 * 60 * 60 * 24; // 24h
+  const INTERVAL_BETWEEN_COST_REPORTS = app.state.devMode ? 1000 * 60 * 60 * 1 : 1000 * 60 * 60 * 24; // 24h
+
+  setTimeout(async () => {
+    tagAllocationRegistrationAttempted = true;
+    try {
+      app.log.info(`Attempting to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`);
+      await registerAllocationTag();
+    } catch (error) {
+      alerting.sendError([
+        `❌ Unable to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
+        ``,
+        `This is expected if you are running RunsOn in an AWS sub-account.`,
+        ``,
+        `However, for cost reports to work, you will have to manually enable cost allocation tags in the parent account for the \`${STACK_TAG_KEY}\` tag key.`,
+        ``,
+        `See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.`
+      ]);
+    }
+  }, WAIT_TIME_BEFORE_REGISTERING_COST_ALLOCATION_TAG);
+
+  // send email costs every day
   setInterval(async () => {
-    await sendEmailCosts();
-  }, 1000 * 60 * 60 * 24);
+    if (tagAllocationRegistrationAttempted) {
+      await sendEmailCosts();
+    }
+  }, INTERVAL_BETWEEN_COST_REPORTS);
 
+  // always send a first cost report after install, even if tag allocation registration is not yet done
   await sendEmailCosts();
 }
 
 async function sendEmailCosts() {
-  if (process.env["RUNS_ON_ENV"] === "dev") {
+  if (app.state.devMode) {
     app.log.info(`[dev] Would have sent email costs`);
     return;
   }

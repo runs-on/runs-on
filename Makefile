@@ -24,6 +24,9 @@ push:
 s3-upload:
 	aws s3 cp --recursive ./cloudformation s3://runs-on/cloudformation
 
+s3-upload-dev:
+	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
+
 release: bump login build push s3-upload
 	docker tag public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(MAJOR_VERSION)
 	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(MAJOR_VERSION)
