@@ -1,0 +1,294 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation stack for https://github.com/runs-on/runs-on
+
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "GitHub Configuration"
+        Parameters: 
+          - GithubOrganization
+      - 
+        Label: 
+          default: "Cost usage"
+        Parameters: 
+          - EmailAddress
+      - 
+        Label: 
+          default: "App Configuration"
+        Parameters: 
+          - AppImageVersion
+          - AppImageRepository
+          - AppCPU
+          - AppMemory
+      - 
+        Label: 
+          default: "Security Configuration"
+        Parameters: 
+          - SSHCidrRange
+    ParameterLabels:
+      GithubOrganization: 
+        default: "Your GitHub organization or personal name."
+
+Parameters:
+  GithubOrganization:
+    Type: String
+    Description: "For instance if your GitHub organization lives on https://github.com/my-org, then the value of this parameter should be: my-org"
+    MinLength: 1
+
+  EmailAddress:
+    Type: String
+    Description: Email address for usage alerts (optional)
+
+  SSHCidrRange:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
+
+  AppCPU:
+    Type: Number
+    Default: "256"
+    Description: CPU units for RunsOn service (256 or higher)
+  
+  AppMemory:
+    Type: Number
+    Default: "512"
+    Description: Memory in MB for RunsOn service (512 or higher)
+
+  AppImageRepository:
+    Type: String
+    Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
+    Description: ECR repository where the app image exists
+
+  AppImageVersion:
+    Type: String
+    Default: "v1.3.9"
+    Description: Version of the app in the AppImageRepository
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SSH access
+      VpcId:
+        Ref: VPC
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::Sub: "${SSHCidrRange}"
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  RunsOnService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+      InstanceConfiguration:
+        Cpu: !Ref AppCPU
+        Memory: !Ref AppMemory
+        InstanceRoleArn: !GetAtt RunsOnServiceRole.Arn
+      NetworkConfiguration:
+        EgressConfiguration:
+          EgressType: DEFAULT
+        IngressConfiguration:
+          IsPubliclyAccessible: true
+        IpAddressType: IPV4
+      HealthCheckConfiguration:
+        Path: /
+        Protocol: HTTP
+        HealthyThreshold: 1
+        UnhealthyThreshold: 15
+        Interval: 10
+      SourceConfiguration:
+        ImageRepository:
+          ImageConfiguration:
+            Port: 80
+            RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_TOPIC_ARN
+                Value: !Ref AlertTopic
+              - Name: RUNS_ON_S3_BUCKET
+                Value: !Ref S3Bucket
+              - Name: RUNS_ON_STACK_NAME
+                Value: !Ref AWS::StackName
+              - Name: RUNS_ON_SUBNET_ID
+                Value: !Ref PublicSubnet
+              - Name: RUNS_ON_SECURITY_GROUP_ID
+                Value: !Ref SecurityGroup
+              - Name: RUNS_ON_ORG
+                Value: !Ref GithubOrganization
+          ImageIdentifier: !Sub ${AppImageRepository}:${AppImageVersion}
+          ImageRepositoryType: ECR_PUBLIC
+
+  RunsOnServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - tasks.apprunner.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: AppRunnerEC2Permissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:Describe*
+                  - ce:GetCostAndUsage
+                  - ce:UpdateCostAllocationTagsStatus
+                  - iam:CreateServiceLinkedRole
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:DescribeAlarms
+                  - sns:ListTopics
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ec2:RunInstances
+                Resource:
+                  - arn:aws:ec2:*:*:network-interface/*
+                  - arn:aws:ec2:*:*:volume/*
+                  - arn:aws:ec2:*:*:security-group/*
+                  - arn:aws:ec2:*::image/ami-*
+                  - Fn::Sub: arn:aws:ec2:*:*:subnet/${PublicSubnet}
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:RunInstances
+                Resource: arn:aws:ec2:*:*:instance/*
+              - Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: "arn:aws:ec2:*:*:instance/*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/stack": !Ref AWS::StackName
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource: 
+                  - Fn::Sub: arn:aws:s3:::${S3Bucket}
+                  - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref AlertTopic
+
+  MinutesPerDayAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alerts when the daily usage of the RunsOn service exceeds 6000 minutes
+      Namespace: RunsOn 
+      MetricName: minutes
+      Statistic: Sum   # Choose the appropriate statistic (e.g., Sum, Average, Maximum)
+      Period: 86400   # Set to 24 hours for 1-day periods (adjust as needed)
+      EvaluationPeriods: 1
+      Threshold: 40
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+      DisplayName: RunsOn Alerts
+
+  AlertTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AlertTopic
+      Endpoint: !If [EmailProvided, !Ref EmailAddress, '']
+
+Conditions:
+  EmailProvided: !Not [!Equals [!Ref EmailAddress, '']]
+
+Outputs:
+  RunsOnEntryPoint:
+    Description: Entrypoint for the RunsOn service
+    Value: !GetAtt RunsOnService.ServiceUrl
