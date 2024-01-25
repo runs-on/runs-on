@@ -145,7 +145,7 @@ function flatMapInput(input) {
 }
 
 const _findInstanceTypesMatching = async function (inputs) {
-  const { arch, platform, cpu, ram, family } = inputs;
+  const { arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, cpu, ram, family } = inputs;
 
   const familyValues = flatMapInput(family);
   const cpuValues = flatMapInput(cpu).map(i => Number(i));
@@ -215,25 +215,37 @@ const _findInstanceTypesMatching = async function (inputs) {
 
   app.log.info(`Found ${matchingInstanceTypes.length} matching instance types among close to ${totalPages * 100} instance types`);
 
-  matchingInstanceTypes.sort((a, b) => {
-    const familyAIndex = familyValues.indexOf(a.InstanceType.split(".")[0]);
-    const familyBIndex = familyValues.indexOf(b.InstanceType.split(".")[0]);
-    const familyIndexComparison = familyAIndex - familyBIndex;
-
-    if (familyIndexComparison !== 0) {
-      return familyIndexComparison;
+  const matchingInstanceTypesByFamily = matchingInstanceTypes.reduce((acc, instanceType) => {
+    const family = instanceType.InstanceType.split(".")[0];
+    if (!acc[family]) {
+      acc[family] = [];
     }
+    acc[family].push(instanceType);
+    // sort by vCPU ascending
+    acc[family] = acc[family].sort((a, b) => a.VCpuInfo.DefaultVCpus - b.VCpuInfo.DefaultVCpus);
+    return acc;
+  }, {});
 
-    // Sort by vCPUs ascending
-    return a.VCpuInfo.DefaultVCpus - b.VCpuInfo.DefaultVCpus;
-  }).sort((a, b) => {
-    if (families[0] === "c*") {
-      // sort by family descending
-      return b.InstanceType.split(".")[0].localeCompare(a.InstanceType.split(".")[0]);
-    }
-  });
+  const sortedMatchingInstanceTypes = new Set();
 
-  const selectedInstanceTypes = matchingInstanceTypes.slice(0, 5);
+  for (const family of families) {
+    // find matching instances for each family, from matchingInstanceTypesByFamily
+    // a family can have a wildcard in its name
+    const familyRegex = new RegExp(`^${family.replace("*", ".*")}$`);
+    console.log("familyRegex", family, familyRegex)
+    // find groups of instance types that match the family
+    Object.entries(matchingInstanceTypesByFamily).filter(([familyName]) => {
+      console.log("familyName", familyName)
+      return familyName.match(familyRegex)
+    }).forEach(([_, instanceTypes]) => {
+      instanceTypes.forEach((instanceType) => {
+        sortedMatchingInstanceTypes.add(instanceType);
+      })
+    });
+  }
+
+  const selectedInstanceTypes = [...sortedMatchingInstanceTypes].slice(0, 10);
+
   app.log.info(`Selected instance types: ${JSON.stringify(selectedInstanceTypes.map(instanceType => instanceType.InstanceType))}`);
 
   if (selectedInstanceTypes.length === 0) {
@@ -474,4 +486,4 @@ async function terminateInstanceAndPostCosts(instanceName) {
   }
 }
 
-module.exports = { init, region, createAndWaitForInstance, terminateInstanceAndPostCosts }
+module.exports = { init, region, createAndWaitForInstance, terminateInstanceAndPostCosts, findInstanceTypesMatching }
