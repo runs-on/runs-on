@@ -27,11 +27,11 @@ const DEFAULT_HDD = 100;
 const DEFAULT_IOPS = 0;
 const DEFAULT_THROUGHPUT = 400;
 const DEFAULT_FAMILY_FOR_PLATFORM = {
-  PLATFORM_LINUX: "c*",
-  PLATFORM_MACOS: "mac*",
-  PLATFORM_WINDOWS: "c*",
+  [PLATFORM_LINUX]: "c7*",
+  [PLATFORM_MACOS]: "mac*",
+  [PLATFORM_WINDOWS]: "c7*",
 }
-const DEFAULT_PLATFORM = "Linux/UNIX";
+const DEFAULT_PLATFORM = PLATFORM_LINUX;
 const DEFAULT_USER = "ubuntu";
 
 // AWS architecture mappings
@@ -45,11 +45,11 @@ const SUPPORTED_ARCHITECTURES = {
 
 // Mapping from runs-on support name to AWS platform name
 const SUPPORTED_PLATFORMS = {
-  PLATFORM_LINUX: PLATFORM_LINUX,
+  [PLATFORM_LINUX]: PLATFORM_LINUX,
   "linux": PLATFORM_LINUX,      // shortname
-  PLATFORM_MACOS: PLATFORM_MACOS,
+  [PLATFORM_MACOS]: PLATFORM_MACOS,
   "macos": PLATFORM_MACOS,      // shortname
-  PLATFORM_WINDOWS: PLATFORM_WINDOWS,
+  [PLATFORM_WINDOWS]: PLATFORM_WINDOWS,
   "windows": PLATFORM_WINDOWS,  // shortname
 }
 
