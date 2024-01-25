@@ -1,4 +1,4 @@
-VERSION=v1.4.0
+VERSION=v1.4.1
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
 
@@ -9,7 +9,7 @@ check:
 bump: check
 	sed -i 's|Default: "v1.*|Default: "$(VERSION)"|' cloudformation/template.yaml
 	sed -i 's|"version": "v1.*|"version": "$(VERSION)",|' package.json
-	if ! git diff --exit-code cloudformation/template.yaml ; then git commit -m "Bump template to $(VERSION)" Makefile package.json cloudformation/template.yaml ; fi
+	if ! git diff --exit-code cloudformation/template.yaml ; then git commit -m "Bump template to $(VERSION)" Makefile package.json cloudformation/template.yaml && git tag -m "$(VERSION)" "$(VERSION)" ; fi
 
 login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
