@@ -145,7 +145,7 @@ function flatMapInput(input) {
 }
 
 const _findInstanceTypesMatching = async function (inputs) {
-  const { arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, cpu, ram, family } = inputs;
+  const { arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, cpu = DEFAULT_CPU, ram, family } = inputs;
 
   const familyValues = flatMapInput(family);
   const cpuValues = flatMapInput(cpu).map(i => Number(i));
@@ -232,10 +232,8 @@ const _findInstanceTypesMatching = async function (inputs) {
     // find matching instances for each family, from matchingInstanceTypesByFamily
     // a family can have a wildcard in its name
     const familyRegex = new RegExp(`^${family.replace("*", ".*")}$`);
-    console.log("familyRegex", family, familyRegex)
     // find groups of instance types that match the family
     Object.entries(matchingInstanceTypesByFamily).filter(([familyName]) => {
-      console.log("familyName", familyName)
       return familyName.match(familyRegex)
     }).forEach(([_, instanceTypes]) => {
       instanceTypes.forEach((instanceType) => {
@@ -272,7 +270,7 @@ const createEC2Instance = async function ({
   userDataConfig
 }) {
   const { subnetId, securityGroupId } = app.state.custom;
-  const { cpu = DEFAULT_CPU, ram, iops = DEFAULT_IOPS, hdd = DEFAULT_HDD, family = "c" } = runnerSpec;
+  const { cpu, ram, iops = DEFAULT_IOPS, hdd = DEFAULT_HDD, family } = runnerSpec;
   // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
   const storageType = iops && parseInt(iops) > 0 ? "io2" : "gp3";
 
