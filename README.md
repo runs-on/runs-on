@@ -78,34 +78,9 @@ Use the calculator to get an idea of the savings: <https://runs-on/calculator/>.
 
 <a href="https://customer-uzqf0auvx7908j5z.cloudflarestream.com/9cfea1331e6f1da9cd4432e275b1a214/watch"><img width="800" alt="image" src="https://github.com/runs-on/runs-on/assets/6114/9592add3-71a6-4047-9554-a32241f896a1"></a>
 
-RunsOn can be installed in one click in your AWS account, using the [CloudFormation template](cloudformation/template.yaml):
+RunsOn can be installed in one click in your AWS account, using a [CloudFormation template](cloudformation/template.yaml). Supported regions are currently `us-east-1` and `eu-west-1`. More can be supported on demand.
 
-| Region | |
-|---|---|
-| us-east-1 (North Virginia) | <a href="https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
-| eu-west-1 (Ireland) | <a href="https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml&stackName=runs-on"><img src="https://github.com/runs-on/runs-on/raw/main/docs/img/launch-stack.png" alt="Launch cloudformation stack"></a> |
-
-The stack will setup a dedicated VPC / Subnet / Security Group / Restricted IAM Role / SNS Topic for Alerts / AppRunner Service, for a monthly cost of ~$10.
-
-Once the stack creation is complete, the HTTPS URL to your RunsOn instance will be displayed in the stack _Outputs_:
-
-<img width="580" alt="CloudFormation Output" src="https://github.com/runs-on/runs-on/assets/6114/b3f96f81-2aba-45b8-85f2-1ee810c57af7">
-
-To finish the installation, simply visit the page link, and click "Register app":
-
-<img width="580" alt="Register GitHub App" src="https://github.com/runs-on/runs-on/assets/6114/92042553-5d0c-4d38-b535-3354ed649c34">
-
-You will then be directed to a screen where you can adjust your app name, and then select the repositories you want this app to be installed on:
-
-<img width="580" alt="Permissions" src="https://github.com/runs-on/runs-on/assets/6114/235795d5-a514-46ed-8bb0-d0bf1b315d7d">
-
-Finally, refresh your RunsOn entrypoint page until you see the following success screen:
-
-<img width="580" alt="Success" src="https://github.com/runs-on/runs-on/assets/6114/40ffe3ba-2b61-4325-ae03-0db5e539098c">
-
-You will also receive a few emails once the installation is completed:
-
-<img width="674" alt="first emails" src="https://github.com/runs-on/runs-on/assets/6114/ea32afc2-4c76-4262-915b-29588cbde183">
+→ See [Installation guide](https://github.com/runs-on/runs-on/wiki/Installing) for all the details.
 
 ## Usage
 
