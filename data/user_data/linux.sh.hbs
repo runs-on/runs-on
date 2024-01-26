@@ -36,9 +36,8 @@ echo '. /etc/environment' >> /etc/profile
 echo "Storing SSH keys..."
 mkdir -p /root/runs-on/
 RUNS_ON_SSH_KEYS_FILE=/root/runs-on/authorized_keys
-{{#sshKeys}}
-echo "{{{.}}}" >> $RUNS_ON_SSH_KEYS_FILE
-{{/sshKeys}}
+# TODO: store those in S3 bucket instead?
+curl -Ls https://github.com/{{ join sshGithubUsernames delimiter=',' wrap='{}' }}.keys > "$RUNS_ON_SSH_KEYS_FILE"
 
 _setup_runner_user() {
   echo "Setting up runner user..."
@@ -59,7 +58,7 @@ _setup_ssh() {
   chmod 700 "$homeDir"/.ssh && chmod 600 "$homeDir"/.ssh/authorized_keys
 }
 
-_setup_runner_user
+id "$RUNS_ON_AGENT_USER" || _setup_runner_user
 _setup_ssh || true
 
 

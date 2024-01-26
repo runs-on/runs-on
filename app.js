@@ -106,12 +106,18 @@ module.exports = async (app) => {
       }
       context.log.info(`imageSpec: ${JSON.stringify(imageSpec)}`)
 
-      // Fetch SSH keys if enabled
-      let sshKeys = [];
+      // Fetch SSH admins if enabled
+      let sshGithubUsernames = [];
       if (ssh) {
-        const usernames = await github.fetchCollaboratorsWithWriteAccess(context);
-        context.log.info(`Usernames with SSH access: ${usernames}`);
-        sshKeys = await github.fetchPublicSSHKeys(context, usernames);
+        if (repoConfig?.admins) {
+          sshGithubUsernames = [repoConfig.admins].flat().filter((username) => {
+            return username && (/^[\w\-]+$/).test(username);
+          });
+        } else {
+          sshGithubUsernames = await github.fetchCollaboratorsWithWriteAccess(context);
+        }
+        context.log.info(`Usernames with SSH access: ${sshGithubUsernames.join(", ")}. Will take the first 10 only.`);
+        sshGithubUsernames = sshGithubUsernames.slice(0, 10);
       }
 
       // Register runner with GitHub App installation
@@ -121,7 +127,7 @@ module.exports = async (app) => {
 
       // Create EC2 instance
       const runnerAgentVersion = "2.311.0"
-      const userDataConfig = { runnerJitConfig, sshKeys, runnerName, runnerAgentVersion }
+      const userDataConfig = { runnerJitConfig, sshGithubUsernames, runnerName, runnerAgentVersion }
       const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
       const instanceDetails = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
       if (instanceDetails) {
