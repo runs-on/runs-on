@@ -258,6 +258,10 @@ That's why RunsOn automatically reports errors by sending them to the configured
 
 <img width="600" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/d655d6dc-5b7f-4beb-985d-5cda174dd9e0">
 
+Details about the runner, and how to connect to it via SSH, will also be displayed right in the "Set up job" section of the workflow logs:
+
+![SSH access and runner details](https://github.com/runs-on/runs-on/assets/6114/326cdcfd-3253-4e00-9e52-ea7bae3b8e71)
+
 ## License
 
 The source code for this software is open, but licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice this means that:
