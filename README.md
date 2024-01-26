@@ -72,7 +72,7 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 
 Prices include EBS volume costs (disk + throughput).
 
-Use the calculator to get an idea of the savings: <https://runs-on/calculator/>.
+Use the calculator to get an idea of the savings: <https://runs-on.com/calculator/>.
 
 ## Installation
 
