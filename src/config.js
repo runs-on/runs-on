@@ -6,10 +6,10 @@ const s3Client = new S3Client();
 const s3Bucket = process.env['RUNS_ON_S3_BUCKET'];
 let app;
 
-async function fetch(filePath) {
+async function fetch(filePath, prefix = 'runs-on') {
   const getObjectParams = {
     Bucket: s3Bucket,
-    Key: ['runs-on', filePath].join("/"),
+    Key: [prefix, filePath.replace(/^\//, "")].join("/"),
   };
 
   try {
@@ -32,10 +32,10 @@ async function fetch(filePath) {
   }
 }
 
-async function update(filePath) {
+async function update(filePath, prefix = 'runs-on') {
   const uploadParams = {
     Bucket: s3Bucket,
-    Key: ['runs-on', filePath].join("/"),
+    Key: [prefix, filePath.replace(/^\//, "")].join("/"),
     Body: await fs.readFile(filePath, 'utf-8'),
     ACL: 'private', // Make the object private
   };

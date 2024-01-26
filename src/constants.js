@@ -7,6 +7,16 @@ Handlebars.registerHelper('round', function (value) {
   return parseFloat(value).toFixed(2);
 });
 
+Handlebars.registerHelper("join", function (value, block) {
+  const delimiter = block.hash.delimiter || ",";
+  const wrap = (block.hash.wrap || "").split("");
+  const wrapFirst = wrap[0] || "";
+  const wrapLast = wrap[1] || "";
+  const joined = [].concat(value).join(delimiter || ",");
+  const result = `${wrapFirst}${joined}${wrapLast}`;
+  return result;
+});
+
 const STACK_TAG_KEY = "stack";
 const STACK_NAME = process.env['RUNS_ON_STACK_NAME'] || "runs-on";
 const STACK_TAGS = [{ Key: STACK_TAG_KEY, Value: STACK_NAME }, { Key: "provider", Value: "runs-on.com" }];
