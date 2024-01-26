@@ -281,17 +281,22 @@ If you like DevOps tooling, you might also be interested in my other projects [P
 
 ## Roadmap
 
-* ~~spot instance support~~
-* ~~cycle through instance types until one available~~
-* ~~automatically terminate instance if no job received within 20min~~
-* ~~automatically terminate instance if job not completed within 8h~~
-* ~~allow to specify storage type, iops, size~~
-* ~~allow repo admins to SSH into the runners~~
-* ~~allow user-provided AMIs (need to make the user-data script a bit more clever)~~
-* ~~allow user-provided custom runner types~~
-* ~~support config file in each repo~~
-* ~~ARM support~~
-* windows support
-* MacOS support (looks hard since it requires dedicated hosts)
-* allow to set max daily budget and/or concurrency
-* ~~find ways to make boot time faster for full x64 image~~
+- ✅ ~~spot instance support~~
+- ✅ ~~cycle through instance types until one available~~
+- ✅ ~~automatically terminate instance if no job received within 20min~~
+- ✅ ~~automatically terminate instance if job not completed within 8h~~
+- ✅ ~~allow to specify storage type, iops, size~~
+- ✅ ~~allow repo admins to SSH into the runners~~
+- ✅ ~~allow user-provided AMIs~~
+- ✅ ~~allow user-provided custom runner types~~
+- ✅ ~~support config file in each repo~~
+- ✅ ~~ARM support~~
+- ✅ ~~handle high workflow concurrency (100s at once)~~
+- find ways to make boot time faster for full x64 image
+- provide full image for ARM arch
+- configure SSH access from cloudwatch template
+- fix white screen in installation process while app reboots after first config
+- expose cloudwatch metrics for workflow runs (dimensions: repo, platform, instance-type, workflow-name, etc.)
+- MacOS support? (looks hard since it requires dedicated hosts)
+- windows support?
+- allow to set max daily budget and/or concurrency?
