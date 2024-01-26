@@ -72,7 +72,7 @@ Parameters:
 
   AppImageVersion:
     Type: String
-    Default: "v1.4.1"
+    Default: "v1.4.2"
     Description: Version of the app in the AppImageRepository
 
 
