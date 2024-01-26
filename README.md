@@ -72,10 +72,7 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 
 Prices include EBS volume costs (disk + throughput).
 
-For example:
-
-* for 40 000 standard GitHub Runner minutes, you currently pay $320. With RunsOn you would pay $92 (on-demand) or most likely $44 (spot).
-* for 40 000 16cpu GitHub Runner minutes, you currently pay $2560. With RunsOn you would pay $564 (on-demand) or most likely $272 (spot).
+Use the calculator to get an idea of the savings: <https://runs-on/calculator/>.
 
 ## Installation
 
