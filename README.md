@@ -59,16 +59,16 @@ Using self-hosted runners can be useful if:
 
 The crazy thing is that even if you use larger instance types (e.g. 16cpu) for your workflows, it might actually be cheaper than using a 2cpu instance since your workflow _should_ finish much more quickly (assuming you can take advantage of the higher core number).
 
-| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | RunsOn vs GitHub |
 | --- | --- | --- | --- | --- | --- | --- |
-| `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
-| `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
-| `4cpu-linux` | 4 | m7a, c7a | 0.0022 | 0.0043 | 0.016 | 7x more expensive |
-| `8cpu-linux` | 8 | c7a, m7a | 0.0035 | 0.0072 | 0.032 | 9x more expensive |
-| `16cpu-linux` | 16 | c7a, m7a | 0.0068 | 0.0141 | 0.064 | 9x more expensive |
-| `32cpu-linux` | 32 | c7a, m7a | 0.0132 | 0.0278 | 0.128 | 10x more expensive |
-| `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
-| `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
+| `1cpu-linux` | 1 | m7a, m7g | 0.0006 | 0.0012 | - | - |
+| `2cpu-linux` | 2 | m7a, m7g | 0.0010 | 0.0022 | 0.008 | 8x cheaper |
+| `4cpu-linux` | 4 | m7a, m7g, c7a, c7g | 0.0021 | 0.0041 | 0.016 | 8x cheaper |
+| `8cpu-linux` | 8 | c7a, c7g, m7a, m7g | 0.0039 | 0.0076 | 0.032 | 8x cheaper |
+| `16cpu-linux` | 16 | c7a, c7g, m7a, m7g | 0.0072 | 0.0145 | 0.064 | 9x cheaper |
+| `32cpu-linux` | 32 | c7a, c7g, m7a, m7g | 0.0134 | 0.0281 | 0.128 | 10x cheaper |
+| `48cpu-linux` | 48 | c7a, c7g, m7a, m7g | 0.0176 | 0.0421 | - | - |
+| `64cpu-linux` | 64 | c7a, c7g, m7a, m7g | 0.0215 | 0.0557 | 0.256 | 12x cheaper |
 
 Prices include EBS volume costs (disk + throughput).
 
