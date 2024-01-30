@@ -11,17 +11,9 @@ Metadata:
           - GithubOrganization
       - 
         Label: 
-          default: "Cost usage"
+          default: "Cost usage and alerts"
         Parameters: 
           - EmailAddress
-      - 
-        Label: 
-          default: "App Configuration"
-        Parameters: 
-          - AppImageVersion
-          - AppImageRepository
-          - AppCPU
-          - AppMemory
       -
         Label:
           default: "Network Configuration"
@@ -32,6 +24,12 @@ Metadata:
           default: "Security Configuration"
         Parameters: 
           - SSHCidrRange
+      - 
+        Label: 
+          default: "App Configuration"
+        Parameters: 
+          - AppCPU
+          - AppMemory
     ParameterLabels:
       GithubOrganization: 
         default: "Your GitHub organization or personal name."
@@ -64,17 +62,6 @@ Parameters:
     Type: Number
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher)
-
-  AppImageRepository:
-    Type: String
-    Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
-    Description: ECR repository where the app image exists
-
-  AppImageVersion:
-    Type: String
-    Default: "v1.3.10"
-    Description: Version of the app in the AppImageRepository
-
 
 Transform: 'AWS::LanguageExtensions'
 
@@ -248,7 +235,7 @@ Resources:
                 Value: !Ref SecurityGroup
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
-          ImageIdentifier: !Sub ${AppImageRepository}:${AppImageVersion}
+          ImageIdentifier: public.ecr.aws/c5h5o9k1/runs-on/runs-on:v1.5.0-dev
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:
