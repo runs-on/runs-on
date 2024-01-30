@@ -278,3 +278,4 @@ If you like DevOps tooling, you might also be interested in my other projects [P
 - MacOS support? (looks hard since it requires dedicated hosts)
 - windows support?
 - allow to set max daily budget and/or concurrency?
+- allow to have a pool of elastic IPs to be used by runners (for firewall whitelisting, etc.)?
