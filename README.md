@@ -82,6 +82,9 @@ RunsOn can be installed in one click in your AWS account, using a [CloudFormatio
 
 → See [Installation guide](https://github.com/runs-on/runs-on/wiki/Installing) for all the details.
 
+<a href="https://github.com/runs-on/runs-on/wiki/Installing">![Installation guide](https://github.com/runs-on/runs-on/assets/6114/0bdecf7a-c0ae-4752-aa5a-1e12d9ef65e4)</a>
+
+
 ## Usage
 
 In your workflow files, simply specify the runs-on config you want to use:
