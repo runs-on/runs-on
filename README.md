@@ -104,16 +104,16 @@ RunsOn comes with preconfigured runner types, which you can select with the `run
 
 Default if no `runner` label provided: `2cpu-linux`.
 
-| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | GitHub vs RunsOn |
+| runner | cpu | family | $/min (spot) | $/min (on-demand) | $/min (github) | RunsOn vs GitHub |
 | --- | --- | --- | --- | --- | --- | --- |
-| `1cpu-linux` | 1 | m7a, c7a | 0.0008 | 0.0014 |  |
-| `2cpu-linux` | 2 | m7a, c7a | 0.0011 | 0.0023 | 0.008 | 7x more expensive |
-| `4cpu-linux` | 4 | m7a, c7a | 0.0022 | 0.0043 | 0.016 | 7x more expensive |
-| `8cpu-linux` | 8 | c7a, m7a | 0.0035 | 0.0072 | 0.032 | 9x more expensive |
-| `16cpu-linux` | 16 | c7a, m7a | 0.0068 | 0.0141 | 0.064 | 9x more expensive |
-| `32cpu-linux` | 32 | c7a, m7a | 0.0132 | 0.0278 | 0.128 | 10x more expensive |
-| `48cpu-linux` | 48 | c7a, m7a | 0.0170 | 0.0415 |  |
-| `64cpu-linux` | 64 | c7a, m7a | 0.0196 | 0.0551 |  |
+| `1cpu-linux` | 1 | m7a, m7g | 0.0006 | 0.0012 |  | - |
+| `2cpu-linux` | 2 | m7a, m7g | 0.0010 | 0.0022 | 0.008 | 8x cheaper |
+| `4cpu-linux` | 4 | m7a, m7g, c7a, c7g | 0.0021 | 0.0041 | 0.016 | 8x cheaper |
+| `8cpu-linux` | 8 | c7a, c7g, m7a, m7g | 0.0039 | 0.0076 | 0.032 | 8x cheaper |
+| `16cpu-linux` | 16 | c7a, c7g, m7a, m7g | 0.0072 | 0.0145 | 0.064 | 9x cheaper |
+| `32cpu-linux` | 32 | c7a, c7g, m7a, m7g | 0.0134 | 0.0281 | 0.128 | 10x cheaper |
+| `48cpu-linux` | 48 | c7a, c7g, m7a, m7g | 0.0176 | 0.0421 |  | - |
+| `64cpu-linux` | 64 | c7a, c7g, m7a, m7g | 0.0215 | 0.0557 | 0.256 | 12x cheaper |
 
 You can also define your own custom runner types using the `.github/runs-on.yml` config file:
 
@@ -136,19 +136,17 @@ runs-on: runs-on,runner=gofast
 
 Default if no `image` label provided: `ubuntu22-full-x64`.
 
-| image | platform | arc | owner | user | name |
-| --- | --- | --- | --- | --- | --- |
-| `ubuntu22-full-x64` | linux | x64 | 135269210855 | ubuntu | runner-ubuntu22-* |
-| `ubuntu22-docker-x64` | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
-| `ubuntu22-base-x64` | linux | x64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
-| `ubuntu22-docker-arm64` | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
-| `ubuntu22-base-arm64` | linux | arm64 | 099720109477 | ubuntu | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
+| image | platform | arch | user | name |
+| --- | --- | --- | --- | --- |
+| `ubuntu22-full-x64` | linux | x64 | 135269210855 | runs-on-ubuntu22-full-x64-* |
+| `ubuntu22-docker-x64` | linux | x64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
+| `ubuntu22-base-x64` | linux | x64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
+| `ubuntu22-docker-arm64` | linux | arm64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
+| `ubuntu22-base-arm64` | linux | arm64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
 
-If you want the exact same runner image as what is provided by GitHub, you must use `ubuntu22-full-x64`. Those are refreshed by [runs-on/runner-images-for-aws](https://github.com/runs-on/runner-images-for-aws) every time a new image version is pushed by [GitHub](http://github.com/actions/runner-images).
+If you want the same runner image as what is provided by GitHub, use `ubuntu22-full-x64`. Those are refreshed by [runs-on/runner-images-for-aws](https://github.com/runs-on/runner-images-for-aws) every time a new image version is pushed by [GitHub](http://github.com/actions/runner-images).
 
-The downside of `ubuntu22-full-x64` is that due to how Amazon EBS volumes work, the larger the volume size (and this one is large due to the number of default software installed), the slower the boot time and initial usage while the blocks are fetched from the underlying S3 storage.
-
-All the other images are variants of the bare ubuntu22 official image as provided by canonical. The only additional thing installed is the runner binary. The `ubuntu` user has full `sudo` access if you want to install more things.
+All the other images are variants of the bare ubuntu22 official image as provided by canonical. The only additional thing installed is the runner binary. The `runner` user has full `sudo` access if you want to install more things.
 
 You can also define your own custom images, by using a special config file (`.github/runs-on.yml`) in your repository:
 
@@ -160,7 +158,6 @@ images:
     arch: "x64"
     owner: "099720109477"
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
-    user: "ubuntu" # main user of the AMI
     preinstall: |
       #!/bin/bash
       curl -fsSL https://get.docker.com | sh
@@ -193,7 +190,8 @@ You can choose to override specific aspects of a runner, using the `cpu`, `ram, 
 + runs-on: runs-on,cpu=32,ram=128,hdd=200,family=c7+m7
 ```
 
-Default launch type is `spot` (i.e. 66% cheaper than on-demand, at the risk of being interrupted). If no instance is available at spot price, then the instance will be launched at on-demand price. You can disable `spot` by using `spot=false` in the labels:
+Default launch type is `spot` (i.e. 66% cheaper than on-demand, at the risk of being interrupted). If no instance is available at spot price, then the instance will be launched at on-demand price.
+If you want to ensure your workflows are never interrupted, or if the instance types you require are in short supply, you can disable `spot` by using `spot=false` in the runner labels:
 
 ```diff
 + runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-base-x64,spot=false
@@ -213,12 +211,12 @@ RunsOn takes cost control seriously, since you will be tempted to use beefy runn
 
 All instances are bootstraped with 2 watchdogs, to ensure they are not left running even if GitHub doesn't send the completion webhooks (this happens).
 
-* instance will automatically terminate after 8 hours, no matter whether a workflow is still running on the machine.
+* instance will automatically terminate after 12 hours, no matter whether a workflow is still running on the machine.
 * instance will automatically terminate after 20 minutes, if a workflow job has not been scheduled on the machine.
 
 ### Cost reports right in your inbox
 
-RunsOn automatically reports daily costs for the RunsOn resources, and send them to email configured at installation time:
+RunsOn automatically reports daily costs for the RunsOn resources. Those are sent to the email configured at installation time:
 
 <img width="600" alt="cost report" src="https://github.com/runs-on/runs-on/assets/6114/5c3cc9d0-bf10-467d-bf74-1f731b8524e6">
 
@@ -230,24 +228,25 @@ That's why RunsOn automatically reports errors by sending them to the configured
 
 <img width="600" alt="troubleshooting" src="https://github.com/runs-on/runs-on/assets/6114/d655d6dc-5b7f-4beb-985d-5cda174dd9e0">
 
-Details about the runner, and how to connect to it via SSH, will also be displayed right in the "Set up job" section of the workflow logs:
+Details about the runner, launch timings, and SSH connection details will also be displayed right in the "Set up job" section of the workflow logs:
 
 ![SSH access and runner details](https://github.com/runs-on/runs-on/assets/6114/326cdcfd-3253-4e00-9e52-ea7bae3b8e71)
+
+If you are unable to launch runners due to the default runners using recent family types (m7a/c7a/m7g/c7g), you can switch your installation to another availability zone right from the Cloudformation template.
+
+Available instance types and pricing history can be checked in the AWS UI, for instance in <https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#SpotInstances> for us-east-1.
 
 ## License
 
 The source code for this software is open, but licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice this means that:
 
 * It is indefinitely free to use for non-commercial usage.
+
 * If you install for use in a for-profit organization, you are free to install and evaluate it for 31 days, after which you must buy a license.
 
-> [!IMPORTANT]
-> To celebrate the launch and reward early adopters, a LIFETIME license is available at the special price of 250€ for the first 30 purchases.
-> ➡ [Buy lifetime license](https://buy.runs-on.com).
+License price starts at 300€/year, with best-effort support included. Other license plans are available. For most companies, license cost should be recouped within the first month of usage.
 
-After the first lifetime licenses are gone, the license price for commercial use will be 250€ **per year**, with dedicated support included (for most companies, license cost should be recouped within the first month of usage).
-
-Note: Lifetime license allows indefinite usage of the software and its future versions, but with 1 year of dedicated support only.
+→ [Buy license](https://buy.runs-on.com).
 
 ## Author
 

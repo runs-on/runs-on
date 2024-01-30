@@ -55,7 +55,7 @@ module.exports = async (app) => {
 
   app.on("workflow_job.queued", async (context) => {
     // https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
-    const { repository, workflow_job, deployment } = context.payload;
+    const { repository, workflow_job } = context.payload;
     const { workflow_name, labels } = workflow_job;
     const { repo, owner } = context.repo();
 
