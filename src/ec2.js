@@ -9,13 +9,11 @@ const {
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
   DEFAULT_CPU,
-  DEFAULT_HDD,
   DEFAULT_IOPS,
   USER_DATA,
   STACK_TAGS,
   SUPPORTED_ARCHITECTURES,
   STACK_FILTERS,
-  DEFAULT_USER,
   DEFAULT_FAMILY_FOR_PLATFORM,
   DEFAULT_THROUGHPUT
 } = require("./constants");
@@ -74,6 +72,9 @@ function extractInfosFromImage(image) {
     platform: image.PlatformDetails,
     name: image.Name,
     arch: image.Architecture,
+    minHddSize: image.BlockDeviceMappings[0].Ebs.VolumeSize,
+    // make sure we fetch the real owner
+    owner: image.OwnerId,
   }
 }
 
@@ -109,6 +110,17 @@ async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParam
   for (const instanceType of instanceTypes) {
     // make sure we're using a duplicate of the instance params since we're modifying it
     let instanceParamsForType = { ...instanceParams };
+
+    // set cpucredits to unlimited for burstable instances, even though this can cost more in the end that the equivalent non-burstable instance.
+    // in the long run, users will choose whether their workload is better with burstable or non-burstable family types
+    // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances-unlimited-mode.html
+    // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances-unlimited-mode-concepts.html
+    if (instanceType.InstanceType.startsWith("t")) {
+      instanceParamsForType.CreditSpecification = {
+        CpuCredits: "unlimited"
+      }
+    }
+
     if (instanceType.InstanceStorageSupported) {
       instanceParamsForType.BlockDeviceMappings = [
         {
@@ -147,9 +159,13 @@ function flatMapInput(input) {
 const _findInstanceTypesMatching = async function (inputs) {
   const { arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, cpu = DEFAULT_CPU, ram, family } = inputs;
 
-  const familyValues = flatMapInput(family);
+  let familyValues = flatMapInput(family);
   const cpuValues = flatMapInput(cpu).map(i => Number(i));
   const ramValues = flatMapInput(ram).map(i => Number(i) * 1024);
+
+  if (familyValues.length === 0) {
+    familyValues = [...DEFAULT_FAMILY_FOR_PLATFORM[platform]];
+  }
 
   const families = [];
   for (const family of familyValues) {
@@ -178,13 +194,12 @@ const _findInstanceTypesMatching = async function (inputs) {
       }
     ],
   };
-  if (families.length <= 0) {
-    families.push(DEFAULT_FAMILY_FOR_PLATFORM[platform]);
-    params.Filters.push({
-      Name: "current-generation",
-      Values: ["true"],
-    });
-  }
+  // if (families.length <= 0) {
+  //   params.Filters.push({
+  //     Name: "current-generation",
+  //     Values: ["true"],
+  //   });
+  // }
   params.Filters.push({
     Name: "instance-type",
     Values: families,
@@ -214,6 +229,11 @@ const _findInstanceTypesMatching = async function (inputs) {
   }
 
   app.log.info(`Found ${matchingInstanceTypes.length} matching instance types among close to ${totalPages * 100} instance types`);
+
+  // sort by instance type name ascending
+  matchingInstanceTypes = matchingInstanceTypes.sort((a, b) => {
+    return a.InstanceType.localeCompare(b.InstanceType);
+  })
 
   const matchingInstanceTypesByFamily = matchingInstanceTypes.reduce((acc, instanceType) => {
     const family = instanceType.InstanceType.split(".")[0];
@@ -270,13 +290,53 @@ const createEC2Instance = async function ({
   userDataConfig
 }) {
   const { subnetId, securityGroupId } = app.state.custom;
-  const { cpu, ram, iops = DEFAULT_IOPS, hdd = DEFAULT_HDD, family } = runnerSpec;
-  // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
-  const storageType = iops && parseInt(iops) > 0 ? "io2" : "gp3";
+  const { cpu, ram,
+    iops = DEFAULT_IOPS,
+    hdd,
+    throughput = DEFAULT_THROUGHPUT,
+    family
+  } = runnerSpec;
 
   app.log.info(`Attempting to find image for ${JSON.stringify(imageSpec)}...`);
   const finalImageSpec = await findCustomImage(imageSpec);
-  const { ami, arch, platform, user = DEFAULT_USER, preinstall = [] } = finalImageSpec;
+  const { ami, arch, owner, platform, minHddSize, preinstall = [] } = finalImageSpec;
+
+  // io2 doesn't bring much improvement, unless you buy more than 10k IOPS, which is expensive
+  // so only supporting gp3 for now
+  const storageType = "gp3"
+
+  let finalIops = parseInt(iops)
+  if (isNaN(finalIops)) {
+    finalIops = DEFAULT_IOPS
+  }
+  // gp3 is 3000 min, so do not accept anything less
+  // make sure final iops is not more than 4000, which is max for gp3
+  finalIops = Math.min(Math.max(finalIops, 3000), 4000)
+
+  // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
+  let finalThroughput = parseInt(throughput)
+  if (isNaN(finalThroughput)) {
+    finalThroughput = DEFAULT_THROUGHPUT
+  }
+  // allow reducing throughput from default, but not less than 250 MB/s
+  // make sure final throughput is no more than 25% of final IOPS, otherwise AWS will raise an error
+  finalThroughput = Math.min(Math.max(finalThroughput, 250), finalIops * 0.25)
+
+  // gp3 storage is $0.08/GB-month, i.e. for 50GB: 50*0.08/(60*24*30)=$0.000092/min
+  let finalHdd = parseInt(hdd)
+  if (isNaN(finalHdd)) {
+    // if no disk size specified, take the AMI size and add 10GB
+    finalHdd = minHddSize + 10;
+  } else {
+    // otherwise, make sure we don't go below the AMI disk size
+    finalHdd = Math.max(minHddSize, finalHdd);
+  }
+
+  // larger images will get max throughput
+  if (minHddSize >= 30) {
+    finalThroughput = 1000
+    finalIops = 4000
+  }
 
   // at this point, arch and platform are named after the AWS specific names (e.g. x86_64, Linux/UNIX)
   app.log.info(`✅ Found AMI: ${JSON.stringify(finalImageSpec)}`);
@@ -289,8 +349,8 @@ const createEC2Instance = async function ({
   const instanceTypes = await findInstanceTypesMatching({ arch, platform, cpu, ram, family })
   const userData = userDataTemplate({
     ...userDataConfig,
+    launchedAt: (new Date()).toISOString(),
     arch,
-    runnerUser: user,
     preinstallScripts: base64Scripts(preinstall),
   });
 
@@ -312,34 +372,26 @@ const createEC2Instance = async function ({
     BlockDeviceMappings: [{
       DeviceName: '/dev/sda1', // Device name for the root volume
       Ebs: {
-        // gp3 storage is $0.08/GB-month, i.e. for 100GB: 100*0.08/(60*24*30)=$0.000185/min
-        VolumeSize: String(hdd), // Size of the root EBS volume in GB
+        VolumeSize: finalHdd, // Size of the root EBS volume in GB
         VolumeType: String(storageType),
       },
       TagSpecifications: [{ ResourceType: 'volume', Tags: [...STACK_TAGS, ...tags] }]
     }]
   };
 
-  if (["gp3"].includes(storageType)) {
-    // set min throughput to 400 MB/s so that we can fetch EBS blocks from S3 more quickly
-    // especially useful for full image
-    // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
-    // Throughput costs $0.040/MB/s-month over 125, i.e. for 400MB/s: (400-125)*0.040/(60*24*30)=$0.00025/min
-    instanceParams.BlockDeviceMappings[0].Ebs.Throughput = DEFAULT_THROUGHPUT;
-  }
+  // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
+  // Throughput costs $0.040/MB/s-month over 125, i.e. for 400MB/s: (400-125)*0.040/(60*24*30)=$0.00025/min
+  instanceParams.BlockDeviceMappings[0].Ebs.Throughput = finalThroughput;
+  instanceParams.BlockDeviceMappings[0].Ebs.Iops = finalIops;
 
-  if (["io2", "io1"].includes(storageType) && iops > 0) {
-    instanceParams.BlockDeviceMappings[0].Ebs.Iops = String(iops);
-  }
+  app.log.info(`Storage details: ${JSON.stringify(instanceParams.BlockDeviceMappings[0].Ebs)}`)
 
   if (spot) {
     app.log.info(`→ Using spot instances`);
     instanceParams.InstanceMarketOptions = {
       MarketType: 'spot',
       SpotOptions: {
-        // max price per hour, but will use the min availabe price at the time of request
-        // can set spot=PRICE to use a specific price
-        MaxPrice: isStringFloat(spot) ? spot : "2.0",
+        // https://docs.aws.amazon.com/whitepapers/latest/cost-optimization-leveraging-ec2-spot-instances/how-spot-instances-work.html
         SpotInstanceType: 'one-time',
         InstanceInterruptionBehavior: 'terminate'
       }
@@ -450,7 +502,8 @@ async function terminateInstance(instanceName) {
   }
 }
 
-const awsRateLimit = pThrottle({ limit: 3, interval: 1000 })
+const EC2_RUN_INSTANCE_CONCURRENCY = 8;
+const awsRateLimit = pThrottle({ limit: EC2_RUN_INSTANCE_CONCURRENCY, interval: 1000 })
 
 const runQueue = awsRateLimit((inputs) => {
   return createEC2Instance(inputs);

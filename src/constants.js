@@ -33,16 +33,15 @@ const PLATFORM_WINDOWS = "Windows";
 
 const DEFAULT_ARCHITECTURE = "x86_64";
 const DEFAULT_CPU = 2;
-const DEFAULT_HDD = 100;
-const DEFAULT_IOPS = 0;
-const DEFAULT_THROUGHPUT = 400;
+const DEFAULT_HDD = 40;
+const DEFAULT_IOPS = 3000;
+const DEFAULT_THROUGHPUT = 325;
 const DEFAULT_FAMILY_FOR_PLATFORM = {
-  [PLATFORM_LINUX]: "c7*",
-  [PLATFORM_MACOS]: "mac*",
-  [PLATFORM_WINDOWS]: "c7*",
+  [PLATFORM_LINUX]: ["m7a", "m7g", "c7a", "c7g"],
+  [PLATFORM_MACOS]: ["mac"],
+  [PLATFORM_WINDOWS]: ["m7", "c7"],
 }
 const DEFAULT_PLATFORM = PLATFORM_LINUX;
-const DEFAULT_USER = "ubuntu";
 
 // AWS architecture mappings
 const SUPPORTED_ARCHITECTURES = {
@@ -80,23 +79,23 @@ const IMAGE_ATTRIBUTES = [
   "preinstall"
 ]
 
+const RUNS_ON_OWNER = "135269210855"
+const UBUNTU_OWNER = "099720109477"
 // can also get ami key if user wants a specific AMI
 const IMAGES = {
   // equivalent to GitHub runner images
   "ubuntu22-full-x64": {
     platform: "linux",
     arch: "x64",
-    name: "runner-ubuntu22-*",
-    owner: "135269210855",
-    user: "ubuntu",
+    name: "runs-on-ubuntu22-full-x64-*",
+    owner: RUNS_ON_OWNER,
   },
-  // just ubuntu + docker, much faster to boot
+  // LEGACY - ubuntu + docker, much faster to boot
   "ubuntu22-docker-x64": {
     platform: "linux",
     arch: "x64",
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
-    owner: "099720109477",
-    user: "ubuntu",
+    owner: UBUNTU_OWNER,
     preinstall: BOOTSTRAP_SNIPPETS["docker"],
   },
   // just ubuntu
@@ -104,23 +103,20 @@ const IMAGES = {
     platform: "linux",
     arch: "x64",
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
-    owner: "099720109477",
-    user: "ubuntu",
+    owner: UBUNTU_OWNER,
   },
   "ubuntu22-docker-arm64": {
     platform: "linux",
     arch: "arm64",
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*",
-    owner: "099720109477",
-    user: "ubuntu",
+    owner: UBUNTU_OWNER,
     preinstall: BOOTSTRAP_SNIPPETS["docker"],
   },
   "ubuntu22-base-arm64": {
     platform: "linux",
     arch: "arm64",
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*",
-    owner: "099720109477",
-    user: "ubuntu",
+    owner: UBUNTU_OWNER,
   }
 }
 const DEFAULT_IMAGE_SPEC_KEY = "ubuntu22-full-x64"
@@ -131,106 +127,82 @@ const RUNNER_ATTRIBUTES = [
   "ram",
   "family",
   "hdd",
-  "iops"
+  "iops",
+  "throughput",
 ]
-
-// assuming gp3 and no additional IOPS
-const STORAGE_PRICE_PER_MIN_US = (DEFAULT_THROUGHPUT - 125) * 0.040 / (60 * 24 * 30) + DEFAULT_HDD * 0.08 / (60 * 24 * 30)
-// for m7a / c7a families
-const ON_DEMAND_PRICE_PER_MIN_LINUX_US = {
-  1: [0.000966, 0.000383],      // m7a
-  2: [0.001932, 0.000735],      // m7a
-  4: [0.003864, 0.001820],      // m7a
-  8: [0.006843, 0.003097],      // c7a
-  16: [0.013685, 0.006415],     // c7a
-  32: [0.027371, 0.012808],     // c7a
-  48: [0.041056, 0.016577],     // c7a
-  64: [0.054741, 0.019182],     // c7a
-}
 
 // TODO: macos - https://aws.amazon.com/ec2/faqs/#macos_workloads, 24h min dedicated host
 const RUNNERS = {
   "1cpu-linux": {
-    "cpu": 1,
-    "family": ["m7a", "c7a"],
+    cpu: 1,
+    family: ["m7a", "m7g"],
+    // pricing: [0.000966, 0.000383],      // t3a
+    pricing: [0.000966, 0.000380],      // m7a
   },
   "2cpu-linux": {
-    "cpu": 2,
-    "family": ["m7a", "c7a"],
+    cpu: 2,
+    family: ["m7a", "m7g"],
+    // pricing: [0.001253, 0.000505],      // t3a
+    pricing: [0.001932, 0.000783],      // m7a
   },
   "4cpu-linux": {
-    "cpu": 4,
-    "family": ["m7a", "c7a"],
+    cpu: 4,
+    family: ["m7a", "m7g", "c7a", "c7g"],
+    // pricing: [0.002507, 0.001115],      // t3a
+    pricing: [0.003864, 0.001850],      // c7a
   },
   "8cpu-linux": {
-    "cpu": 8,
-    "family": ["c7a", "m7a"],
+    cpu: 8,
+    family: ["c7a", "c7g", "m7a", "m7g"],
+    throughput: 750,
+    iops: 4000,
+    // pricing: [0.005013, 0.002325],      // t3a
+    pricing: [0.006843, 0.003097],      // c7a
   },
   "16cpu-linux": {
-    "cpu": 16,
-    "family": ["c7a", "m7a"],
+    cpu: 16,
+    family: ["c7a", "c7g", "m7a", "m7g"],
+    throughput: 750,
+    iops: 4000,
+    pricing: [0.013685, 0.006415],     // c7a
   },
   "32cpu-linux": {
-    "cpu": 32,
-    "family": ["c7a", "m7a"],
+    cpu: 32,
+    family: ["c7a", "c7g", "m7a", "m7g"],
+    throughput: 750,
+    iops: 4000,
+    pricing: [0.027371, 0.012677],     // c7a
   },
   "48cpu-linux": {
-    "cpu": 48,
-    "family": ["c7a", "m7a"],
+    cpu: 48,
+    throughput: 1000,
+    iops: 4000,
+    family: ["c7a", "c7g", "m7a", "m7g"],
+    pricing: [0.041056, 0.016577],     // c7a
   },
   "64cpu-linux": {
-    "cpu": 64,
-    "family": ["c7a", "m7a"],
+    cpu: 64,
+    family: ["c7a", "c7g", "m7a", "m7g"],
+    throughput: 1000,
+    iops: 4000,
+    pricing: [0.054741, 0.020535],     // c7a
   },
-  // "1cpu-windows": {
-  //   "cpu": 1,
-  //   "family": ["m7a", "c7a"],
-  //   "iops": DEFAULT_IOPS,
-  // },
-  // "2cpu-windows": {
-  //   "cpu": 2,
-  //   "family": ["m7a", "c7a"],
-  //   "iops": DEFAULT_IOPS,
-  // },
-  // "4cpu-windows": {
-  //   "cpu": 4,
-  //   "family": ["m7a", "c7a"],
-  //   "iops": DEFAULT_IOPS,
-  // },
-  // "8cpu-windows": {
-  //   "cpu": 8,
-  //   "family": ["c7a", "m7a"],
-  //   "iops": DEFAULT_IOPS,
-  // },
-  // "16cpu-windows": {
-  //   "cpu": 16,
-  //   "family": ["c7a", "m7a"],
-  //   "iops": DEFAULT_IOPS * 1.5,
-  // },
-  // "32cpu-windows": {
-  //   "cpu": 32,
-  //   "family": ["c7a", "m7a"],
-  //   "iops": DEFAULT_IOPS * 1.5,
-  // },
-  // "48cpu-windows": {
-  //   "cpu": 48,
-  //   "family": ["c7a", "m7a"],
-  //   "iops": DEFAULT_IOPS * 1.5,
-  // },
-  // "64cpu-windows": {
-  //   "cpu": 64,
-  //   "family": ["c7a", "m7a"],
-  //   "iops": DEFAULT_IOPS * 1.5,
-  // },
 }
+
+const MINUTES_PER_MONTH = (60 * 24 * 30)
+
 Object.keys(RUNNERS).forEach(key => {
-  const onDemandPrice = ON_DEMAND_PRICE_PER_MIN_LINUX_US[RUNNERS[key].cpu][0]
-  const spotPrice = ON_DEMAND_PRICE_PER_MIN_LINUX_US[RUNNERS[key].cpu][1]
-  RUNNERS[key].on_demand_price_per_min = (STORAGE_PRICE_PER_MIN_US + onDemandPrice).toFixed(4)
-  RUNNERS[key].spot_price_per_min = (STORAGE_PRICE_PER_MIN_US + spotPrice).toFixed(4)
-  if (RUNNERS[key].cpu <= 32 && RUNNERS[key].cpu >= 2) {
+  const onDemandPrice = RUNNERS[key].pricing[0]
+  const spotPrice = RUNNERS[key].pricing[1]
+  const throughput = RUNNERS[key].throughput || DEFAULT_THROUGHPUT
+  const iops = RUNNERS[key].iops || DEFAULT_IOPS
+  // assuming gp3, pricing us-east-1
+  const storagePrice = ((throughput - 125) * 0.040 + DEFAULT_HDD * 0.08 + (iops - 3000) * 0.005) / MINUTES_PER_MONTH
+  RUNNERS[key].on_demand_price_per_min = (storagePrice + onDemandPrice).toFixed(4)
+  RUNNERS[key].spot_price_per_min = (storagePrice + spotPrice).toFixed(4)
+  if (RUNNERS[key].cpu <= 64 && RUNNERS[key].cpu >= 2 && RUNNERS[key].cpu !== 48) {
     RUNNERS[key].github_price_per_min = (RUNNERS[key].cpu / 2) * 0.008
-    RUNNERS[key].github_ratio = (RUNNERS[key].github_price_per_min / RUNNERS[key].spot_price_per_min).toFixed(0)
+    RUNNERS[key].github_ratio = Math.round(RUNNERS[key].github_price_per_min / RUNNERS[key].spot_price_per_min).toFixed(0)
   }
 })
 
@@ -249,7 +221,6 @@ module.exports = {
   DEFAULT_RUNNER_SPEC,
   DEFAULT_RUNNER_SPEC_KEY,
   DEFAULT_THROUGHPUT,
-  DEFAULT_USER,
   EMAIL_COSTS_TEMPLATE,
   IMAGE_ATTRIBUTES,
   IMAGES,
@@ -266,5 +237,6 @@ module.exports = {
   STACK_FILTERS,
   SUPPORTED_ARCHITECTURES,
   SUPPORTED_PLATFORMS,
+  UBUNTU_OWNER,
   USER_DATA,
 }
