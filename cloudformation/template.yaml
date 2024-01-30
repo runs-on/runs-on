@@ -18,8 +18,6 @@ Metadata:
         Label: 
           default: "App Configuration"
         Parameters: 
-          - AppImageVersion
-          - AppImageRepository
           - AppCPU
           - AppMemory
       -
@@ -64,17 +62,6 @@ Parameters:
     Type: Number
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher)
-
-  AppImageRepository:
-    Type: String
-    Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
-    Description: ECR repository where the app image exists
-
-  AppImageVersion:
-    Type: String
-    Default: "v1.4.2"
-    Description: Version of the app in the AppImageRepository
-
 
 Transform: 'AWS::LanguageExtensions'
 
@@ -248,7 +235,7 @@ Resources:
                 Value: !Ref SecurityGroup
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
-          ImageIdentifier: !Sub ${AppImageRepository}:${AppImageVersion}
+          ImageIdentifier: public.ecr.aws/c5h5o9k1/runs-on/runs-on:v1.4.2
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:
