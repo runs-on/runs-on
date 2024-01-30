@@ -1,4 +1,4 @@
-# runs-on: 10x cheaper GitHub Action runners
+# RunsOn: 10x cheaper GitHub Action runners
 
 Get on-demand self-hosted runners for your GitHub Action workflows, of any size, at the cheapest price available.
 
