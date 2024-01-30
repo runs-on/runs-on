@@ -180,14 +180,14 @@ You can choose to override specific aspects of a runner, using the `cpu`, `ram, 
 
 ```diff
 - runs-on: runs-on,runner=16cpu-linux
-+ # 400GB disk instead of the default 120
-+ runs-on: runs-on,runner=16cpu-linux,hdd=400
++ # set specific disk size (minimum is image disk size + 10GB)
++ runs-on: runs-on,runner=16cpu-linux,hdd=100
 ```
 
 ```diff
 - runs-on: runs-on,runner=16cpu-linux
 + # fully custom config
-+ runs-on: runs-on,cpu=32,ram=128,hdd=200,family=c7+m7
++ runs-on: runs-on,cpu=32,ram=128,hdd=100,family=c7+m7
 ```
 
 Default launch type is `spot` (i.e. 66% cheaper than on-demand, at the risk of being interrupted). If no instance is available at spot price, then the instance will be launched at on-demand price.
