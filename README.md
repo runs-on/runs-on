@@ -80,9 +80,10 @@ Use the calculator to get an idea of the savings: <https://runs-on.com/calculato
 
 RunsOn can be installed in one click in your AWS account, using a [CloudFormation template](cloudformation/template.yaml). Supported regions are currently `us-east-1` and `eu-west-1`. More can be supported on demand.
 
-→ See [Installation guide](https://github.com/runs-on/runs-on/wiki/Installing) for all the details.
+See one of the guides below for all the details:
 
-<a href="https://github.com/runs-on/runs-on/wiki/Installing">![Installation guide](https://github.com/runs-on/runs-on/assets/6114/0bdecf7a-c0ae-4752-aa5a-1e12d9ef65e4)</a>
+<a href="https://github.com/runs-on/runs-on/wiki/Installing">![Install](https://github.com/runs-on/runs-on/assets/6114/161d243d-e345-47bc-9945-fd45666a03c2)</a>
+<a href="https://github.com/runs-on/runs-on/wiki/Upgrading">![upgrade](https://github.com/runs-on/runs-on/assets/6114/ce3909f1-17e7-4973-ba94-a60cd3c19598)</a>
 
 
 ## Usage
