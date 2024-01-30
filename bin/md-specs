@@ -2,6 +2,8 @@
 
 set -eo pipefail
 
+node -e 'console.log("onDemandPricing = ", JSON.stringify(require("./src/constants").RUNNERS))'
+
 echo ""
 echo "### Runner types"
 echo ""
@@ -13,7 +15,7 @@ node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require(".
   ["---", "---", "---", "---", "---", "---", "---"],
   (.[] | [
     (.key | "`" + . + "`"), .cpu, (.family | join(", ")), .spot_price_per_min, .on_demand_price_per_min,
-    .github_price_per_min, (.github_ratio | (select(. != null) | . + "x cheaper") // "-" )
+    .github_price_per_min // "-", (.github_ratio | (select(. != null) | . + "x cheaper") // "-" )
   ])
   | @tsv | gsub("\t"; " | ") | "| " + . + " |"
 '
@@ -30,3 +32,18 @@ node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require(".
   (.[] | [(.key | "`" + . + "`"), .platform, .arch, .owner, .name])
   | @tsv | gsub("\t"; " | ") | "| " + . + " |"
 '
+
+echo ""
+echo "### Pricing"
+echo ""
+node -e 'console.log(JSON.stringify(require("./src/utils").objToArray(require("./src/constants").RUNNERS)))' | jq -r '
+  ["runner", "cpu", "$/min (RunsOn)", "$/min (GitHub)", "RunsOn vs GitHub"],
+  ["---", "---", "---", "---", "---"],
+  (.[] | [
+    (.key | "`" + . + "`"), .cpu, .spot_price_per_min,
+    .github_price_per_min // "-", (.github_ratio | (select(. != null) | . + "x cheaper") // "-" )
+  ])
+  | @tsv | gsub("\t"; " | ") | "| " + . + " |"
+'
+
+echo ""
