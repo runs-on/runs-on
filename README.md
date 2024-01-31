@@ -9,7 +9,7 @@ Runs in your own AWS account. Supports x64 and arm64 runners. Each workflow job 
 + runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-full-x64
 ```
 
-<img width="600" alt="tl;dr" src="https://github.com/runs-on/runs-on/assets/6114/d0d2f974-fc97-4f92-b217-f9ce016227d7">
+<img width="675" alt="RunsOn is the fastest and cheapest GitHub Action self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/c2e8cb13-3e75-49d7-93b5-dc96036ea105">
 
 ## Table of contents
 
