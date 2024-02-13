@@ -51,4 +51,7 @@ s3-upload-dev:
 release-dev: login build-dev push-dev s3-upload-dev
 
 run-dev:
-	RUNS_ON_STACK_NAME=runs-on-dev RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev bin/run
+	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev bin/run
+
+install-dev:
+	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on --az=us-east-1a --email=hey@cyrilrohr.com
