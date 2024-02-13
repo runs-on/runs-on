@@ -1,10 +1,10 @@
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
-const { DescribeSubnetsCommand, DescribeSecurityGroupsCommand, DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
+const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
+const { DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
 const memoize = require('lru-memoize').default;
 const pThrottle = require('p-throttle');
 
 const costs = require("./costs");
-const { isStringFloat } = require("./utils");
 const {
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
@@ -15,53 +15,34 @@ const {
   SUPPORTED_ARCHITECTURES,
   STACK_FILTERS,
   DEFAULT_FAMILY_FOR_PLATFORM,
-  DEFAULT_THROUGHPUT
+  DEFAULT_THROUGHPUT,
+  STACK_NAME
 } = require("./constants");
 
 const ec2Client = new EC2Client();
 let region;
 let app;
 
-async function findSubnetId() {
-  let subnetId = process.env["RUNS_ON_SUBNET_ID"];
-  if (!subnetId || subnetId === "") {
-    const command = new DescribeSubnetsCommand({ Filters: [...STACK_FILTERS] });
-    const response = await ec2Client.send(command);
-    subnetId = response.Subnets.length > 0 ? response.Subnets[0].SubnetId : null;
-  }
-  return subnetId;
-}
-
-async function findSecurityGroupId() {
-  let securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
-  if (!securityGroupId || securityGroupId === "") {
-    const command = new DescribeSecurityGroupsCommand({ Filters: [...STACK_FILTERS] });
-    const response = await ec2Client.send(command);
-    securityGroupId = response.SecurityGroups.length > 0 ? response.SecurityGroups[0].GroupId : null;
-  }
-  return securityGroupId
-}
-
 async function init(probotApp) {
   app = probotApp;
-  region = await ec2Client.config.region();
-  const subnetId = await findSubnetId();
-  const securityGroupId = await findSecurityGroupId();
+  const cfClient = new CloudFormationClient();
+  const command = new DescribeStacksCommand({ StackName: STACK_NAME });
+  const response = await cfClient.send(command);
+  const { Outputs } = response.Stacks[0];
 
-  if (subnetId) {
-    app.log.info(`✅ Subnet ID: ${subnetId}`);
-  } else {
-    app.log.error("❌ Can't find subnet ID");
-  }
+  const outputs = {}
+  outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
+  outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
+  outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
+  outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
+  outputs.securityGroupId = Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
+  outputs.instanceProfileArn = Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
+  outputs.topicArn = Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
+  outputs.region = await ec2Client.config.region();
+  app.log.info(`✅ Stack outputs: ${JSON.stringify(outputs)}`)
 
-  if (securityGroupId) {
-    app.log.info(`✅ Security Group ID: ${securityGroupId}`);
-  } else {
-    app.log.error("❌ Can't find security group ID");
-  }
-
-  Object.assign(app.state.custom, { region, subnetId, securityGroupId });
-  app.log.info(`✅ EC2 client initialized for region ${region}`);
+  Object.assign(app.state.stack.outputs, outputs);
+  app.log.info(`✅ EC2 client initialized for region ${outputs.region}`);
 
   return app;
 }
@@ -289,7 +270,7 @@ const createEC2Instance = async function ({
   instanceName,
   userDataConfig
 }) {
-  const { subnetId, securityGroupId } = app.state.custom;
+  const { subnetId, securityGroupId } = app.state.stack.outputs;
   const { cpu, ram,
     iops = DEFAULT_IOPS,
     hdd,
@@ -349,6 +330,8 @@ const createEC2Instance = async function ({
   const instanceTypes = await findInstanceTypesMatching({ arch, platform, cpu, ram, family })
   const userData = userDataTemplate({
     ...userDataConfig,
+    s3BucketCache: app.state.stack.outputs.s3BucketCache,
+    awsRegion: app.state.stack.outputs.region,
     launchedAt: (new Date()).toISOString(),
     arch,
     preinstallScripts: base64Scripts(preinstall),
@@ -376,8 +359,16 @@ const createEC2Instance = async function ({
         VolumeType: String(storageType),
       },
       TagSpecifications: [{ ResourceType: 'volume', Tags: [...STACK_TAGS, ...tags] }]
-    }]
+    }],
+    IamInstanceProfile: {
+      Arn: app.state.stack.outputs.instanceProfileArn
+    }
   };
+  // specifiy instance profile:
+  // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-profiles
+  // instanceParams.IamInstanceProfile = {
+  //   Arn: app.state.custom.instanceProfileArn
+  // }
 
   // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
   // Throughput costs $0.040/MB/s-month over 125, i.e. for 400MB/s: (400-125)*0.040/(60*24*30)=$0.00025/min
@@ -532,7 +523,7 @@ const metricsQueue = awsRateLimit((inputs) => {
 async function terminateInstanceAndPostCosts(instanceName) {
   const instanceDetails = await terminateQueue(instanceName)
   if (instanceDetails) {
-    console.log(instanceDetails)
+    app.log.info(JSON.stringify(instanceDetails))
     await metricsQueue({ ...instanceDetails, AssumedTerminationTime: new Date() });
   }
 }

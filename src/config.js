@@ -3,12 +3,11 @@ const fs = require('fs').promises;
 const alerting = require("./alerting");
 
 const s3Client = new S3Client();
-const s3Bucket = process.env['RUNS_ON_S3_BUCKET'];
 let app;
 
 async function fetch(filePath, prefix = 'runs-on') {
   const getObjectParams = {
-    Bucket: s3Bucket,
+    Bucket: app.state.stack.outputs.s3BucketConfig,
     Key: [prefix, filePath.replace(/^\//, "")].join("/"),
   };
 
@@ -34,7 +33,7 @@ async function fetch(filePath, prefix = 'runs-on') {
 
 async function update(filePath, prefix = 'runs-on') {
   const uploadParams = {
-    Bucket: s3Bucket,
+    Bucket: app.state.stack.outputs.s3BucketConfig,
     Key: [prefix, filePath.replace(/^\//, "")].join("/"),
     Body: await fs.readFile(filePath, 'utf-8'),
     ACL: 'private', // Make the object private

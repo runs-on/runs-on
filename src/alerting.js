@@ -1,30 +1,12 @@
-const { SNSClient, PublishCommand, ListTopicsCommand } = require("@aws-sdk/client-sns");
-
-const {
-  STACK_FILTERS,
-} = require("./constants");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 let snsClient;
 let app;
 const errorQueue = [];
 
-async function findTopicArn() {
-  let topicArn = process.env["RUNS_ON_TOPIC_ARN"];
-  if (!topicArn || topicArn === "") {
-    const command = new ListTopicsCommand({ Filters: [...STACK_FILTERS] });
-    const response = await snsClient.send(command);
-    topicArn = response.Topics.length > 0 ? response.Topics[0].TopicArn : null;
-  }
-
-  return topicArn;
-}
-
 async function init(probotApp) {
   app = probotApp;
   snsClient = new SNSClient({ credentials: app.state.custom.awsCredentials });
-
-  const topicArn = await findTopicArn();
-  Object.assign(app.state.custom, { topicArn });
 
   await publishAlert("🎉 RunsOn Application is online", `Congrats, your RunsOn installation is up and running.`)
 
@@ -58,7 +40,7 @@ async function publishAlert(subject, message) {
   }
   try {
     const command = new PublishCommand({
-      TopicArn: app.state.custom.topicArn,
+      TopicArn: app.state.stack.outputs.topicArn,
       Message: message,
       Subject: subject,
     });

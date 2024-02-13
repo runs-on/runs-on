@@ -38,6 +38,8 @@ module.exports = async (app) => {
       roleAssumer: getDefaultRoleAssumer(),
     }),
   }
+  // CloudFormation Stack outputs
+  app.state.stack = { outputs: {} }
   app.state.devMode = process.env["RUNS_ON_ENV"] === "dev"
 
   // delay first initialization to bind socket asap
@@ -68,7 +70,7 @@ module.exports = async (app) => {
 
     try {
       const { image, runner, ...jobLabels } = extractLabels(labels, RUNS_ON_LABEL);
-      const { env = 'prod', spot = true, ssh = true } = jobLabels;
+      const { debug = false, env = 'prod', spot = true, ssh = true } = jobLabels;
 
       if (env !== RUNS_ON_ENV) {
         context.log.info(`Ignoring workflow since env label does not match ${RUNS_ON_ENV}`)
@@ -126,8 +128,7 @@ module.exports = async (app) => {
       context.log.info("✅ Runner registered with GitHub App installation");
 
       // Create EC2 instance
-      const runnerAgentVersion = "2.311.0"
-      const userDataConfig = { runnerJitConfig, sshGithubUsernames, runnerName, runnerAgentVersion }
+      const userDataConfig = { runnerJitConfig, sshGithubUsernames, runnerName, debug }
       const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
       const instanceDetails = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
       if (instanceDetails) {
