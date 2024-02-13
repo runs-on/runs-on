@@ -202,6 +202,12 @@ Resources:
   S3BucketCache:
     Type: AWS::S3::Bucket
     Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireCache
+            Prefix: cache/
+            Status: Enabled
+            ExpirationInDays: 10
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
