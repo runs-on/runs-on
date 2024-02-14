@@ -224,7 +224,6 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
-      Path: !Sub "/${AWS::StackName}/instance-role/"
       Policies:
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
@@ -248,7 +247,6 @@ Resources:
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Path: !Sub "/${AWS::StackName}/instance-profile/"
       Roles:
         - !Ref EC2InstanceRole
   RunsOnService:
@@ -297,7 +295,6 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
-      Path: !Sub "/${AWS::StackName}/service-role/"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

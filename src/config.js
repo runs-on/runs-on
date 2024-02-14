@@ -15,13 +15,16 @@ async function setup() {
   const { Outputs } = response.Stacks[0];
 
   const outputs = {}
-  outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
-  outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
-  outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
-  outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
-  outputs.securityGroupId = Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
-  outputs.instanceProfileArn = Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
-  outputs.topicArn = Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
+  // on first install, CF stack may not yet be ready, so not bothering fetching outputs required for runtime since app is not configured yet
+  if (Outputs) {
+    outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
+    outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
+    outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
+    outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
+    outputs.securityGroupId = Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
+    outputs.instanceProfileArn = Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
+    outputs.topicArn = Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
+  }
   outputs.region = await cfClient.config.region();
   console.log(`✅ Stack outputs: ${JSON.stringify(outputs)}`)
 
