@@ -20,6 +20,7 @@ jobs:
           - runs-on,runner=gofast,image=custom,env=dev
           - runs-on,runner=gofast,cpu=1,env=dev
           - runs-on,cpu=1,env=dev,image=ubuntu22-base-arm64
+          - runs-on,cpu=1,env=dev,image=ubuntu22-full-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
