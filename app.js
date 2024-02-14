@@ -44,8 +44,8 @@ module.exports = async (app) => {
 
   // delay first initialization to bind socket asap
   setTimeout(async () => {
-    await alerting.init(app);
     await config.init(app);
+    await alerting.init(app);
     await ec2.init(app);
     await costs.init(app);
   }, 100);

@@ -1,5 +1,4 @@
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
-const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const { DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
 const memoize = require('lru-memoize').default;
 const pThrottle = require('p-throttle');
@@ -25,25 +24,6 @@ let app;
 
 async function init(probotApp) {
   app = probotApp;
-  const cfClient = new CloudFormationClient();
-  const command = new DescribeStacksCommand({ StackName: STACK_NAME });
-  const response = await cfClient.send(command);
-  const { Outputs } = response.Stacks[0];
-
-  const outputs = {}
-  outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
-  outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
-  outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
-  outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
-  outputs.securityGroupId = Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
-  outputs.instanceProfileArn = Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
-  outputs.topicArn = Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
-  outputs.region = await ec2Client.config.region();
-  app.log.info(`✅ Stack outputs: ${JSON.stringify(outputs)}`)
-
-  Object.assign(app.state.stack.outputs, outputs);
-  app.log.info(`✅ EC2 client initialized for region ${outputs.region}`);
-
   return app;
 }
 

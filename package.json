@@ -7,7 +7,7 @@
   "license": "Prosperity Public License 3.0.0",
   "homepage": "https://github.com/runs-on/runs-on",
   "scripts": {
-    "synchronize": "node -e 'require(\"./src/config\").fetch(\".env\")'",
+    "synchronize": "node -e 'require(\"./src/config\").synchronize()'",
     "md-specs": "./bin/md-specs",
     "test": "jest"
   },

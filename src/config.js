@@ -1,9 +1,38 @@
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
 const fs = require('fs').promises;
 const alerting = require("./alerting");
+const { STACK_NAME } = require("./constants");
 
 const s3Client = new S3Client();
 let app;
+
+// this is also used for the synchronize command, so must be probot agnostic
+async function setup() {
+  const cfClient = new CloudFormationClient();
+  const command = new DescribeStacksCommand({ StackName: STACK_NAME });
+  const response = await cfClient.send(command);
+  const { Outputs } = response.Stacks[0];
+
+  const outputs = {}
+  outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
+  outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
+  outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
+  outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
+  outputs.securityGroupId = Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
+  outputs.instanceProfileArn = Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
+  outputs.topicArn = Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
+  outputs.region = await cfClient.config.region();
+  console.log(`✅ Stack outputs: ${JSON.stringify(outputs)}`)
+
+  Object.assign(app.state.stack.outputs, outputs);
+}
+
+async function synchronize() {
+  app = app || { state: { stack: { outputs: {} } } };
+  await setup();
+  await fetch(".env");
+}
 
 async function fetch(filePath, prefix = 'runs-on') {
   const getObjectParams = {
@@ -66,6 +95,8 @@ async function load() {
 
 async function init(probotApp) {
   app = probotApp;
+  await setup();
+
   // if first run of the app (after setup), sync .env to s3 bucket so that is is saved for future deploys
   if (process.env["RUNS_ON_FIRST_RUN"]) {
     app.log.info("Updating .env file in S3 bucket...")
@@ -76,4 +107,4 @@ async function init(probotApp) {
   return app;
 }
 
-module.exports = { update, fetch, init }
+module.exports = { update, fetch, init, synchronize }
