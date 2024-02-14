@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation stack for https://github.com/runs-on/runs-on
+Description: CloudFormation stack for https://runs-on.com
 
 Metadata: 
   AWS::CloudFormation::Interface: 
@@ -42,16 +42,19 @@ Parameters:
 
   EmailAddress:
     Type: String
-    Description: Email address for usage alerts (optional)
+    Description: Email address for usage alerts
+    MinLength: 1
 
   AvailabilityZone:
     Type: AWS::EC2::AvailabilityZone::Name
     Description: "The availability zone where the stack will be created. You can update this at any time, for instance if you find out that some AZ does not have the latest instance types."
+    MinLength: 1
 
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
     Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
+    MinLength: 1
 
   AppCPU:
     Type: Number
@@ -63,14 +66,12 @@ Parameters:
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher)
 
-  AppVersion:
-    Type: String
-    Default: "v1.5.0-dev"
-    Description: App version for RunsOn service
-
 Transform: 'AWS::LanguageExtensions'
 
 Mappings:
+  App:
+    Image:
+      Tag: "v1.6.1-dev"
   Networking:
     AzSuffixToIndex:
       1a: 0
@@ -278,12 +279,16 @@ Resources:
             Port: 80
             RuntimeEnvironmentVariables:
               - Name: RUNS_ON_SHA
-                Value: !Sub "${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
+                Value: !Sub
+                  - "v1-${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
+                  - AppVersion: !FindInMap [App, Image, Tag]
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
-          ImageIdentifier: !Sub "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
+          ImageIdentifier: !Sub
+            - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
+            - AppVersion: !FindInMap [App, Image, Tag]
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:

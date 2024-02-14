@@ -5,7 +5,7 @@
   "description": "Deploy ephemeral and cheap self-hosted runners for your GitHub Action workflows, in your AWS account",
   "author": "Cyril Rohr",
   "license": "Prosperity Public License 3.0.0",
-  "homepage": "https://github.com/runs-on/runs-on",
+  "homepage": "https://runs-on.com",
   "scripts": {
     "synchronize": "node -e 'require(\"./src/config\").synchronize()'",
     "md-specs": "./bin/md-specs",

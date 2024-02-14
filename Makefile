@@ -1,4 +1,4 @@
-VERSION=v1.5.0
+VERSION=v1.6.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
@@ -8,7 +8,7 @@ check:
 	if ! git diff --exit-code :^Makefile &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
-	sed -i 's|runs-on:v.*|runs-on:$(VERSION)|' cloudformation/template.yaml
+	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template.yaml
 	cp cloudformation/template.yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|"version": "v1.*|"version": "$(VERSION)",|' package.json
 
@@ -38,7 +38,7 @@ release: check bump commit login build push s3-upload
 
 # DEV commands
 build-dev:
-	sed -i 's|runs-on:v.*|runs-on:$(VERSION_DEV)|' cloudformation/template-dev.yaml
+	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
 
