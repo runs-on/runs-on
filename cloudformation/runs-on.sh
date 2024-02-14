@@ -6,6 +6,7 @@ set -o pipefail
 default_template_url="https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
 default_dev_template_url="https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 param_overrides=""
+stack_name="runs-on"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -23,17 +24,16 @@ while [[ "$#" -gt 0 ]]; do
       org="${1#*=}"
       param_overrides="$param_overrides GithubOrganization=$org"
       ;;
-    --app-cpu=*)
-      app_cpu="${1#*=}"
-      param_overrides="$param_overrides AppCPU=$app_cpu"
+    --az=*)
+      az="${1#*=}"
+      param_overrides="$param_overrides AvailabilityZone=$az"
       ;;
-    --app-ram=*)
-      app_ram="${1#*=}"
-      param_overrides="$param_overrides AppMemory=$app_ram"
+    --email=*)
+      email="${1#*=}"
+      param_overrides="$param_overrides EmailAddress=$email"
       ;;
-    --app-image-version=*)
-      app_image_version="${1#*=}"
-      param_overrides="$param_overrides AppImageVersion=$app_image_version"
+    --stack-name=*)
+      stack_name="${1#*=}"
       ;;
     --ssh-allow-from=*)
       ssh_cidr="${1#*=}"
@@ -51,7 +51,6 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # # Use default values if arguments are not provided
-stack_name="runs-on"
 template_url=${template_url:-$default_template_url}
 
 if [ -n "$param_overrides" ]; then
@@ -69,6 +68,7 @@ confirm_action() {
 }
 
 display_stack_events() {
+  set +e
   echo "Retrieving FAILED CloudFormation stack events for '$stack_name'..."
 
   most_recent_update_time=$(aws cloudformation describe-stack-events \
@@ -85,6 +85,7 @@ display_stack_events() {
     --stack-name "$stack_name" \
     --output yaml --no-cli-pager \
     --query "StackEvents[?Timestamp>=\`$most_recent_update_time\` && (ResourceStatus=='CREATE_FAILED' || ResourceStatus=='UPDATE_FAILED' || ResourceStatus=='DELETE_FAILED')].{Time:Timestamp, Resource:LogicalResourceId, Type:ResourceType, Status:ResourceStatus, Reason:ResourceStatusReason}"
+  set -e
 }
 
 display_stack_outputs() {
@@ -102,7 +103,6 @@ function deploy() {
   # shellcheck disable=SC2086
   aws cloudformation deploy \
     --stack-name "$stack_name" \
-    --disable-rollback \
     --template-file "$template_file" \
     --tags "stack=$stack_name" \
     --capabilities CAPABILITY_IAM \
@@ -129,7 +129,7 @@ elif [ "$uninstall" == true ]; then
   fi
 elif [ "$install" == true ]; then
   template_file=$(mktemp)
-  if [[ $template_url == "http://"* ]]; then
+  if [[ $template_url == "https://"* ]]; then
     curl -s -o "template_file" "$template_url"
   else
     cat "$template_url" > "$template_file"
@@ -147,5 +147,5 @@ elif [ "$install" == true ]; then
 
   echo "✅ Stack ready." && display_stack_outputs && exit 0
 else
-  echo "Usage: $0 [--install|--uninstall|--status] [--template-url=<value>] [--org=<your-github-org>] [--app-image-version=<value>] [--ssh-allow-from=<value>] [--app-cpu=<value>] [--app-ram=<value>]"
+  echo "Usage: $0 [--install|--uninstall|--status] [--template-url=<value>] [--org=<your-github-org>] [--ssh-allow-from=<value>] [--stack-name=<value>] [--email=<value>] [--az=<value>]"
 fi

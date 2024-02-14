@@ -105,6 +105,12 @@ const IMAGES = {
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
     owner: UBUNTU_OWNER,
   },
+  "ubuntu22-full-arm64": {
+    platform: "linux",
+    arch: "arm64",
+    name: "runs-on-ubuntu22-full-arm64-*",
+    owner: RUNS_ON_OWNER,
+  },
   "ubuntu22-docker-arm64": {
     platform: "linux",
     arch: "arm64",

@@ -63,6 +63,11 @@ Parameters:
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher)
 
+  AppVersion:
+    Type: String
+    Default: "v1.5.0-dev"
+    Description: App version for RunsOn service
+
 Transform: 'AWS::LanguageExtensions'
 
 Mappings:
@@ -186,14 +191,65 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
-
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
-
+        - Key: "runs-on/purpose"
+          Value: "config"
+  S3BucketCache:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireCache
+            Prefix: cache/
+            Status: Enabled
+            ExpirationInDays: 10
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+        - Key: "runs-on/purpose"
+          Value: "cache"
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: !Sub "/${AWS::StackName}/instance-role/"
+      Policies:
+        - PolicyName: EC2AccessS3BucketPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                  - s3:ListBucketMultipartUploads
+                  - s3:ListMultipartUploadParts
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/*"
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: !Sub "/${AWS::StackName}/instance-profile/"
+      Roles:
+        - !Ref EC2InstanceRole
   RunsOnService:
     Type: AWS::AppRunner::Service
     Properties:
@@ -221,21 +277,13 @@ Resources:
           ImageConfiguration:
             Port: 80
             RuntimeEnvironmentVariables:
-              - Name: RUNS_ON_TOPIC_ARN
-                Value: !Ref AlertTopic
-              - Name: RUNS_ON_S3_BUCKET
-                Value: !Ref S3Bucket
+              - Name: RUNS_ON_SHA
+                Value: !Sub "${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
-              - Name: RUNS_ON_AVAILABILITY_ZONE
-                Value: !Ref AvailabilityZone
-              - Name: RUNS_ON_SUBNET_ID
-                Value: !Ref PublicSubnet
-              - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !Ref SecurityGroup
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
-          ImageIdentifier: public.ecr.aws/c5h5o9k1/runs-on/runs-on:v1.5.0-dev
+          ImageIdentifier: !Sub "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:
@@ -244,6 +292,7 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+      Path: !Sub "/${AWS::StackName}/service-role/"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -267,8 +316,11 @@ Resources:
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
-                  - sns:ListTopics
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                Resource: !Ref AWS::StackId
               - Effect: Allow
                 Action:
                   - ec2:RunInstances
@@ -285,6 +337,10 @@ Resources:
                 Resource: arn:aws:ec2:*:*:instance/*
               - Effect: Allow
                 Action:
+                  - iam:PassRole
+                Resource: !GetAtt EC2InstanceRole.Arn
+              - Effect: Allow
+                Action:
                   - ec2:TerminateInstances
                 Resource: "arn:aws:ec2:*:*:instance/*"
                 Condition:
@@ -294,8 +350,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                  - s3:ListBucket
-                Resource: 
+                Resource:
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
               - Effect: Allow
@@ -341,3 +396,24 @@ Outputs:
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
     Value: !GetAtt RunsOnService.ServiceUrl
+  RunsOnAvailabilityZone:
+    Description: Availability zone
+    Value: !Ref AvailabilityZone
+  RunsOnInstanceProfileArn:
+    Description: Runner instance profile
+    Value: !GetAtt EC2InstanceProfile.Arn
+  RunsOnPublicSubnetId:
+    Description: Public subnet for launching runners
+    Value: !Ref PublicSubnet
+  RunsOnSecurityGroupId:
+    Description: Security group for runners
+    Value: !Ref SecurityGroup
+  RunsOnBucketConfig:
+    Description: S3 bucket for storing configuration
+    Value: !Ref S3Bucket
+  RunsOnBucketCache:
+    Description: S3 bucket for storing cache artefacts
+    Value: !Ref S3BucketCache
+  RunsOnTopicArn:
+    Description: SNS Topic where email alerts and reports are sent
+    Value: !Ref AlertTopic
