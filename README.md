@@ -32,12 +32,13 @@ Runs in your own AWS account. Supports x64 and arm64 runners. Each workflow job 
 
 ![overview](https://github.com/runs-on/runs-on/assets/6114/721007c6-da73-4275-a7aa-06a0842d218d)
 
-* runners are normal VMs. No docker in docker stuff.
-* access to all Linux runner types available on AWS.
+* Runners are ephemeral, and are normal VMs. No docker in docker stuff.
+* Access to all Linux runner types available on AWS.
 * x64 and arm64 architectures supported.
-* you can launch as many of them in parallel as needed.
-* 1-1 workflow compatibility on x64, soon arm64 (we maintain runner images for AWS that are built using the exact same software stack than official GitHub runner images).
-* you can SSH into the runners if needed.
+* No concurrency limit: you can launch as many workflows in parallel as needed.
+* 1-1 workflow compatibility on x64 AND arm64.
+* SSH access into the runners if needed.
+* 🆕 in v1.6.1: local S3 cache for greater speed with `runs-on/cache` action, and UNLIMITED cache sizes.
 
 I'm currently gauging interest in other platform support (MacOS / Windows). Please fill out [this form](https://tally.so/r/3Ex2LN) if interested!
 
@@ -142,12 +143,13 @@ Default if no `image` label provided: `ubuntu22-full-x64`.
 | image | platform | arch | user | name |
 | --- | --- | --- | --- | --- |
 | `ubuntu22-full-x64` | linux | x64 | 135269210855 | runs-on-ubuntu22-full-x64-* |
-| `ubuntu22-docker-x64` | linux | x64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
 | `ubuntu22-base-x64` | linux | x64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-* |
-| `ubuntu22-docker-arm64` | linux | arm64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
+| `ubuntu22-full-arm64` | linux | x64 | 135269210855 | runs-on-ubuntu22-full-arm64-* |
 | `ubuntu22-base-arm64` | linux | arm64 | 099720109477 | ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-* |
 
 If you want the same runner image as what is provided by GitHub, use `ubuntu22-full-x64`. Those are refreshed by [runs-on/runner-images-for-aws](https://github.com/runs-on/runner-images-for-aws) every time a new image version is pushed by [GitHub](http://github.com/actions/runner-images).
+
+For ARM64, use `ubuntu22-full-arm64` to maintain compatibility with most of the GitHub Action ecosystem.
 
 All the other images are variants of the bare ubuntu22 official image as provided by canonical. The only additional thing installed is the runner binary. The `runner` user has full `sudo` access if you want to install more things.
 
