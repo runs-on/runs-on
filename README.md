@@ -270,8 +270,9 @@ If you like DevOps tooling, you might also be interested in my other projects [P
 - ✅ ~~support config file in each repo~~
 - ✅ ~~ARM support~~
 - ✅ ~~handle high workflow concurrency (100s at once)~~
-- find ways to make boot time faster for full x64 image
-- provide full image for ARM arch
+- ✅ ~~find ways to make boot time faster for full x64 image~~
+- ✅ ~~provide full image for ARM arch~~
+- ✅ ~~much faster cache action, unlimited storage => runs-on/cache@v4~~
 - configure SSH access from cloudwatch template
 - fix white screen in installation process while app reboots after first config
 - expose cloudwatch metrics for workflow runs (dimensions: repo, platform, instance-type, workflow-name, etc.)
