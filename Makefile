@@ -15,7 +15,7 @@ bump:
 commit-add:
 	git add Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml
 
-commit:
+commit: commit-add
 	if ! git diff --staged --exit-code Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" && git tag -m "$(VERSION)" "$(VERSION)" ; fi
 
 login:
@@ -30,7 +30,7 @@ push:
 
 s3-upload:
 	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
-	aws s3 cp ./cloudformation/template-v*.yaml s3://runs-on/cloudformation/
+	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 
 release: check bump commit login build push s3-upload
 	docker tag public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(MAJOR_VERSION)
