@@ -7,7 +7,7 @@ const { STACK_NAME } = require("./constants");
 const s3Client = new S3Client();
 let app;
 
-// this is also used for the synchronize command, so must be probot agnostic
+// this is also used for the synchronize command, so must be probot agnosticm and alerting is not yet set at this stage
 async function setup() {
   const cfClient = new CloudFormationClient();
   const command = new DescribeStacksCommand({ StackName: STACK_NAME });
@@ -91,7 +91,9 @@ async function load() {
   Object.assign(app.state.custom, { appBotLogin, appOwner });
 
   if (app.state.custom.appOwner !== process.env["RUNS_ON_ORG"]) {
-    alerting.sendError(`❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}.`)
+    app.state.enabled = false;
+    const msg = `❌ App owner does not match RUNS_ON_ORG environment variable: ${app.state.custom.appOwner} !== ${process.env["GH_ORG"]}.`;
+    alerting.sendError(msg);
   }
 
   return appDetails;
@@ -100,6 +102,7 @@ async function load() {
 async function init(probotApp) {
   app = probotApp;
   await setup();
+  await alerting.init(app);
 
   // if first run of the app (after setup), sync .env to s3 bucket so that is is saved for future deploys
   if (process.env["RUNS_ON_FIRST_RUN"]) {

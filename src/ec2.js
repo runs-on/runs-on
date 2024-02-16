@@ -67,6 +67,8 @@ async function findCustomImage(inputs) {
 }
 
 async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParams, dryRun }) {
+  let error;
+  let instance;
   // Try each instance type until one is successfully created
   for (const instanceType of instanceTypes) {
     // make sure we're using a duplicate of the instance params since we're modifying it
@@ -99,18 +101,18 @@ async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParam
       const runCommand = new RunInstancesCommand(instanceParamsForType);
       if (dryRun) {
         app.log.info(`→ Not launching instance since dry-run=true`);
-        return null;
+        return { instance, error };
       } else {
         const instanceResponse = await ec2Client.send(runCommand);
         const instance = instanceResponse.Instances[0];
         app.log.info(`✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`);
-        return instance;
+        return { instance, error };
       }
     } catch (error) {
-      app.log.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${error}.`);
+      error = app.log.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${error}.`);
     }
   }
-  return null;
+  return { instance, error };
 }
 
 function flatMapInput(input) {
@@ -369,16 +371,16 @@ const createEC2Instance = async function ({
     }
   }
 
-  let instance = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
+  let result = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
 
-  if (!instance && spot) {
+  if (!result.instance && spot) {
     // attempt one last time without spot instances
     app.log.info(`→ Attempting to create instance without spot instances...`);
     delete instanceParams.InstanceMarketOptions;
-    instance = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
+    result = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
   }
 
-  return instance;
+  return result;
 }
 
 async function fetchInstanceDetails(instanceId) {
@@ -481,13 +483,15 @@ const runQueue = awsRateLimit((inputs) => {
 });
 
 async function createAndWaitForInstance(inputs) {
-  const instance = await runQueue(inputs);
+  const { instance, error } = await runQueue(inputs);
   if (instance) {
     await waitForInstance(instance.InstanceId);
     const instanceDetails = await fetchInstanceDetails(instance.InstanceId);
+    app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
     return instanceDetails;
   } else {
-    return null;
+    const msg = `Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}: ${error}`;
+    throw new Error(msg);
   }
 }
 

@@ -32,6 +32,7 @@ const contextualizedError = (context, message, error) => {
 module.exports = async (app) => {
   app.log.info("Yay, the app was loaded!");
 
+  app.state.enabled = true;
   app.state.custom = {
     awsCredentials: defaultProvider({
       roleAssumerWithWebIdentity: getDefaultRoleAssumerWithWebIdentity(),
@@ -45,7 +46,6 @@ module.exports = async (app) => {
   // delay first initialization to bind socket asap
   setTimeout(async () => {
     await config.init(app);
-    await alerting.init(app);
     await ec2.init(app);
     await costs.init(app);
   }, 100);
@@ -56,6 +56,11 @@ module.exports = async (app) => {
   });
 
   app.on("workflow_job.queued", async (context) => {
+    if (!app.state.enabled) {
+      context.log.info("Ignoring workflow job since app has been disabled due to configuration issue.")
+      return;
+    }
+
     // https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
     const { repository, workflow_job } = context.payload;
     const { workflow_name, labels } = workflow_job;
@@ -130,14 +135,12 @@ module.exports = async (app) => {
       // Create EC2 instance
       const userDataConfig = { runnerJitConfig, sshGithubUsernames, runnerName, debug }
       const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
-      const instanceDetails = await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
-      if (instanceDetails) {
-        app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
-      } else {
-        throw new Error(`Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}`);
-      }
+
+      // will raise if unable to start instance
+      await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
     } catch (error) {
-      alerting.sendError(contextualizedError(context, "Error when attempting to launch workflow job", error));
+      const msg = contextualizedError(context, "Error when attempting to launch workflow job", error);
+      alerting.sendError(msg);
     }
   });
 
@@ -155,7 +158,8 @@ module.exports = async (app) => {
     try {
       await ec2.terminateInstanceAndPostCosts(runner_name);
     } catch (error) {
-      alerting.sendError(contextualizedError(context, "Error when attempting to terminate instance", error));
+      const msg = contextualizedError(context, "Error when attempting to terminate instance", error);
+      alerting.sendError(msg);
     }
   });
 };
