@@ -15,9 +15,10 @@ async function setup() {
   const { Outputs } = response.Stacks[0];
 
   const outputs = {}
+  outputs.s3BucketConfig = process.env["RUNS_ON_BUCKET_CONFIG"];
   // on first install, CF stack may not yet be ready, so not bothering fetching outputs required for runtime since app is not configured yet
   if (Outputs) {
-    outputs.s3BucketConfig = Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
+    outputs.s3BucketConfig ||= Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
     outputs.s3BucketCache = Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
     outputs.subnetId = Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
     outputs.az = Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue

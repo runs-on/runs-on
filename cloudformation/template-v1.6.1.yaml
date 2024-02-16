@@ -278,12 +278,14 @@ Resources:
             RuntimeEnvironmentVariables:
               - Name: RUNS_ON_SHA
                 Value: !Sub
-                  - "v1-${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
+                  - "v2-${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
                   - AppVersion: !FindInMap [App, Image, Tag]
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
+              - Name: RUNS_ON_BUCKET_CONFIG
+                Value: !Ref S3Bucket
           ImageIdentifier: !Sub
             - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
