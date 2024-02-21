@@ -484,13 +484,14 @@ const runQueue = awsRateLimit((inputs) => {
 
 async function createAndWaitForInstance(inputs) {
   const { instance, error } = await runQueue(inputs);
+  const { imageSpec, runnerSpec } = inputs;
   if (instance) {
     await waitForInstance(instance.InstanceId);
     const instanceDetails = await fetchInstanceDetails(instance.InstanceId);
     app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
     return instanceDetails;
   } else {
-    const msg = `Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}: ${error}`;
+    const msg = `Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}. The error was: ${error}`;
     throw new Error(msg);
   }
 }
