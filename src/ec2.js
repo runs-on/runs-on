@@ -5,6 +5,7 @@ const pThrottle = require('p-throttle');
 
 const costs = require("./costs");
 const {
+  RUNS_ON_EC2_QUEUE_SIZE,
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
   DEFAULT_CPU,
@@ -475,8 +476,7 @@ async function terminateInstance(instanceName) {
   }
 }
 
-const EC2_RUN_INSTANCE_CONCURRENCY = 8;
-const awsRateLimit = pThrottle({ limit: EC2_RUN_INSTANCE_CONCURRENCY, interval: 1000 })
+const awsRateLimit = pThrottle({ limit: RUNS_ON_EC2_QUEUE_SIZE, interval: 1000 })
 
 const runQueue = awsRateLimit((inputs) => {
   return createEC2Instance(inputs);

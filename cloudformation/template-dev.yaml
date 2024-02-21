@@ -28,6 +28,7 @@ Metadata:
         Label: 
           default: "App Configuration"
         Parameters: 
+          - AppEc2QueueSize
           - AppCPU
           - AppMemory
     ParameterLabels:
@@ -55,6 +56,11 @@ Parameters:
     Default: 0.0.0.0/0
     Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
     MinLength: 1
+
+  AppEc2QueueSize:
+    Type: Number
+    Default: "2"
+    Description: "Queue size for launching and terminating EC2 instances (default rate limit from AWS: 2/s). Only increase if you have requested a higher limit from AWS."
 
   AppCPU:
     Type: Number
@@ -286,6 +292,8 @@ Resources:
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
+              - Name: RUNS_ON_EC2_QUEUE_SIZE
+                Value: !Ref AppEc2QueueSize
           ImageIdentifier: !Sub
             - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
