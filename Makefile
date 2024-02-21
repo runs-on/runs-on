@@ -61,3 +61,6 @@ install-test:
 
 install-stage:
 	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template.yaml --org=runs-on --stack-name=runs-on-stage --az=eu-west-1 --email=ops@runs-on.com
+
+logs-stage:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region eu-west-1 /aws/apprunner/RunsOnService-6Gwxsz1vjfMD/356d75069c2c4ec89b0e452c51778ce8/application -wGS -s 30m --timestamp
