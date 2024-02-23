@@ -14,7 +14,7 @@ bump:
 	sed -i 's|"version": "v1.*|"version": "$(VERSION)",|' package.json
 
 commit-add:
-	git add Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml
+	git add Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml cloudformation/template-dev.yaml
 
 commit: commit-add
 	if ! git diff --staged --exit-code Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" ; fi ; git tag -m "$(VERSION)" "$(VERSION)" ;
