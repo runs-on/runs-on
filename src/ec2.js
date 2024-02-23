@@ -72,6 +72,8 @@ async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParam
   let instance;
   // Try each instance type until one is successfully created
   for (const instanceType of instanceTypes) {
+    // reset error
+    error = null;
     // make sure we're using a duplicate of the instance params since we're modifying it
     let instanceParamsForType = { ...instanceParams };
 
@@ -109,8 +111,9 @@ async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParam
         app.log.info(`✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`);
         return { instance, error };
       }
-    } catch (error) {
-      error = app.log.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${error}.`);
+    } catch (e) {
+      app.log.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${e}.`);
+      error = e;
     }
   }
   return { instance, error };
