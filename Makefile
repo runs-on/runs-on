@@ -1,11 +1,11 @@
-VERSION=v1.6.4
+VERSION=v1.6.5
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
-	if ! git diff --exit-code :^Makefile &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
+	if ! git diff --exit-code :^Makefile :^cloudformation/* :^package.json &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
