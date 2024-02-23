@@ -17,7 +17,7 @@ commit-add:
 	git add Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml
 
 commit: commit-add
-	if ! git diff --staged --exit-code Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" && git tag -m "$(VERSION)" "$(VERSION)" ; fi
+	if ! git diff --staged --exit-code Makefile package.json cloudformation/template.yaml cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" ; fi ; git tag -m "$(VERSION)" "$(VERSION)" ;
 
 login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
