@@ -1,4 +1,4 @@
-VERSION=v1.6.3
+VERSION=v1.6.4
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
@@ -8,6 +8,7 @@ check:
 	if ! git diff --exit-code :^Makefile &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
+	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template.yaml
 	cp cloudformation/template.yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|"version": "v1.*|"version": "$(VERSION)",|' package.json
@@ -38,7 +39,6 @@ release: check bump commit login build push s3-upload
 
 # DEV commands
 build-dev:
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
 
@@ -48,7 +48,7 @@ push-dev:
 s3-upload-dev:
 	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
-release-dev: login build-dev push-dev s3-upload-dev
+release-dev: login bump build-dev push-dev s3-upload-dev
 
 run-dev:
 	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev bin/run
