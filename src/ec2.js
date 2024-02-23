@@ -348,7 +348,11 @@ const createEC2Instance = async function ({
     }],
     IamInstanceProfile: {
       Arn: app.state.stack.outputs.instanceProfileArn
-    }
+    },
+    MetadataOptions: { // Specify IMDSv2
+      HttpTokens: "required",
+      HttpPutResponseHopLimit: 3,
+    },
   };
   // specifiy instance profile:
   // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-profiles
