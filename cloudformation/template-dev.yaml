@@ -77,7 +77,7 @@ Transform: 'AWS::LanguageExtensions'
 Mappings:
   App:
     Image:
-      Tag: "v1.6.1-dev"
+      Tag: "v1.6.4-dev"
   Networking:
     AzSuffixToIndex:
       1a: 0
@@ -282,16 +282,24 @@ Resources:
           ImageConfiguration:
             Port: 80
             RuntimeEnvironmentVariables:
-              - Name: RUNS_ON_SHA
-                Value: !Sub
-                  - "v2-${AWS::Region}-${AWS::StackName}-${AWS::AccountId}-${AppVersion}-${AlertTopic}-${S3Bucket}-${S3BucketCache}-${PublicSubnet}-${SecurityGroup}-${GithubOrganization}-${AvailabilityZone}-${EC2InstanceProfile}"
-                  - AppVersion: !FindInMap [App, Image, Tag]
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
+              - Name: RUNS_ON_BUCKET_CACHE
+                Value: !Ref S3BucketCache
+              - Name: RUNS_ON_PUBLIC_SUBNET_ID
+                Value: !Ref PublicSubnet
+              - Name: RUNS_ON_AVAILABILITY_ZONE
+                Value: !Ref AvailabilityZone
+              - Name: RUNS_ON_SECURITY_GROUP_ID
+                Value: !Ref SecurityGroup
+              - Name: RUNS_ON_INSTANCE_PROFILE_ARN
+                Value: !GetAtt EC2InstanceProfile.Arn
+              - Name: RUNS_ON_TOPIC_ARN
+                Value: !Ref AlertTopic
               - Name: RUNS_ON_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
           ImageIdentifier: !Sub
@@ -408,6 +416,9 @@ Outputs:
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
     Value: !GetAtt RunsOnService.ServiceUrl
+  RunsOnService:
+    Description: Link to the AppRunner service in AWS console
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
   RunsOnAvailabilityZone:
     Description: Availability zone
     Value: !Ref AvailabilityZone
