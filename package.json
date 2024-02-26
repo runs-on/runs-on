@@ -1,6 +1,6 @@
 {
   "name": "runs-on",
-  "version": "v1.6.5",
+  "version": "v1.7.1",
   "private": true,
   "description": "Deploy ephemeral and cheap self-hosted runners for your GitHub Action workflows, in your AWS account",
   "author": "Cyril Rohr",
@@ -18,17 +18,22 @@
     "@aws-sdk/client-ec2": "^3.468.0",
     "@aws-sdk/client-s3": "^3.470.0",
     "@aws-sdk/client-sns": "^3.478.0",
+    "chokidar": "^3.6.0",
+    "express-handlebars": "^7.1.2",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
     "lru-memoize": "^1.1.0",
+    "node-fetch": "^2.6.7",
     "p-throttle": "^4.1.1",
     "probot": "^12.3.3"
   },
   "devDependencies": {
+    "aws-sdk-client-mock": "^3.0.1",
     "jest": "^29.0.0",
     "nock": "^13.0.5",
     "nodemon": "^3.1.0",
-    "smee-client": "^1.2.2"
+    "smee-client": "^1.2.2",
+    "supertest": "^6.3.4"
   },
   "engines": {
     "node": ">= 20.0.0"

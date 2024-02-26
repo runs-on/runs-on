@@ -1,20 +1,24 @@
-const { RUNNER_ATTRIBUTES, IMAGE_ATTRIBUTES } = require('./constants');
+const {
+  RUNNER_ATTRIBUTES,
+  IMAGE_ATTRIBUTES,
+  RUNS_ON_LABEL,
+} = require("./constants");
 
 function objToArray(obj) {
   const array = [];
   Object.keys(obj).forEach(function (key) {
-    const values = obj[key]
+    const values = obj[key];
     array.push({ key, ...values });
   });
   return array;
 }
 
 function transformKey(key) {
-  const words = key.split('-');
+  const words = key.split("-");
   for (let i = 1; i < words.length; i++) {
     words[i] = words[i][0].toUpperCase() + words[i].slice(1);
   }
-  return words.join('');
+  return words.join("");
 }
 
 function transformValue(value) {
@@ -30,25 +34,34 @@ function transformValue(value) {
   return value;
 }
 
-function extractLabels(labels, runsOnLabel) {
+function flatMapInput(input) {
+  return [input]
+    .flat()
+    .filter((i) => i)
+    .map((n) => String(n).split("+"))
+    .flat()
+    .filter((i) => i);
+}
+
+function extractLabels(labels, runsOnLabel = RUNS_ON_LABEL) {
   const extractedLabels = {};
 
   // e.g. runs-on-family=c7a+c6a
   if (labels.length === 1 && labels[0].startsWith(`${runsOnLabel}-`)) {
-    const newLabels = labels[0].replace(`${runsOnLabel}-`, '').split('-')
-    newLabels.push(runsOnLabel)
+    const newLabels = labels[0].replace(`${runsOnLabel}-`, "").split("-");
+    newLabels.push(runsOnLabel);
     return extractLabels(newLabels);
   }
 
   if (labels.length === 1 && labels[0].startsWith(`${runsOnLabel},`)) {
-    const newLabels = labels[0].replace(`${runsOnLabel},`, '').split(',')
-    newLabels.push(runsOnLabel)
+    const newLabels = labels[0].replace(`${runsOnLabel},`, "").split(",");
+    newLabels.push(runsOnLabel);
     return extractLabels(newLabels);
   }
 
-  labels.forEach(label => {
-    if (label.includes('=')) {
-      const [key, value] = label.split('=');
+  labels.forEach((label) => {
+    if (label.includes("=")) {
+      const [key, value] = label.split("=");
       extractedLabels[transformKey(key)] = transformValue(value);
     } else {
       extractedLabels[transformKey(label)] = true;
@@ -68,12 +81,12 @@ function getLast15DaysPeriod() {
 
   // Function to format a date in YYYY-MM-DD format
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   };
 
   return {
     start: formatDate(startDate),
-    end: formatDate(endDate)
+    end: formatDate(endDate),
   };
 }
 
@@ -94,11 +107,11 @@ function sanitizeAttributes(attributes, allowedKeys) {
 }
 
 function sanitizeRunnerSpec(attributes) {
-  return sanitizeAttributes(attributes, RUNNER_ATTRIBUTES)
+  return sanitizeAttributes(attributes, RUNNER_ATTRIBUTES);
 }
 
 function sanitizeImageSpec(attributes) {
-  return sanitizeAttributes(attributes, IMAGE_ATTRIBUTES)
+  return sanitizeAttributes(attributes, IMAGE_ATTRIBUTES);
 }
 
 function isStringFloat(str) {
@@ -110,4 +123,20 @@ function isStringFloat(str) {
   }
 }
 
-module.exports = { extractLabels, getLast15DaysPeriod, sanitizeRunnerSpec, sanitizeImageSpec, isStringFloat, objToArray }
+function base64Scripts(scripts = []) {
+  return Array(scripts)
+    .flat()
+    .filter((i) => i)
+    .map((script) => Buffer.from(script).toString("base64"));
+}
+
+module.exports = {
+  base64Scripts,
+  flatMapInput,
+  extractLabels,
+  getLast15DaysPeriod,
+  sanitizeRunnerSpec,
+  sanitizeImageSpec,
+  isStringFloat,
+  objToArray,
+};

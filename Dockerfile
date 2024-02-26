@@ -1,14 +1,13 @@
 FROM node:20-slim
-WORKDIR /usr/src/app
-COPY package.json package-lock.json ./
-RUN npm ci --production && npm cache clean --force
-COPY . .
+
+USER node
+WORKDIR /app
+
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm install --no-fund --omit=dev && npm cache clean --force
+COPY --chown=node:node . .
 
 ENV NODE_ENV="production"
-ENV PATH="/usr/src/app/bin:${PATH}"
 ENV RUNS_ON_ENV="prod"
 
-# make sure an empty file is present at beginning
-RUN rm -f .env && touch .env
-
-CMD [ "node", "./app.js" ]
+CMD [ "node", "./src/index.js" ]

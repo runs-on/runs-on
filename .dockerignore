@@ -4,7 +4,6 @@
 **/npm-debug.log
 **/coverage
 **/.env*
-**/app.yml
 **/.editorconfig
 **/dist
 **/*.pem
@@ -15,3 +14,4 @@ Dockerfile
 **/docs
 **/test
 **/Makefile
+**/.trash

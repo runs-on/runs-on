@@ -1,12 +1,16 @@
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const fs = require('fs').promises;
-const stack = require("./stack")
-const logger = stack.getLogger()
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+const fs = require("fs").promises;
+const stack = require("./stack").getInstance();
+const logger = require("./logger").getLogger();
 
 const s3Client = new S3Client();
 
-async function fetch(filePath, prefix = 'runs-on') {
-  const { s3BucketConfig } = await stack.outputs;
+async function fetch(filePath, prefix = "runs-on") {
+  const { s3BucketConfig } = await stack.fetchOutputs();
 
   const getObjectParams = {
     Bucket: s3BucketConfig,
@@ -20,9 +24,9 @@ async function fetch(filePath, prefix = 'runs-on') {
     // Convert the Body to a buffer
     const fileBuffer = await new Promise((resolve, reject) => {
       const chunks = [];
-      Body.on('data', (chunk) => chunks.push(chunk));
-      Body.on('end', () => resolve(Buffer.concat(chunks)));
-      Body.on('error', reject);
+      Body.on("data", (chunk) => chunks.push(chunk));
+      Body.on("end", () => resolve(Buffer.concat(chunks)));
+      Body.on("error", reject);
     });
 
     // Save the file locally
@@ -33,22 +37,22 @@ async function fetch(filePath, prefix = 'runs-on') {
   }
 }
 
-async function update(filePath, prefix = 'runs-on') {
-  const { s3BucketConfig } = await stack.outputs;
+async function update(filePath, prefix = "runs-on") {
+  const { s3BucketConfig } = await stack.fetchOutputs();
 
   const uploadParams = {
     Bucket: s3BucketConfig,
     Key: [prefix, filePath.replace(/^\//, "")].join("/"),
-    Body: await fs.readFile(filePath, 'utf-8'),
-    ACL: 'private', // Make the object private
+    Body: await fs.readFile(filePath, "utf-8"),
+    ACL: "private", // Make the object private
   };
 
   try {
     const response = await s3Client.send(new PutObjectCommand(uploadParams));
     logger.info(`File uploaded successfully. ETag: ${response.ETag}`);
   } catch (error) {
-    logger.error('Error uploading file:', error);
+    logger.error("Error uploading file:", error);
   }
 }
 
-module.exports = { update, fetch }
+module.exports = { update, fetch };

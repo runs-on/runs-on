@@ -1,34 +1,31 @@
-const { ManifestCreation } = require("probot/lib/manifest-creation")
-const { isProduction, appAlreadySetup } = require("./utils.js")
+const { ManifestCreation } = require("probot/lib/manifest-creation");
+const License = require("../license");
+const stack = require("../stack").getInstance();
 
-const SETUP_PATH = "/setup"
-const CONVERT_PATH = "/setup/convert"
-const SUCCESS_PATH = "/setup/success"
+const SETUP_PATH = "/setup";
+const CONVERT_PATH = "/setup/convert";
+const SUCCESS_PATH = "/setup/success";
 
 // https://github.com/sugarshin/probot/blob/dd9f5ae98e535fb434296cb8cc6e6b24f663430b/src/apps/setup.ts#L130
-module.exports = async (
-  app,
-  { getRouter }
-) => {
+module.exports = async (app, { getRouter }) => {
   if (!getRouter) {
     throw new Error("getRouter() is required");
   }
-  console.log(app.state.webhooks)
+
   const router = getRouter();
   const setup = new ManifestCreation();
   const pkg = setup.pkg;
-  pkg.orgName = process.env.GH_ORG;
-  pkg.name = `${pkg.name} [${pkg.orgName || Math.floor(Date.now() / 1000)}]`
+
+  const { org } = await stack.fetchOutputs();
+  pkg.orgName = org;
+  pkg.name = `${pkg.name} [${pkg.orgName || Math.floor(Date.now() / 1000)}]`;
 
   const versionCheckUrl = "https://runs-on.com/versions";
-
-  if (!isProduction() && !process.env.WEBHOOK_PROXY_URL) { 
-    await setup.createWebhookChannel();
-  }
+  const license = License.getInstance();
 
   router.get(SETUP_PATH, async (req, res) => {
-    if (appAlreadySetup()) {
-      return res.redirect(SUCCESS_PATH)
+    if (stack.configured) {
+      return res.redirect(SUCCESS_PATH);
     }
     const baseUrl = getBaseUrl(req);
     const manifest = setup.getManifest(pkg, baseUrl);
@@ -40,32 +37,46 @@ module.exports = async (
 
     const createAppUrl = setup.createAppUrl;
     // Pass the manifest to be POST'd
-    res.render("setup.handlebars", { pkg, versionCheckUrl, createAppUrl, manifest: JSON.stringify(parsedManifest) });
+    res.render("setup.handlebars", {
+      license,
+      layout: false,
+      pkg,
+      versionCheckUrl,
+      createAppUrl,
+      manifest: JSON.stringify(parsedManifest),
+    });
   });
 
   router.get(CONVERT_PATH, async (req, res) => {
-    if (appAlreadySetup()) {
-      return res.redirect(SUCCESS_PATH)
+    if (stack.configured) {
+      return res.redirect(SUCCESS_PATH);
     }
     const { code } = req.query;
     const response = await setup.createAppFromCode(code);
 
+    // sometimes github doesn't have time to properly ack the app creation and rturns a 404, so delaying the redirect a bit
+    await new Promise((r) => setTimeout(r, 500));
     res.redirect(`${response}/installations/new`);
   });
 
   router.get(SUCCESS_PATH, async (req, res) => {
     const pkg = setup.pkg;
-    res.render("success.handlebars", { pkg, versionCheckUrl });
+    res.render("success.handlebars", {
+      license,
+      layout: false,
+      pkg,
+      versionCheckUrl,
+    });
   });
 
-  router.get("/", (req, res, next) => {
-    if (appAlreadySetup()) {
-      res.redirect(SUCCESS_PATH)
+  router.get("/", async (req, res, next) => {
+    if (stack.configured) {
+      return res.redirect(SUCCESS_PATH);
     } else {
-      res.redirect(SETUP_PATH)
+      return res.redirect(SETUP_PATH);
     }
   });
-}
+};
 
 function getBaseUrl(req) {
   const protocols = req.headers["x-forwarded-proto"] || req.protocol;

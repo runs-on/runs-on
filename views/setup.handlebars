@@ -20,11 +20,11 @@
           Welcome to RunsOn
         </h1>
 
-
         <div class="text-left mt-6">
           <h2 class="alt-h3 mb-2">Getting Started</h2>
 
           <p>You are a just few clicks away from fast, secure, self-hosted GitHub runners at the best price possible.</p>
+
           <p>Please click the button below and follow the instructions to install the RunsOn GitHub App in your organization.</p>
           <br>
 
@@ -39,9 +39,10 @@
 
       <div class="mt-4">
         <h4 class="alt-h4 text-gray-light">Need help?</h4>
-        <div class="d-flex flex-justify-center mt-2" style="align-items:center">
-          <a href="https://runs-on.com/docs" class="btn btn-outline mr-2">Documentation</a>
+        <div class="d-flex flex-justify-center mt-2" style="align-items:center;gap: 1rem;">
+          <a href="https://runs-on.com/docs" class="btn btn-outline">Documentation</a>
           <img alt="version check" src="{{ versionCheckUrl }}/{{ pkg.version }}.svg?org={{ pkg.orgName }}">
+          <div style="font-size: 75%">{{ license.status }}</div>
         </div>
       </div>
     </div>

@@ -1,77 +1,81 @@
-
-const { CloudFormationClient, DescribeStacksCommand } = require("@aws-sdk/client-cloudformation");
-const { getDefaultRoleAssumerWithWebIdentity, getDefaultRoleAssumer } = require('@aws-sdk/client-sts');
-const { defaultProvider } = require("@aws-sdk/credential-provider-node");
+const {
+  CloudFormationClient,
+  DescribeStacksCommand,
+} = require("@aws-sdk/client-cloudformation");
 const { STACK_NAME } = require("./constants");
-const { isProduction, appAlreadySetup, getLoggingMiddleware } = require("./apps/utils.js")
-const pino = require("pino")
+const pkg = require("../package.json");
 
-// const awsCredentials = defaultProvider({
-//   roleAssumerWithWebIdentity: getDefaultRoleAssumerWithWebIdentity(),
-//   roleAssumer: getDefaultRoleAssumer(),
-// })
+class Stack {
+  constructor() {
+    this.cfClient = new CloudFormationClient();
+    this.devMode = process.env["RUNS_ON_ENV"] === "dev";
+    this.outputs = {};
+    this.configured = false;
+    this.appVersion = pkg.version;
+  }
 
-const appVersion = require("../package.json").version;
+  async fetchOutputs() {
+    if (Object.keys(this.outputs).length === 0) {
+      const command = new DescribeStacksCommand({ StackName: STACK_NAME });
+      const response = await this.cfClient.send(command);
+      const { Outputs } = response.Stacks[0];
 
-const pinoOptions = {
-  timestamp: () => `,"date":"${new Date(Date.now()).toISOString()}"`,
-  level: process.env.LOGGER_LEVEL || "info",
-  messageKey: process.env.LOGGER_MESSAGE_KEY || "msg",
-  formatters: {
-    level: (label) => {
-      return { level: label.toUpperCase() };
-    },
-    bindings: (bindings) => {
-      return { version: appVersion };
-    },
+      const values = {};
+      values.org = process.env["RUNS_ON_ORG"];
+      values.licenseKey = process.env["RUNS_ON_LICENSE_KEY"];
+      values.s3BucketConfig = process.env["RUNS_ON_BUCKET_CONFIG"];
+      values.s3BucketCache = process.env["RUNS_ON_BUCKET_CACHE"];
+      values.subnetId = process.env["RUNS_ON_PUBLIC_SUBNET_ID"];
+      values.az = process.env["RUNS_ON_AVAILABILITY_ZONE"];
+      values.securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
+      values.instanceProfileArn = process.env["RUNS_ON_INSTANCE_PROFILE_ARN"];
+      values.topicArn = process.env["RUNS_ON_TOPIC_ARN"];
+      // on first install, CF stack may not yet be ready
+      if (Outputs) {
+        values.org ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnOrg",
+        )?.OutputValue;
+        values.licenseKey ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnLicenseKey",
+        )?.OutputValue;
+        values.s3BucketConfig ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnBucketConfig",
+        )?.OutputValue;
+        values.s3BucketCache ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnBucketCache",
+        )?.OutputValue;
+        values.subnetId ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnPublicSubnetId",
+        )?.OutputValue;
+        values.az ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnAvailabilityZone",
+        )?.OutputValue;
+        values.securityGroupId ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnSecurityGroupId",
+        )?.OutputValue;
+        values.instanceProfileArn ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnInstanceProfileArn",
+        )?.OutputValue;
+        values.topicArn ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnTopicArn",
+        )?.OutputValue;
+        // warn: may be null if stack outputs not yet ready
+        values.entryPoint ||= Outputs.find(
+          (output) => output.OutputKey == "RunsOnEntryPoint",
+        )?.OutputValue;
+      }
+      values.region = await this.cfClient.config.region();
+      this.outputs = values;
+    }
+    return this.outputs;
+  }
+
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new Stack();
+    }
+    return this.instance;
   }
 }
 
-const devMode = process.env["RUNS_ON_ENV"] === "dev"
-const defaultLogger = pino(pinoOptions).child({ name: "application" })
-
-function getLogger(options = {}) {
-  if (Object.keys(options).length === 0) {
-    return defaultLogger;
-  }
-
-  return pino(pinoOptions).child(options);
-}
-
-async function loadStackEnvironment() {
-  const cfClient = new CloudFormationClient();
-  const command = new DescribeStacksCommand({ StackName: STACK_NAME });
-  const response = await cfClient.send(command);
-  const { Outputs } = response.Stacks[0];
-
-  const outputs = {}
-  outputs.s3BucketConfig = process.env["RUNS_ON_BUCKET_CONFIG"];
-  outputs.s3BucketCache = process.env["RUNS_ON_BUCKET_CACHE"];
-  outputs.subnetId = process.env["RUNS_ON_PUBLIC_SUBNET_ID"];
-  outputs.az = process.env["RUNS_ON_AVAILABILITY_ZONE"];
-  outputs.securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
-  outputs.instanceProfileArn = process.env["RUNS_ON_INSTANCE_PROFILE_ARN"];
-  outputs.topicArn = process.env["RUNS_ON_TOPIC_ARN"];
-  outputs.entryPoint = process.env["RUNS_ON_ENTRY_POINT"];
-  // on first install, CF stack may not yet be ready, so not bothering fetching outputs required for runtime since app is not configured yet
-  if (Outputs) {
-    outputs.s3BucketConfig ||= Outputs.find((output) => output.OutputKey == "RunsOnBucketConfig").OutputValue
-    outputs.s3BucketCache ||= Outputs.find((output) => output.OutputKey == "RunsOnBucketCache").OutputValue
-    outputs.subnetId ||= Outputs.find((output) => output.OutputKey == "RunsOnPublicSubnetId").OutputValue
-    outputs.az ||= Outputs.find((output) => output.OutputKey == "RunsOnAvailabilityZone").OutputValue
-    outputs.securityGroupId ||= Outputs.find((output) => output.OutputKey == "RunsOnSecurityGroupId").OutputValue
-    outputs.instanceProfileArn ||= Outputs.find((output) => output.OutputKey == "RunsOnInstanceProfileArn").OutputValue
-    outputs.topicArn ||= Outputs.find((output) => output.OutputKey == "RunsOnTopicArn").OutputValue
-    outputs.entryPoint ||= Outputs.find((output) => output.OutputKey == "RunsOnEntryPoint").OutputValue
-  }
-  outputs.region = await cfClient.config.region();
-
-  return outputs;
-}
-
-module.exports = {
-  outputs: loadStackEnvironment(),
-  getLogger,
-  devMode
-}
-
+module.exports = Stack;

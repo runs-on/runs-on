@@ -32,6 +32,10 @@ while [[ "$#" -gt 0 ]]; do
       email="${1#*=}"
       param_overrides="$param_overrides EmailAddress=$email"
       ;;
+    --license-key=*)
+      license_key="${1#*=}"
+      param_overrides="$param_overrides LicenseKey=$license_key"
+      ;;
     --stack-name=*)
       stack_name="${1#*=}"
       ;;
@@ -147,5 +151,5 @@ elif [ "$install" == true ]; then
 
   echo "✅ Stack ready." && display_stack_outputs && exit 0
 else
-  echo "Usage: $0 [--install|--uninstall|--status] [--template-url=<value>] [--org=<your-github-org>] [--ssh-allow-from=<value>] [--stack-name=<value>] [--email=<value>] [--az=<value>]"
+  echo "Usage: $0 [--install|--uninstall|--status] [--template-url=<value>] [--org=<your-github-org>] [--ssh-allow-from=<value>] [--stack-name=<value>] [--email=<value>] [--license-key=<value>] [--az=<value>]"
 fi
