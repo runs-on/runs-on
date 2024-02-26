@@ -1,69 +1,46 @@
-const ec2 = require("./src/ec2");
-const config = require("./src/config");
-const costs = require("./src/costs");
-const github = require("./src/github");
-const alerting = require("./src/alerting");
-const { extractLabels, sanitizeImageSpec, sanitizeRunnerSpec } = require("./src/utils");
-const { DEFAULT_RUNNER_SPEC, DEFAULT_IMAGE_SPEC, IMAGES, RUNNERS, RUNS_ON_LABEL, RUNS_ON_ENV } = require("./src/constants");
+const stack = require("../stack")
+const ec2 = require("../ec2");
+const costs = require("../costs");
+const github = require("../github");
+const alerting = require("../alerting");
+const { extractLabels, sanitizeImageSpec, sanitizeRunnerSpec } = require("../utils");
+const { DEFAULT_RUNNER_SPEC, DEFAULT_IMAGE_SPEC, IMAGES, RUNNERS, RUNS_ON_LABEL, RUNS_ON_ENV } = require("../constants");
 
-const { getDefaultRoleAssumerWithWebIdentity, getDefaultRoleAssumer } = require('@aws-sdk/client-sts');
-const { defaultProvider } = require("@aws-sdk/credential-provider-node");
-
-const contextualizedError = (context, message, error) => {
-  const { action, enterprise, installation, sender, workflow_job, deployment } = context.payload;
-  const { id, name, run_id, runner_id, runner_name, workflow_name, labels, steps } = workflow_job;
-  const { repo, owner } = context.repo();
-  return [
-    `${owner}/${repo} - ${message}:`,
-    `* Workflow: [\`${workflow_name}\`](${workflow_job.html_url})`,
-    `* Job name: \`${name}\``,
-    `* Labels \`${labels.join(", ")}\``,
-    "",
-    "```",
-    `${error}`,
-    "```",
-  ].join("\n");
-}
-
-/**
- * This is the main entrypoint to your Probot app
- * @param {import('probot').Probot} app
- */
 module.exports = async (app) => {
-  app.log.info("Yay, the app was loaded!");
+  app.log.info("🎉 Yay, the app was loaded!");
+  console.log(app.state.webhooks)
 
-  app.state.enabled = true;
-  app.state.custom = {
-    awsCredentials: defaultProvider({
-      roleAssumerWithWebIdentity: getDefaultRoleAssumerWithWebIdentity(),
-      roleAssumer: getDefaultRoleAssumer(),
-    }),
+  const outputs = await stack.outputs;
+  app.log.info(`✅ Stack outputs: ${JSON.stringify(outputs)}`)
+
+  const appDetails = (await app.state.octokit.apps.getAuthenticated()).data;
+  app.log.info(`✅ GitHub App details: ${JSON.stringify(appDetails)}`)
+  
+  const appOwner = appDetails.owner.login;
+  const appBotLogin = [appDetails.slug, "[bot]"].join("");
+  app.log.info(`✅ GitHub App bot name: ${appBotLogin}`);
+
+  await alerting.init();
+
+  if (appOwner !== process.env["RUNS_ON_ORG"]) {
+    const msg = `❌ App owner does not match RUNS_ON_ORG environment variable: ${appOwner} !== ${process.env["GH_ORG"]}.`;
+    alerting.sendError(msg);
+
+    // stop here
+    return;
   }
-  // CloudFormation Stack outputs
-  app.state.stack = { outputs: {} }
-  app.state.devMode = process.env["RUNS_ON_ENV"] === "dev"
 
-  // delay first initialization to bind socket asap
-  setTimeout(async () => {
-    await config.init(app);
-    await ec2.init(app);
-    await costs.init(app);
-  }, 100);
+  await costs.init();
 
   app.on("installation.created", async (context) => {
     const { installation } = context.payload;
-    context.log.info(`meta: ${JSON.stringify(context.payload)}`);
+    context.log.info(`Installation: ${JSON.stringify(installation)}`);
   });
 
   app.on("workflow_job.queued", async (context) => {
-    if (!app.state.enabled) {
-      context.log.info("Ignoring workflow job since app has been disabled due to configuration issue.")
-      return;
-    }
-
     // https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
     const { repository, workflow_job } = context.payload;
-    const { workflow_name, labels } = workflow_job;
+    const { id, name, run_id, workflow_name, labels } = workflow_job;
     const { repo, owner } = context.repo();
 
     context.log.info(`workflow job queued: workflow_name=${workflow_name}, labels=${labels.join(", ")}`)
@@ -75,7 +52,7 @@ module.exports = async (app) => {
 
     try {
       const { image, runner, ...jobLabels } = extractLabels(labels, RUNS_ON_LABEL);
-      const { debug = false, env = 'prod', spot = true, ssh = true } = jobLabels;
+      const { debug = false, env = 'prod', spot, ssh } = jobLabels;
 
       if (env !== RUNS_ON_ENV) {
         context.log.info(`Ignoring workflow since env label does not match ${RUNS_ON_ENV}`)
@@ -96,26 +73,33 @@ module.exports = async (app) => {
       }
 
       if (Object.keys(runnerSpec).length === 0) {
-        app.log.info(`Defaulting to default runner spec since none given`)
+        context.log.info(`Defaulting to default runner spec since none given`)
         runnerSpec = DEFAULT_RUNNER_SPEC;
       }
+
+      runnerSpec.ssh = !(ssh === false || runnerSpec.ssh === false)
+      runnerSpec.spot = !(spot === false || runnerSpec.spot === false)
+
       context.log.info(`runnerSpec: ${JSON.stringify(runnerSpec)}`)
 
+      // allow to define image in runner spec
+      const imageName = image || runnerSpec[image];
+
       let imageSpec = {
-        ...sanitizeImageSpec(IMAGES[image]),
-        ...sanitizeImageSpec(repoConfig?.images?.[image]),
+        ...sanitizeImageSpec(IMAGES[imageName]),
+        ...sanitizeImageSpec(repoConfig?.images?.[imageName]),
         ...sanitizeImageSpec(jobLabels),
       }
 
       if (Object.keys(imageSpec).length === 0) {
-        app.log.info(`Overriding default image spec since none given`)
+        context.log.info(`Overriding default image spec since none given`)
         imageSpec = DEFAULT_IMAGE_SPEC;
       }
       context.log.info(`imageSpec: ${JSON.stringify(imageSpec)}`)
 
       // Fetch SSH admins if enabled
       let sshGithubUsernames = [];
-      if (ssh) {
+      if (runnerSpec.ssh) {
         if (repoConfig?.admins) {
           sshGithubUsernames = [repoConfig.admins].flat().filter((username) => {
             return username && (/^[\w\-]+$/).test(username);
@@ -134,13 +118,19 @@ module.exports = async (app) => {
 
       // Create EC2 instance
       const userDataConfig = { runnerJitConfig, sshGithubUsernames, runnerName, debug }
-      const tags = [{ Key: "runs-on-github-org", Value: owner }, { Key: "runs-on-github-repo", Value: repo }, { Key: "runs-on-github-repo-full-name", Value: repository.full_name }]
+      const tags = [
+        { Key: "runs-on-org", Value: owner },
+        { Key: "runs-on-repo", Value: repo },
+        { Key: "runs-on-repo-full-name", Value: repository.full_name },
+        { Key: "runs-on-run-id", Value: String(run_id) },
+        { Key: "runs-on-workflow-name", Value: workflow_name },
+        { Key: "runs-on-labels", Value: labels.join(",") },
+      ]
 
       // will raise if unable to start instance
-      await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags, spot });
+      await ec2.createAndWaitForInstance({ instanceName: runnerName, userDataConfig, imageSpec, runnerSpec, tags });
     } catch (error) {
-      const msg = contextualizedError(context, "Error when attempting to launch workflow job", error);
-      alerting.sendError(msg);
+      alerting.sendContextualizedError(context, "Error when attempting to launch workflow job", error);
     }
   });
 
@@ -158,8 +148,7 @@ module.exports = async (app) => {
     try {
       await ec2.terminateInstanceAndPostCosts(runner_name);
     } catch (error) {
-      const msg = contextualizedError(context, "Error when attempting to terminate instance", error);
-      alerting.sendError(msg);
+      alerting.sendContextualizedError(context, "Error when attempting to terminate instance", error);
     }
   });
-};
+}

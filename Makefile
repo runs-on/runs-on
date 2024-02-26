@@ -51,10 +51,16 @@ s3-upload-dev:
 release-dev: login bump build-dev push-dev s3-upload-dev
 
 run-dev:
-	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev bin/run
+	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev npm run dev
 
 install-dev:
 	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on --az=us-east-1a --email=hey@cyrilrohr.com
 
 install-test:
 	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on-test --az=us-east-1b --email=hey@cyrilrohr.com
+
+install-stage:
+	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template.yaml --org=runs-on --stack-name=runs-on-stage --az=eu-west-1 --email=ops@runs-on.com
+
+logs-stage:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region eu-west-1 /aws/apprunner/RunsOnService-6Gwxsz1vjfMD/356d75069c2c4ec89b0e452c51778ce8/application -wGS -s 30m --timestamp

@@ -272,10 +272,10 @@ Resources:
           IsPubliclyAccessible: true
         IpAddressType: IPV4
       HealthCheckConfiguration:
-        Path: /
+        Path: /ping
         Protocol: HTTP
-        HealthyThreshold: 1
-        UnhealthyThreshold: 15
+        HealthyThreshold: 2
+        UnhealthyThreshold: 10
         Interval: 10
       SourceConfiguration:
         ImageRepository:
@@ -296,6 +296,8 @@ Resources:
                 Value: !Ref AvailabilityZone
               - Name: RUNS_ON_SECURITY_GROUP_ID
                 Value: !Ref SecurityGroup
+              - Name: RUNS_ON_ENTRY_POINT
+                Value: !Ref RunsOnEntryPoint
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_TOPIC_ARN

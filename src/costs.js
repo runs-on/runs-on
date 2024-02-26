@@ -2,11 +2,13 @@ const { CostExplorerClient, GetCostAndUsageCommand, UpdateCostAllocationTagsStat
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 const { STACK_TAG_KEY, STACK_NAME, EMAIL_COSTS_TEMPLATE } = require("./constants");
 const { getLast15DaysPeriod } = require('./utils');
+const stack = require("./stack");
 const alerting = require("./alerting");
 
 const client = new CostExplorerClient();
 const cloudWatchClient = new CloudWatchClient();
-let app;
+const logger = stack.getLogger();
+
 let tagAllocationRegistrationAttempted = false;
 
 async function getDailyCosts({ start, end, granularity = 'DAILY' } = {}) {
@@ -27,25 +29,20 @@ async function getDailyCosts({ start, end, granularity = 'DAILY' } = {}) {
   return ResultsByTime;
 }
 
-async function init(probotApp) {
-  app = probotApp;
-
-  const WAIT_TIME_BEFORE_REGISTERING_COST_ALLOCATION_TAG = app.state.devMode ? 1000 * 10 : 1000 * 60 * 60 * 24; // 24h
-  const INTERVAL_BETWEEN_COST_REPORTS = app.state.devMode ? 1000 * 60 * 60 * 1 : 1000 * 60 * 60 * 24; // 24h
+async function init() {
+  const WAIT_TIME_BEFORE_REGISTERING_COST_ALLOCATION_TAG = stack.devMode ? 1000 * 10 : 1000 * 60 * 60 * 24; // 24h
+  const INTERVAL_BETWEEN_COST_REPORTS = stack.devMode ? 1000 * 60 * 60 * 1 : 1000 * 60 * 60 * 24; // 24h
 
   setTimeout(async () => {
     tagAllocationRegistrationAttempted = true;
     try {
-      app.log.info(`Attempting to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`);
+      logger.info(`Attempting to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`);
       await registerAllocationTag();
     } catch (error) {
       alerting.sendError([
         `❌ Unable to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
-        ``,
         `This is expected if you are running RunsOn in an AWS sub-account.`,
-        ``,
         `However, for cost reports to work, you will have to manually enable cost allocation tags in the parent account for the \`${STACK_TAG_KEY}\` tag key.`,
-        ``,
         `See https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html for more information.`
       ]);
     }
@@ -63,8 +60,8 @@ async function init(probotApp) {
 }
 
 async function sendEmailCosts() {
-  if (app.state.devMode) {
-    app.log.info(`[dev] Would have sent email costs`);
+  if (stack.devMode) {
+    logger.info(`[dev] Would have sent email costs`);
     return;
   }
   const lastUpdated = new Date().toISOString();
@@ -81,9 +78,9 @@ async function registerAllocationTag() {
 
   const response = await client.send(new UpdateCostAllocationTagsStatusCommand(params));
   if (response.Errors?.length > 0) {
-    app.log.error("❌ Cost Allocation Tags Status:", response.Errors.join(", "));
+    logger.error("❌ Cost Allocation Tags Status:", response.Errors.join(", "));
   } else {
-    app.log.info(`✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`);
+    logger.info(`✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`);
   }
 }
 

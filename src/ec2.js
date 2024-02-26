@@ -1,3 +1,4 @@
+const stack = require("./stack")
 const { EC2Client, paginateDescribeInstanceTypes } = require("@aws-sdk/client-ec2");
 const { DescribeInstancesCommand, DescribeInstanceStatusCommand, DescribeImagesCommand, RunInstancesCommand, waitUntilInstanceRunning, TerminateInstancesCommand } = require("@aws-sdk/client-ec2");
 const memoize = require('lru-memoize').default;
@@ -15,18 +16,11 @@ const {
   SUPPORTED_ARCHITECTURES,
   STACK_FILTERS,
   DEFAULT_FAMILY_FOR_PLATFORM,
-  DEFAULT_THROUGHPUT,
-  STACK_NAME
+  DEFAULT_THROUGHPUT
 } = require("./constants");
 
 const ec2Client = new EC2Client();
-let region;
-let app;
-
-async function init(probotApp) {
-  app = probotApp;
-  return app;
-}
+const logger = stack.getLogger();
 
 function extractInfosFromImage(image) {
   return {
@@ -41,6 +35,7 @@ function extractInfosFromImage(image) {
 }
 
 async function findCustomImage(inputs) {
+  const { region } = await stack.outputs;
   const { ami, arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, name, owner } = inputs;
 
   const params = ami ? { ImageIds: [String(ami)] } : {
@@ -99,20 +94,20 @@ async function createSingleEC2Instance({ tags = [], instanceTypes, instanceParam
     }
 
     try {
-      app.log.info(`→ Attempting to create instance with type ${instanceType.InstanceType}...`);
+      logger.info(`→ Attempting to create instance with type ${instanceType.InstanceType}...`);
       instanceParamsForType.InstanceType = instanceType.InstanceType;
       const runCommand = new RunInstancesCommand(instanceParamsForType);
       if (dryRun) {
-        app.log.info(`→ Not launching instance since dry-run=true`);
+        logger.info(`→ Not launching instance since dry-run=true`);
         return { instance, error };
       } else {
         const instanceResponse = await ec2Client.send(runCommand);
         const instance = instanceResponse.Instances[0];
-        app.log.info(`✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`);
+        logger.info(`✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`);
         return { instance, error };
       }
     } catch (e) {
-      app.log.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${e}.`);
+      logger.warn(`⚠️ Failed to create instance with type ${instanceType.InstanceType}: ${e}.`);
       error = e;
     }
   }
@@ -124,6 +119,7 @@ function flatMapInput(input) {
 }
 
 const _findInstanceTypesMatching = async function (inputs) {
+  const { region } = await stack.outputs;
   const { arch = DEFAULT_ARCHITECTURE, platform = DEFAULT_PLATFORM, cpu = DEFAULT_CPU, ram, family } = inputs;
 
   let familyValues = flatMapInput(family);
@@ -183,7 +179,7 @@ const _findInstanceTypesMatching = async function (inputs) {
       Values: ramValues,
     });
   }
-  app.log.info(`Instance search filters: ${JSON.stringify(params.Filters)}`)
+  logger.info(`Instance search filters: ${JSON.stringify(params.Filters)}`)
 
   let matchingInstanceTypes = []
   let totalPages = 0;
@@ -195,7 +191,7 @@ const _findInstanceTypesMatching = async function (inputs) {
     matchingInstanceTypes.push(...page.InstanceTypes);
   }
 
-  app.log.info(`Found ${matchingInstanceTypes.length} matching instance types among close to ${totalPages * 100} instance types`);
+  logger.info(`Found ${matchingInstanceTypes.length} matching instance types among close to ${totalPages * 100} instance types`);
 
   // sort by instance type name ascending
   matchingInstanceTypes = matchingInstanceTypes.sort((a, b) => {
@@ -231,7 +227,7 @@ const _findInstanceTypesMatching = async function (inputs) {
 
   const selectedInstanceTypes = [...sortedMatchingInstanceTypes].slice(0, 10);
 
-  app.log.info(`Selected instance types: ${JSON.stringify(selectedInstanceTypes.map(instanceType => instanceType.InstanceType))}`);
+  logger.info(`Selected instance types: ${JSON.stringify(selectedInstanceTypes.map(instanceType => instanceType.InstanceType))}`);
 
   if (selectedInstanceTypes.length === 0) {
     throw new Error(`❌ No instance types found matching the provided criteria: ${JSON.stringify({ ...inputs, region })}`);
@@ -250,21 +246,23 @@ function base64Scripts(scripts = []) {
 const createEC2Instance = async function ({
   dryRun = false,
   tags = [],
-  spot,
   imageSpec,
   runnerSpec,
   instanceName,
   userDataConfig
 }) {
-  const { subnetId, securityGroupId } = app.state.stack.outputs;
-  const { cpu, ram,
+  const { subnetId, securityGroupId, s3BucketCache, region, instanceProfileArn } = await stack.outputs;
+  const {
+    cpu,
+    ram,
     iops = DEFAULT_IOPS,
     hdd,
     throughput = DEFAULT_THROUGHPUT,
-    family
+    family,
+    spot,
   } = runnerSpec;
 
-  app.log.info(`Attempting to find image for ${JSON.stringify(imageSpec)}...`);
+  logger.info(`Attempting to find image for ${JSON.stringify(imageSpec)}...`);
   const finalImageSpec = await findCustomImage(imageSpec);
   const { ami, arch, owner, platform, minHddSize, preinstall = [] } = finalImageSpec;
 
@@ -306,7 +304,7 @@ const createEC2Instance = async function ({
   }
 
   // at this point, arch and platform are named after the AWS specific names (e.g. x86_64, Linux/UNIX)
-  app.log.info(`✅ Found AMI: ${JSON.stringify(finalImageSpec)}`);
+  logger.info(`✅ Found AMI: ${JSON.stringify(finalImageSpec)}`);
 
   const userDataTemplate = USER_DATA[platform];
   if (!userDataTemplate) {
@@ -316,8 +314,8 @@ const createEC2Instance = async function ({
   const instanceTypes = await findInstanceTypesMatching({ arch, platform, cpu, ram, family })
   const userData = userDataTemplate({
     ...userDataConfig,
-    s3BucketCache: app.state.stack.outputs.s3BucketCache,
-    awsRegion: app.state.stack.outputs.region,
+    s3BucketCache,
+    awsRegion: region,
     launchedAt: (new Date()).toISOString(),
     arch,
     preinstallScripts: base64Scripts(preinstall),
@@ -346,25 +344,21 @@ const createEC2Instance = async function ({
       },
       TagSpecifications: [{ ResourceType: 'volume', Tags: [...STACK_TAGS, ...tags] }]
     }],
+    // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-profiles
     IamInstanceProfile: {
-      Arn: app.state.stack.outputs.instanceProfileArn
+      Arn: instanceProfileArn
     }
   };
-  // specifiy instance profile:
-  // https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-profiles
-  // instanceParams.IamInstanceProfile = {
-  //   Arn: app.state.custom.instanceProfileArn
-  // }
 
   // https://aws.amazon.com/ebs/pricing/?nc1=h_ls
   // Throughput costs $0.040/MB/s-month over 125, i.e. for 400MB/s: (400-125)*0.040/(60*24*30)=$0.00025/min
   instanceParams.BlockDeviceMappings[0].Ebs.Throughput = finalThroughput;
   instanceParams.BlockDeviceMappings[0].Ebs.Iops = finalIops;
 
-  app.log.info(`Storage details: ${JSON.stringify(instanceParams.BlockDeviceMappings[0].Ebs)}`)
+  logger.info(`Storage details: ${JSON.stringify(instanceParams.BlockDeviceMappings[0].Ebs)}`)
 
   if (spot) {
-    app.log.info(`→ Using spot instances`);
+    logger.info(`→ Using spot instances`);
     instanceParams.InstanceMarketOptions = {
       MarketType: 'spot',
       SpotOptions: {
@@ -379,7 +373,7 @@ const createEC2Instance = async function ({
 
   if (!result.instance && spot) {
     // attempt one last time without spot instances
-    app.log.info(`→ Attempting to create instance without spot instances...`);
+    logger.info(`→ Attempting to create instance without spot instances...`);
     delete instanceParams.InstanceMarketOptions;
     result = await createSingleEC2Instance({ tags, instanceTypes, instanceParams, dryRun });
   }
@@ -412,12 +406,12 @@ async function fetchInstanceDetails(instanceId) {
 }
 // waitForStatusChecks is false by default, since it takes much longer to say OK vs reality of runner being connected to GitHub
 async function waitForInstance(instanceId, waitForStatusChecks = false) {
-  app.log.info(`→ Waiting for instance ${instanceId} to be in running state...`);
+  logger.info(`→ Waiting for instance ${instanceId} to be in running state...`);
 
   try {
     // First, wait until the instance is in a running state
     await waitUntilInstanceRunning({ client: ec2Client, maxWaitTime: 300 }, { InstanceIds: [instanceId] });
-    app.log.info(`✅ EC2 Instance is now running.`);
+    logger.info(`✅ EC2 Instance is now running.`);
 
     if (waitForStatusChecks) {
       // Now check the instance status
@@ -435,15 +429,15 @@ async function waitForInstance(instanceId, waitForStatusChecks = false) {
 
         if (instanceStatuses.length > 0 && instanceStatuses[0].InstanceStatus.Status === 'ok' && instanceStatuses[0].SystemStatus.Status === 'ok') {
           instanceOk = true;
-          app.log.info(`Instance ${instanceId} is running and status checks passed.`);
+          logger.info(`Instance ${instanceId} is running and status checks passed.`);
         } else {
-          app.log.info(`[${attempts}/${maxAttempts}] Waiting for instance ${instanceId} status checks to pass...`);
+          logger.info(`[${attempts}/${maxAttempts}] Waiting for instance ${instanceId} status checks to pass...`);
           await new Promise(resolve => setTimeout(resolve, 10000)); // Wait for 10 seconds before checking again
         }
       }
     }
   } catch (error) {
-    app.log.error(`❌ Error waiting for instance to run and pass status checks: ${error}`);
+    logger.error(`❌ Error waiting for instance to run and pass status checks: ${error}`);
     throw error;
   }
 }
@@ -469,13 +463,13 @@ async function terminateInstance(instanceName) {
       };
 
       await ec2Client.send(new TerminateInstancesCommand(terminateParams));
-      app.log.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
+      logger.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
       return instanceDetails;
     } else {
-      app.log.warn('No instances found with the specified name.');
+      logger.warn('No instances found with the specified name.');
     }
   } catch (error) {
-    app.log.error(`Error terminating instance: ${error}`);
+    logger.error(`Error terminating instance: ${error}`);
   }
 }
 
@@ -491,7 +485,7 @@ async function createAndWaitForInstance(inputs) {
   if (instance) {
     await waitForInstance(instance.InstanceId);
     const instanceDetails = await fetchInstanceDetails(instance.InstanceId);
-    app.log.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
+    logger.info(`✅ Instance is running: ${JSON.stringify(instanceDetails)}`);
     return instanceDetails;
   } else {
     const msg = `Unable to start EC2 instance with the following configuration: ${JSON.stringify({ imageSpec, runnerSpec })}. The error was: ${error}`;
@@ -511,9 +505,9 @@ const metricsQueue = awsRateLimit((inputs) => {
 async function terminateInstanceAndPostCosts(instanceName) {
   const instanceDetails = await terminateQueue(instanceName)
   if (instanceDetails) {
-    app.log.info(JSON.stringify(instanceDetails))
+    logger.info(JSON.stringify(instanceDetails))
     await metricsQueue({ ...instanceDetails, AssumedTerminationTime: new Date() });
   }
 }
 
-module.exports = { init, region, createAndWaitForInstance, terminateInstanceAndPostCosts, findInstanceTypesMatching }
+module.exports = { createAndWaitForInstance, terminateInstanceAndPostCosts, findInstanceTypesMatching }

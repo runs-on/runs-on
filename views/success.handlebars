@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>RunsOn - Success</title>
-    <link rel="icon" href="/probot/static/probot-head.png">
-    <link rel="stylesheet" href="/probot/static/primer.css">
+    <link rel="icon" href="/static/favicon.png">
+    <link rel="stylesheet" href="/static/primer.css">
     <style>
       body { font-size: 16px; }
     </style>
   </head>
   <body class="height-full bg-gray-light">
     <div class="d-flex flex-column flex-justify-center flex-items-center text-center height-full">
-      <img src="/probot/static/logo.png" alt="RunsOn Logo" width="200" class="mb-6">
+      <img src="/static/logo.png" alt="RunsOn Logo" width="200" class="mb-6">
       <div class="box-shadow rounded-2 border p-6 bg-white">
         <div class="text-center">
           <h1 class="alt-h3 mb-2">🎉 Congrats!</h1>
@@ -25,8 +25,8 @@
       <div class="mt-4">
         <h4 class="alt-h4 text-gray-light">Need help?</h4>
         <div class="d-flex flex-justify-center mt-2" style="align-items:center">
-          <a href="https://github.com/runs-on/runs-on" class="btn btn-outline mr-2">Documentation</a>
-          <a href="https://github.com/runs-on/runs-on"><img alt="version check" src="${RUNS_ON_VERSION_CHECK_URL}/${RUNS_ON_APP_VERSION}.svg?org=${GH_ORG}"></a>
+          <a href="https://runs-on.com/docs" class="btn btn-outline mr-2">Documentation</a>
+          <img alt="version check" src="{{ versionCheckUrl }}/{{ pkg.version }}.svg?org={{ pkg.orgName }}">
         </div>
       </div>
     </div>

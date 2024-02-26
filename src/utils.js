@@ -31,7 +31,6 @@ function transformValue(value) {
 }
 
 function extractLabels(labels, runsOnLabel) {
-  console.log("labels", labels)
   const extractedLabels = {};
 
   // e.g. runs-on-family=c7a+c6a
