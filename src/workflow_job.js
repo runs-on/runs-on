@@ -1,3 +1,4 @@
+const { v4: uuidv4 } = require("uuid");
 const {
   extractLabels,
   sanitizeImageSpec,
@@ -57,9 +58,7 @@ class WorkflowJob {
       { Key: "runs-on-workflow-job-name", Value: name },
       { Key: "runs-on-workflow-job-id", Value: String(id) },
     ];
-    this.runnerName =
-      runner_name ||
-      `runs-on-aws-${Math.random().toString(36).substring(2, 15)}`;
+    this.runnerName = runner_name || `runs-on-aws-${uuidv4()}`;
   }
 
   inProgress() {
@@ -76,7 +75,7 @@ class WorkflowJob {
       });
       if (instanceDetails) {
         this.logger.info(
-          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`,
+          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`
         );
         const minutes = await costs.postWorkflowUsage(
           {
@@ -84,14 +83,14 @@ class WorkflowJob {
             AssumedTerminationTime: new Date(),
             Conclusion: this.conclusion,
           },
-          { logger: this.logger },
+          { logger: this.logger }
         );
 
         this.logger.info(`✅ Posted ${minutes} minute(s) of workflow usage.`);
       }
     } catch (error) {
       this.sendError(
-        `❌ Error when attempting to terminate instance: ${error}`,
+        `❌ Error when attempting to terminate instance: ${error}`
       );
     }
 
@@ -101,14 +100,14 @@ class WorkflowJob {
   async schedule() {
     if (!this.canBeProcessedByRunsOn()) {
       this.logger.info(
-        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`,
+        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
       );
       return false;
     }
 
     if (!this.canBeProcessedByEnvironment()) {
       this.logger.info(
-        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`,
+        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
       );
       return false;
     }
@@ -138,14 +137,14 @@ class WorkflowJob {
     this.userDataTemplate = USER_DATA[platform];
     if (!this.userDataTemplate) {
       throw new Error(
-        `❌ No user data template found for platform ${platform}`,
+        `❌ No user data template found for platform ${platform}`
       );
     }
 
     this.instanceTypes = await this.findMatchingInstanceTypes();
     if (this.instanceTypes.length === 0) {
       throw new Error(
-        `❌ No instance types found for ${JSON.stringify(this.runnerSpec)}`,
+        `❌ No instance types found for ${JSON.stringify(this.runnerSpec)}`
       );
     }
 
@@ -268,8 +267,8 @@ class WorkflowJob {
     });
     this.logger.info(
       `Selected instance types: ${JSON.stringify(
-        instanceTypes.map((instanceType) => instanceType.InstanceType),
-      )}`,
+        instanceTypes.map((instanceType) => instanceType.InstanceType)
+      )}`
     );
     return instanceTypes;
   }
@@ -340,7 +339,7 @@ class WorkflowJob {
           : Object.keys(otherRunnerLabels)
               .sort()
               .map((key) =>
-                [key, [otherRunnerLabels[key]].flat().join("+")].join("="),
+                [key, [otherRunnerLabels[key]].flat().join("+")].join("=")
               )
               .join("-");
         this.runnerSpec = { ...result, id };
@@ -374,14 +373,14 @@ class WorkflowJob {
             this.context.repo({
               permission: "admin",
               affiliation: "all",
-            }),
+            })
           );
           admins = response.data.map((user) => user.login);
         }
         this.logger.info(
           `Usernames with SSH access: ${admins.join(
-            ", ",
-          )}. Will take the first 10 only.`,
+            ", "
+          )}. Will take the first 10 only.`
         );
         admins = admins.slice(0, 10);
       }
@@ -397,7 +396,7 @@ class WorkflowJob {
         name: this.runnerName,
         runner_group_id: 1,
         labels: this.labels,
-      }),
+      })
     );
 
     const runnerJitConfig = response.data.encoded_jit_config;
@@ -419,7 +418,7 @@ class WorkflowJob {
         "```",
         `${error}`,
         "```",
-      ].join("\n"),
+      ].join("\n")
     );
   }
 }
