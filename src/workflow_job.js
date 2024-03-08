@@ -68,6 +68,19 @@ class WorkflowJob {
 
   async complete() {
     this.logger.info(`Workflow job completed`);
+    if (!this.canBeProcessedByRunsOn()) {
+      this.logger.info(
+        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
+      );
+      return false;
+    }
+
+    if (!this.canBeProcessedByEnvironment()) {
+      this.logger.info(
+        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
+      );
+      return false;
+    }
 
     try {
       const instanceDetails = await ec2.terminateInstance(this.runnerName, {

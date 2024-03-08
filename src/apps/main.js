@@ -16,7 +16,7 @@ module.exports = async (app, { getRouter }) => {
   const appBotLogin = [slug, "[bot]"].join("");
   app.log.info(
     { app: { botLogin: appBotLogin, slug, name, permissions } },
-    `✅ GitHub App`,
+    `✅ GitHub App`
   );
 
   if (appOwner !== outputs.org) {
@@ -30,7 +30,7 @@ module.exports = async (app, { getRouter }) => {
   // bind webhook path with correct credentials
   getRouter().use(
     "/",
-    createWebhooksMiddleware(app.webhooks, { path: "/", log: app.log }),
+    createWebhooksMiddleware(app.webhooks, { path: "/", log: app.log })
   );
 
   app.on("installation.created", async (context) => {
