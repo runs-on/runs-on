@@ -275,7 +275,7 @@ class WorkflowJob {
 
   async findRepoConfig() {
     if (!this.repoConfig) {
-      this.repoConfig = await this.context.config("runs-on.yml");
+      this.repoConfig = await this.context.config("runs-on.yml", {});
     }
     return this.repoConfig;
   }
