@@ -1,15 +1,3 @@
-# This is a GitHub App Manifest. These settings will be used by default when
-# initially configuring your GitHub App.
-#
-# NOTE: changing this file will not update your GitHub App settings.
-# You must visit github.com/settings/apps/your-app-name to edit them.
-#
-# Read more about configuring your GitHub App:
-# https://probot.github.io/docs/development/#configuring-a-github-app
-#
-# Read more about GitHub App Manifests:
-# https://developer.github.com/apps/building-github-apps/creating-github-apps-from-a-manifest/
-
 # The list of events the GitHub App subscribes to.
 default_events:
  - workflow_job

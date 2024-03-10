@@ -1,4 +1,4 @@
-VERSION=v1.6.5
+VERSION=v1.7.2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
@@ -51,10 +51,16 @@ s3-upload-dev:
 release-dev: login bump build-dev push-dev s3-upload-dev
 
 run-dev:
-	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev RUNS_ON_ORG=runs-on AWS_PROFILE=runs-on-dev bin/run
+	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev AWS_PROFILE=runs-on-dev npm run dev
 
 install-dev:
-	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on --az=us-east-1a --email=hey@cyrilrohr.com
+	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on --az=us-east-1a --email=hey@cyrilrohr.com --license-key=$(LICENSE_KEY)
 
 install-test:
 	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on-test --az=us-east-1b --email=hey@cyrilrohr.com
+
+install-stage:
+	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template.yaml --org=runs-on --stack-name=runs-on-stage --az=eu-west-1 --email=ops@runs-on.com
+
+logs-stage:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 30m --timestamp

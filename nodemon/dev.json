@@ -1,5 +1,10 @@
 {
   "verbose": true,
-  "watch": [".", "app.yml.example", ".env", "./data", "./views"],
+  "watch": [
+    "./src",
+    "app.yml.example",
+    "./data",
+    "./views"
+  ],
   "ext": "js,sh,hbs,handlebars"
 }

@@ -1,15 +1,13 @@
 FROM node:20-slim
-WORKDIR /usr/src/app
-COPY package.json package-lock.json ./
-RUN npm ci --production && npm cache clean --force
-COPY . .
 
-# production forces to have app_id / private_key beforehand, but we want self-service
-ENV NODE_ENV="apprunner"
-ENV PATH="/usr/src/app/bin:${PATH}"
+USER node
+WORKDIR /app
+
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm install --no-fund --omit=dev && npm cache clean --force
+COPY --chown=node:node . .
+
+ENV NODE_ENV="production"
 ENV RUNS_ON_ENV="prod"
 
-# make sure an empty file is present at beginning
-RUN rm -f .env && touch .env
-
-CMD [ "bin/run" ]
+CMD [ "node", "./src/index.js" ]

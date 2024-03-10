@@ -9,18 +9,20 @@ permissions:
 
 jobs:
   test-linux:
-    if: ${{ contains(github.event.head_commit.message, '[dev]') || github.event_name == 'workflow_dispatch' }}
+    # if: ${{ contains(github.event.head_commit.message, '[dev]') || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
         runner:
-          - runs-on,env=dev
-          - runs-on,cpu=1,env=dev
-          - runs-on,runner=2cpu-linux,iops=800,env=dev
-          - runs-on,runner=gofast,image=custom,env=dev
-          - runs-on,runner=gofast,cpu=1,env=dev
-          - runs-on,cpu=1,env=dev,image=ubuntu22-base-arm64
-          - runs-on,cpu=1,env=dev,image=ubuntu22-full-arm64
+          - runs-on
+          - runs-on,cpu=1
+          - runs-on,runner=2cpu-linux,iops=800
+          - runs-on,runner=gofast,image=custom
+          - runs-on,runner=gofast,cpu=1
+          - runs-on,cpu=1,image=ubuntu22-base-arm64
+          - runs-on,cpu=1,image=ubuntu22-docker-x64,spot=false
+          - runs-on,cpu=1,image=ubuntu22-full-arm64
+          - runs-on,cpu=1,image=ubuntu22-full-arm64,ssh=false
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:

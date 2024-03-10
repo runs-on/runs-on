@@ -5,4 +5,4 @@ npm-debug.log
 .env*
 coverage
 lib
-/app.yml
+/.trash
