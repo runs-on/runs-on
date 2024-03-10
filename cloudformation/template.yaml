@@ -6,27 +6,16 @@ Metadata:
     ParameterGroups: 
       - 
         Label: 
-          default: "GitHub Configuration"
+          default: "Required Configuration"
         Parameters: 
           - GithubOrganization
-      - 
-        Label: 
-          default: "Cost usage and alerts"
-        Parameters: 
+          - LicenseKey
           - EmailAddress
-      -
-        Label:
-          default: "Network Configuration"
-        Parameters:
           - AvailabilityZone
-      - 
-        Label: 
-          default: "Security Configuration"
-        Parameters: 
           - SSHCidrRange
       - 
         Label: 
-          default: "App Configuration"
+          default: "Advanced Configuration"
         Parameters: 
           - AppEc2QueueSize
           - AppCPU
@@ -38,12 +27,17 @@ Metadata:
 Parameters:
   GithubOrganization:
     Type: String
-    Description: "For instance if your GitHub organization lives on https://github.com/my-org, then the value of this parameter should be: my-org"
+    Description: "For instance if your GitHub organization lives at https://github.com/my-org, then the value of this parameter should be: my-org"
+    MinLength: 1
+
+  LicenseKey:
+    Type: String
+    Description: "License key. Get one at https://runs-on.com/pricing."
     MinLength: 1
 
   EmailAddress:
     Type: String
-    Description: Email address for usage alerts
+    Description: Email address for cost and alert reports.
     MinLength: 1
 
   AvailabilityZone:
@@ -272,20 +266,22 @@ Resources:
           IsPubliclyAccessible: true
         IpAddressType: IPV4
       HealthCheckConfiguration:
-        Path: /
+        Path: /ping
         Protocol: HTTP
         HealthyThreshold: 1
-        UnhealthyThreshold: 15
-        Interval: 10
+        UnhealthyThreshold: 10
+        Interval: 5
       SourceConfiguration:
         ImageRepository:
           ImageConfiguration:
-            Port: 80
+            Port: 3000
             RuntimeEnvironmentVariables:
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
+              - Name: RUNS_ON_LICENSE_KEY
+                Value: !Ref LicenseKey
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
@@ -419,6 +415,12 @@ Outputs:
   RunsOnService:
     Description: Link to the AppRunner service in AWS console
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
+  RunsOnOrg:
+    Description: GitHub organization or personal account
+    Value: !Ref GithubOrganization
+  RunsOnLicenseKey:
+    Description: License key
+    Value: !Ref LicenseKey
   RunsOnAvailabilityZone:
     Description: Availability zone
     Value: !Ref AvailabilityZone
