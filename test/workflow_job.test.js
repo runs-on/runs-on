@@ -98,7 +98,7 @@ describe("WorkflowJob", () => {
       expect(spec).toMatchObject({
         id: "2cpu-linux",
         cpu: 2,
-        family: ["m7a", "m7g"],
+        family: ["m7a", "m7g", "m7i"],
         spot: true,
         ssh: true,
       });
@@ -386,6 +386,8 @@ describe("WorkflowJob", () => {
 
       expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
         "m7a.xlarge",
+        "m7i-flex.xlarge",
+        "m7i.xlarge",
         "c7a.xlarge",
       ]);
     });
