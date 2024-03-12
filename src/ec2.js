@@ -26,8 +26,14 @@ const {
 } = require("./constants");
 
 const logger = require("./logger").getLogger();
-
 const ec2Client = new EC2Client();
+// Specific client for RunInstances / TerminateInstances, to disable retries, and log API calls.
+// Disabling retries is necessary since the default quota for RunInstances is 2/s, and so having the client automatically retry for up to 3 (by default) attempts can quickly deplete the quota, and lead to RequestLimitExceeded errors.
+// (e.g. InsufficientInstanceCapacity client error, then followed by RequestLimitExceeded error).
+const ec2NoRetryClient = new EC2Client({
+  logger: logger,
+  maxAttempts: 1,
+});
 
 const runInstancesRateLimit = pThrottle({
   limit: RUNS_ON_EC2_QUEUE_SIZE,
@@ -35,7 +41,7 @@ const runInstancesRateLimit = pThrottle({
 });
 
 const runInstanceQueue = runInstancesRateLimit(async (runCommand) => {
-  return await ec2Client.send(runCommand);
+  return await ec2NoRetryClient.send(runCommand);
 });
 
 function extractInfosFromImage(image) {
