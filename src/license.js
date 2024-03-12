@@ -13,11 +13,11 @@ class License {
   }
 
   async check() {
-    const { org, licenseKey } = await stack.fetchOutputs();
+    const { org, region, licenseKey } = await stack.fetchOutputs();
     const appVersion = stack.appVersion;
     let license = { valid: false, errors: [] };
     try {
-      license = await validateLicense(org, licenseKey, appVersion);
+      license = await validateLicense(org, region, licenseKey, appVersion);
     } catch (e) {
       license.errors.push(e);
     }
@@ -41,11 +41,11 @@ class License {
 
         if (!this.valid) {
           alerting.sendError(
-            `Your license for RunsOn is invalid. Please go to https://runs-on.com/pricing to buy one, and update the RunsOn CloudFormation stack with your license key.`,
+            `Your license for RunsOn is invalid. Please go to https://runs-on.com/pricing to buy one, and update the RunsOn CloudFormation stack with your license key.`
           );
         }
       },
-      stack.devMode ? 30 * 1000 : 72 * 3600 * 1000,
+      stack.devMode ? 30 * 1000 : 72 * 3600 * 1000
     );
   }
 
@@ -63,13 +63,14 @@ class License {
   }
 }
 
-async function validateLicense(org, licenseKey, appVersion) {
+async function validateLicense(org, region, licenseKey, appVersion) {
   const response = await fetch("https://runs-on.com/api/licenses/validate", {
     timeout: 5000,
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       org,
+      region,
       license_key: licenseKey,
       app_version: appVersion,
     }),
