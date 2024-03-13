@@ -58,7 +58,11 @@ class WorkflowJob {
       { Key: "runs-on-workflow-job-name", Value: name },
       { Key: "runs-on-workflow-job-id", Value: String(id) },
     ];
-    this.runnerName = runner_name || `runs-on-aws-${uuidv4()}`;
+    this.runnerName = runner_name || this.generateRunnerName();
+  }
+
+  generateRunnerName() {
+    return `runs-on-aws-${uuidv4()}`;
   }
 
   inProgress() {
@@ -186,7 +190,30 @@ class WorkflowJob {
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
-    const runnerJitConfig = await this.registerRunner();
+    let retryCount = 0;
+    let runnerJitConfig;
+    while (retryCount < 3) {
+      retryCount++;
+      try {
+        runnerJitConfig = await this.registerRunner();
+        break;
+      } catch (error) {
+        // Can get 409 conflict when octokit retries on GitHub API error, hence trying to register the same runner name multiple times
+        // so catch those, change the runner name, and retry with exponential backoff
+        // Could also check error.status === 409 to be more precise maybe
+        if (retryCount < 3 && error.name === "HttpError") {
+          this.logger.warn(
+            `Got error while registering runner: ${error}. Retrying...`
+          );
+          this.runnerName = this.generateRunnerName();
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, retryCount) * 300)
+          );
+        } else {
+          throw error;
+        }
+      }
+    }
     this.logger.info("✅ Runner registered with GitHub App installation");
 
     const userDataConfig = {
