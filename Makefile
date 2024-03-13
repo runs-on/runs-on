@@ -54,13 +54,32 @@ run-dev:
 	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev AWS_PROFILE=runs-on-dev npm run dev
 
 install-dev:
-	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on --az=us-east-1a --email=hey@cyrilrohr.com --license-key=$(LICENSE_KEY)
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--disable-rollback --no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-test \
+		--template-file ./cloudformation/template-dev.yaml \
+		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1a EmailAddress=ops+dev@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 
 install-test:
-	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template-dev.yaml --org=runs-on --stack-name=runs-on-test --az=us-east-1b --email=hey@cyrilrohr.com
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--disable-rollback --no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-test \
+		--template-file ./cloudformation/template.yaml \
+		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1b EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+
+delete-test:
+	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name runs-on-test
+	AWS_PROFILE=runs-on-admin aws cloudformation wait stack-delete-complete --stack-name runs-on-test
 
 install-stage:
-	AWS_PROFILE=runs-on-admin ./cloudformation/runs-on.sh --install --template-url=cloudformation/template.yaml --org=runs-on --stack-name=runs-on-stage --az=eu-west-1 --email=ops@runs-on.com
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-stage \
+		--template-file ./cloudformation/template.yaml \
+		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1a EmailAddress=ops+stage@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 
 logs-stage:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 30m --timestamp
