@@ -1,6 +1,6 @@
 {
   "name": "runs-on",
-  "version": "v1.7.3",
+  "version": "v1.7.4",
   "private": true,
   "description": "Deploy ephemeral and cheap self-hosted runners for your GitHub Action workflows, in your AWS account",
   "author": "Cyril Rohr",
