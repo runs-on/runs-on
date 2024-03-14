@@ -53,7 +53,7 @@ async function init() {
     tagAllocationRegistrationAttempted = true;
     try {
       logger.info(
-        `Attempting to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`,
+        `Attempting to register cost allocation tag for \`${STACK_TAG_KEY}\` tag key.`
       );
       await registerAllocationTag();
     } catch (error) {
@@ -94,19 +94,25 @@ async function sendEmailCosts() {
   alerting.publishAlert(`📈 RunsOn costs for ${STACK_NAME}`, content);
 }
 
+function sanitizedTagValueFor(tags, key) {
+  return (tags.find((tag) => tag.Key === key)?.Value || "unknown")
+    .replace(/[^\x00-\x7F]/g, "")
+    .trim();
+}
+
 async function registerAllocationTag() {
   const params = {
     CostAllocationTagsStatus: [{ TagKey: STACK_TAG_KEY, Status: "Active" }],
   };
 
   const response = await client.send(
-    new UpdateCostAllocationTagsStatusCommand(params),
+    new UpdateCostAllocationTagsStatusCommand(params)
   );
   if (response.Errors?.length > 0) {
     logger.error("❌ Cost Allocation Tags Status:", response.Errors.join(", "));
   } else {
     logger.info(
-      `✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`,
+      `✅ Cost Allocation Tags Status successfully updated for tag ${STACK_TAG_KEY}`
     );
   }
 }
@@ -121,7 +127,7 @@ async function postWorkflowUsage(
     AssumedTerminationTime,
     Tags,
   },
-  { logger },
+  { logger }
 ) {
   let TerminationTime = AssumedTerminationTime;
   try {
@@ -135,11 +141,11 @@ async function postWorkflowUsage(
     }
   } catch (e) {
     logger.warn(
-      `Unable to parse termination time from StateTransitionReason: ${e}`,
+      `Unable to parse termination time from StateTransitionReason: ${e}`
     );
   }
   const minutes = Math.round(
-    (TerminationTime - new Date(LaunchTime)) / 1000 / 60,
+    (TerminationTime - new Date(LaunchTime)) / 1000 / 60
   );
   // Define the metric data
   const metricData = [
@@ -156,15 +162,11 @@ async function postWorkflowUsage(
         },
         {
           Name: "Repository",
-          Value:
-            Tags.find((tag) => tag.Key === "runs-on-repo-full-name")?.Value ||
-            "unknown",
+          Value: sanitizedTagValueFor(Tags, "runs-on-repo-full-name"),
         },
         {
           Name: "WorkflowName",
-          Value:
-            Tags.find((tag) => tag.Key === "runs-on-workflow-name")?.Value ||
-            "unknown",
+          Value: sanitizedTagValueFor(Tags, "runs-on-workflow-name"),
         },
         {
           Name: "WorkflowJobConclusion",
@@ -172,21 +174,15 @@ async function postWorkflowUsage(
         },
         {
           Name: "WorkflowJobName",
-          Value:
-            Tags.find((tag) => tag.Key === "runs-on-workflow-job-name")
-              ?.Value || "unknown",
+          Value: sanitizedTagValueFor(Tags, "runs-on-workflow-job-name"),
         },
         {
           Name: "ImageId",
-          Value:
-            Tags.find((tag) => tag.Key === "runs-on-image-id")?.Value ||
-            "unknown",
+          Value: sanitizedTagValueFor(Tags, "runs-on-image-id"),
         },
         {
           Name: "RunnerId",
-          Value:
-            Tags.find((tag) => tag.Key === "runs-on-runner-id")?.Value ||
-            "unknown",
+          Value: sanitizedTagValueFor(Tags, "runs-on-runner-id"),
         },
       ],
       Timestamp: TerminationTime,
