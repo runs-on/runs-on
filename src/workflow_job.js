@@ -190,30 +190,7 @@ class WorkflowJob {
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
-    let retryCount = 0;
-    let runnerJitConfig;
-    while (retryCount < 3) {
-      retryCount++;
-      try {
-        runnerJitConfig = await this.registerRunner();
-        break;
-      } catch (error) {
-        // Can get 409 conflict when octokit retries on GitHub API error, hence trying to register the same runner name multiple times
-        // so catch those, change the runner name, and retry with exponential backoff
-        // Could also check error.status === 409 to be more precise maybe
-        if (retryCount < 3 && error.name === "HttpError") {
-          this.logger.warn(
-            `Got error while registering runner: ${error}. Retrying...`
-          );
-          this.runnerName = this.generateRunnerName();
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, retryCount) * 300)
-          );
-        } else {
-          throw error;
-        }
-      }
-    }
+    const runnerJitConfig = await this.registerRunner();
     this.logger.info("✅ Runner registered with GitHub App installation");
 
     const userDataConfig = {
@@ -430,17 +407,37 @@ class WorkflowJob {
   }
 
   async registerRunner() {
-    const response = await this.context.octokit.request(
-      "POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig",
-      this.context.repo({
-        name: this.runnerName,
-        runner_group_id: 1,
-        labels: this.labels,
-      })
-    );
-
-    const runnerJitConfig = response.data.encoded_jit_config;
-    return runnerJitConfig;
+    let attempts = 0;
+    let error = new Error("Unable to register runner with GitHub");
+    while (attempts < 3) {
+      this.logger.info("attempting registration");
+      attempts++;
+      try {
+        const response = await this.context.octokit.request(
+          "POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig",
+          this.context.repo({
+            name: this.runnerName,
+            runner_group_id: 1,
+            labels: this.labels,
+          })
+        );
+        return response.data.encoded_jit_config;
+      } catch (e) {
+        error = e;
+        this.logger.warn(`Got error while registering runner: ${error}.`);
+        // Can get 409 conflict when octokit retries on GitHub API error, hence trying to register the same runner name multiple times
+        // so catch those, change the runner name, and retry with exponential backoff
+        // Could also check error.status === 409 to be more precise maybe
+        if (attempts < 3 && error.name === "HttpError") {
+          const delay = Math.pow(2, attempts) * 300;
+          this.logger.info(`Retrying runner registration in ${delay}ms...`);
+          this.runnerName = this.generateRunnerName();
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+    // if we end up here, throw error
+    throw error;
   }
 
   sendError(error) {

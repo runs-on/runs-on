@@ -435,4 +435,52 @@ describe("WorkflowJob", () => {
       );
     });
   });
+
+  describe("registerRunner()", () => {
+    it("should retry registration with another runnerName on 409 Conflict", async () => {
+      const workflowJob = new WorkflowJob(context);
+      const initialRunnerName = workflowJob.runnerName;
+      workflowJob.repoConfig = repoConfig;
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(409);
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(409);
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(409);
+
+      await expect(workflowJob.registerRunner()).rejects.toHaveProperty(
+        "name",
+        "HttpError"
+      );
+
+      expect(workflowJob.runnerName).not.toEqual(initialRunnerName);
+    });
+
+    it("should retry registration with another runnerName on 409 Conflict - successful in the end", async () => {
+      const workflowJob = new WorkflowJob(context);
+      const initialRunnerName = workflowJob.runnerName;
+      workflowJob.repoConfig = repoConfig;
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(409);
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(409);
+
+      nock("https://api.github.com")
+        .post("/repos/runs-on/test/actions/runners/generate-jitconfig")
+        .reply(200);
+
+      await workflowJob.registerRunner();
+      expect(workflowJob.runnerName).not.toEqual(initialRunnerName);
+    });
+  });
 });
