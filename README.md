@@ -40,7 +40,7 @@ The source code for this software is open, but licensed under the [Prosperity Pu
 
 * It is indefinitely free to use for non-commercial usage.
 
-* If you install for use in a for-profit organization, you are free to install and evaluate it for 31 days, after which you must buy a license.
+* If you install for use in a for-profit organization, you are free to install and evaluate it for 15 days, after which you must buy a license.
 
 → [Learn more about licensing](https://runs-on.com/pricing).
 
