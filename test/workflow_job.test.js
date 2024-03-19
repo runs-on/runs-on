@@ -413,6 +413,30 @@ describe("WorkflowJob", () => {
       ]);
     });
 
+    it("returns instance types with custom runner", async () => {
+      context.payload.workflow_job.labels = [
+        "runs-on,runner=choose-fast,run-id=12345",
+      ];
+      const workflowJob = new WorkflowJob(context);
+      workflowJob.repoConfig = {
+        admins: [],
+        runners: {
+          "choose-fast": {
+            cpu: 4,
+            family: ["m7i-flex", "m7a"],
+            spot: true,
+            ssh: false,
+          },
+        },
+      };
+      await workflowJob.setup();
+      const instanceTypes = workflowJob.instanceTypes;
+      expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
+        "m7i-flex.xlarge",
+        "m7a.xlarge",
+      ]);
+    });
+
     it("can't find matching instance types for labels", async () => {
       context.payload.workflow_job.labels = [
         "runs-on,runner=4cpu-linux,family=t4g",
