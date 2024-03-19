@@ -158,12 +158,12 @@ class WorkflowJob {
       );
     }
 
-    this.instanceTypes = await this.findMatchingInstanceTypes();
-    if (this.instanceTypes.length === 0) {
-      throw new Error(
-        `❌ No instance types found for ${JSON.stringify(this.runnerSpec)}`
-      );
-    }
+    // this.instanceTypes = await this.findMatchingInstanceTypes();
+    // if (this.instanceTypes.length === 0) {
+    //   throw new Error(
+    //     `❌ No instance types found for ${JSON.stringify(this.runnerSpec)}`
+    //   );
+    // }
 
     this.launchTemplate = ec2.generateLaunchTemplate({
       stackOutputs: await stack.fetchOutputs(),

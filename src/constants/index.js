@@ -1,6 +1,7 @@
 const Handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
+const { RUNNERS } = require("./runners");
 
 Handlebars.registerHelper("round", function (value) {
   if (!value) return "N/A";
@@ -31,7 +32,7 @@ const RUNS_ON_ENV = process.env["RUNS_ON_ENV"] || "prod";
 const EMAIL_COSTS_TEMPLATE = Handlebars.compile(
   fs
     .readFileSync(
-      path.join(__dirname, "..", "data", "email_costs_template.md.hbs")
+      path.join(__dirname, "..", "..", "data", "email_costs_template.md.hbs")
     )
     .toString()
 );
@@ -79,7 +80,7 @@ const USER_DATA = {
   [PLATFORM_LINUX]: Handlebars.compile(
     fs
       .readFileSync(
-        path.join(__dirname, "..", "data", "user_data", "linux.sh.hbs")
+        path.join(__dirname, "..", "..", "data", "user_data", "linux.sh.hbs")
       )
       .toString()
   ),
@@ -155,64 +156,6 @@ const RUNNER_ATTRIBUTES = [
   "image",
 ];
 
-// TODO: macos - https://aws.amazon.com/ec2/faqs/#macos_workloads, 24h min dedicated host
-const RUNNERS = {
-  "1cpu-linux": {
-    cpu: 1,
-    family: ["m7a", "m7g", "m7i"],
-    // pricing: [0.000966, 0.000383],      // t3a
-    pricing: [0.000966, 0.00038], // m7a
-  },
-  "2cpu-linux": {
-    cpu: 2,
-    family: ["m7a", "m7g", "m7i"],
-    // pricing: [0.001253, 0.000505],      // t3a
-    pricing: [0.001932, 0.000783], // m7a
-  },
-  "4cpu-linux": {
-    cpu: 4,
-    family: ["m7a", "m7g", "m7i", "c7a", "c7g"],
-    // pricing: [0.002507, 0.001115],      // t3a
-    pricing: [0.003864, 0.00185], // c7a
-  },
-  "8cpu-linux": {
-    cpu: 8,
-    family: ["c7a", "c7g", "m7i", "m7a", "m7g"],
-    throughput: 750,
-    iops: 4000,
-    // pricing: [0.005013, 0.002325],      // t3a
-    pricing: [0.006843, 0.003097], // c7a
-  },
-  "16cpu-linux": {
-    cpu: 16,
-    family: ["c7a", "c7g", "m7i", "m7a", "m7g"],
-    throughput: 750,
-    iops: 4000,
-    pricing: [0.013685, 0.006415], // c7a
-  },
-  "32cpu-linux": {
-    cpu: 32,
-    family: ["c7a", "c7g", "m7i", "m7a", "m7g"],
-    throughput: 750,
-    iops: 4000,
-    pricing: [0.027371, 0.012677], // c7a
-  },
-  "48cpu-linux": {
-    cpu: 48,
-    throughput: 1000,
-    iops: 4000,
-    family: ["c7a", "c7g", "m7i", "m7a", "m7g"],
-    pricing: [0.041056, 0.016577], // c7a
-  },
-  "64cpu-linux": {
-    cpu: 64,
-    family: ["c7a", "c7g", "m7i", "m7a", "m7g"],
-    throughput: 1000,
-    iops: 4000,
-    pricing: [0.054741, 0.020535], // c7a
-  },
-};
-
 const MINUTES_PER_MONTH = 60 * 24 * 30;
 
 Object.keys(RUNNERS).forEach((key) => {
@@ -240,7 +183,7 @@ Object.keys(RUNNERS).forEach((key) => {
   }
 });
 
-const DEFAULT_RUNNER_SPEC_KEY = "2cpu-linux";
+const DEFAULT_RUNNER_SPEC_KEY = "2cpu-linux-x64";
 const DEFAULT_RUNNER_SPEC = RUNNERS[DEFAULT_RUNNER_SPEC_KEY];
 
 let RUNS_ON_EC2_QUEUE_SIZE = Number(process.env["RUNS_ON_EC2_QUEUE_SIZE"]);

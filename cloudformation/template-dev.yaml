@@ -1,27 +1,25 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: CloudFormation stack for https://runs-on.com
 
-Metadata: 
-  AWS::CloudFormation::Interface: 
-    ParameterGroups: 
-      - 
-        Label: 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
           default: "Required Configuration"
-        Parameters: 
+        Parameters:
           - GithubOrganization
           - LicenseKey
           - EmailAddress
           - AvailabilityZone
           - SSHCidrRange
-      - 
-        Label: 
+      - Label:
           default: "Advanced Configuration"
-        Parameters: 
+        Parameters:
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
     ParameterLabels:
-      GithubOrganization: 
+      GithubOrganization:
         default: "Your GitHub organization or personal name."
 
 Parameters:
@@ -60,73 +58,65 @@ Parameters:
     Type: Number
     Default: "256"
     Description: CPU units for RunsOn service (256 or higher)
-  
+
   AppMemory:
     Type: Number
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher)
 
-Transform: 'AWS::LanguageExtensions'
-
 Mappings:
   App:
     Image:
       Tag: "v1.7.4-dev"
-  Networking:
-    AzSuffixToIndex:
-      1a: 0
-      1b: 1
-      1c: 2
-      1d: 3
-      1e: 4
-      1f: 5
-      1g: 6
-      2a: 0
-      2b: 1
-      2c: 2
-      2d: 3
-      2e: 4
-      2f: 5
-      2g: 6
-      3a: 0
-      3b: 1
-      3c: 2
-      3d: 3
-      3e: 4
-      3f: 5
-      3g: 6
-      4a: 0
-      4b: 1
-      4c: 2
-      4d: 3
-      4e: 4
-      4f: 5
-      4g: 6
 
 Resources:
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: 10.1.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
 
-  PublicSubnet:
+  PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId:
         Ref: VPC
-      AvailabilityZone:
-        Ref: AvailabilityZone
+      AvailabilityZone: !Select [0, !GetAZs ""]
       # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
       # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
-      CidrBlock: !Select [
-        !FindInMap [Networking, AzSuffixToIndex, !Select [ 2, !Split [ "-", !Ref AvailabilityZone]]],
-        !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]
-      ]
+      CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
+      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
+      CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
+      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
+      CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: "stack"
@@ -171,11 +161,70 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  SubnetRouteTableAssociation:
+  SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet
+      SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
+
+  SubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  SubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-launchtemplate.html
+  EC2FleetLaunchTemplateLinuxDefault:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-linux-default"
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        EbsOptimized: "true"
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 40
+              VolumeType: gp3
+              Throughput: 750
+              Iops: 3000
+              DeleteOnTermination: true
+        InstanceInitiatedShutdownBehavior: "terminate"
+
+  EC2FleetLaunchTemplateLinuxLarge:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-linux-large"
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        EbsOptimized: "true"
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 80
+              VolumeType: gp3
+              Throughput: 1000
+              Iops: 4000
+              DeleteOnTermination: true
+        InstanceInitiatedShutdownBehavior: "terminate"
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -200,6 +249,7 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: "runs-on/purpose"
           Value: "config"
+
   S3BucketCache:
     Type: AWS::S3::Bucket
     Properties:
@@ -214,6 +264,7 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: "runs-on/purpose"
           Value: "cache"
+
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -244,11 +295,13 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref EC2InstanceRole
+
   RunsOnService:
     Type: AWS::AppRunner::Service
     Properties:
@@ -286,10 +339,6 @@ Resources:
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
                 Value: !Ref S3BucketCache
-              - Name: RUNS_ON_PUBLIC_SUBNET_ID
-                Value: !Ref PublicSubnet
-              - Name: RUNS_ON_AVAILABILITY_ZONE
-                Value: !Ref AvailabilityZone
               - Name: RUNS_ON_SECURITY_GROUP_ID
                 Value: !Ref SecurityGroup
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
@@ -339,29 +388,25 @@ Resources:
                 Resource: !Ref AWS::StackId
               - Effect: Allow
                 Action:
-                  - ec2:RunInstances
-                Resource:
-                  - arn:aws:ec2:*:*:network-interface/*
-                  - arn:aws:ec2:*:*:volume/*
-                  - arn:aws:ec2:*:*:security-group/*
-                  - arn:aws:ec2:*::image/ami-*
-                  - Fn::Sub: arn:aws:ec2:*:*:subnet/${PublicSubnet}
-              - Effect: Allow
-                Action:
-                  - ec2:CreateTags
-                  - ec2:RunInstances
-                Resource: arn:aws:ec2:*:*:instance/*
+                  - ec2:CreateFleet
+                  - ec2:DeleteFleet
+                Resource: "*"
+              # - Effect: Allow
+              #   Action:
+              #     - ec2:CreateTags
+              #     - ec2:RunInstances
+              #   Resource: arn:aws:ec2:*:*:instance/*
               - Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt EC2InstanceRole.Arn
-              - Effect: Allow
-                Action:
-                  - ec2:TerminateInstances
-                Resource: "arn:aws:ec2:*:*:instance/*"
-                Condition:
-                  StringEquals:
-                    "aws:ResourceTag/stack": !Ref AWS::StackName
+              # - Effect: Allow
+              #   Action:
+              #     - ec2:TerminateInstances
+              #   Resource: "arn:aws:ec2:*:*:instance/*"
+              #   Condition:
+              #     StringEquals:
+              #       "aws:ResourceTag/stack": !Ref AWS::StackName
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -378,10 +423,10 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmDescription: Alerts when the daily usage of the RunsOn service exceeds 6000 minutes
-      Namespace: RunsOn 
+      Namespace: RunsOn
       MetricName: minutes
-      Statistic: Sum   # Choose the appropriate statistic (e.g., Sum, Average, Maximum)
-      Period: 86400   # Set to 24 hours for 1-day periods (adjust as needed)
+      Statistic: Sum # Choose the appropriate statistic (e.g., Sum, Average, Maximum)
+      Period: 86400 # Set to 24 hours for 1-day periods (adjust as needed)
       EvaluationPeriods: 1
       Threshold: 40
       ComparisonOperator: GreaterThanThreshold
@@ -403,10 +448,10 @@ Resources:
     Properties:
       Protocol: email
       TopicArn: !Ref AlertTopic
-      Endpoint: !If [EmailProvided, !Ref EmailAddress, '']
+      Endpoint: !If [EmailProvided, !Ref EmailAddress, ""]
 
 Conditions:
-  EmailProvided: !Not [!Equals [!Ref EmailAddress, '']]
+  EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
 
 Outputs:
   RunsOnEntryPoint:
@@ -421,15 +466,9 @@ Outputs:
   RunsOnLicenseKey:
     Description: License key
     Value: !Ref LicenseKey
-  RunsOnAvailabilityZone:
-    Description: Availability zone
-    Value: !Ref AvailabilityZone
   RunsOnInstanceProfileArn:
     Description: Runner instance profile
     Value: !GetAtt EC2InstanceProfile.Arn
-  RunsOnPublicSubnetId:
-    Description: Public subnet for launching runners
-    Value: !Ref PublicSubnet
   RunsOnSecurityGroupId:
     Description: Security group for runners
     Value: !Ref SecurityGroup
