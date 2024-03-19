@@ -55,7 +55,8 @@ run-dev:
 
 install-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
-		--disable-rollback --no-cli-pager --fail-on-empty-changeset \
+		--no-disable-rollback \
+		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name runs-on-test \
 		--template-file ./cloudformation/template-dev.yaml \
 		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1a EmailAddress=ops+dev@runs-on.com LicenseKey=$(LICENSE_KEY) \
@@ -63,7 +64,8 @@ install-dev:
 
 install-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
-		--disable-rollback --no-cli-pager --fail-on-empty-changeset \
+		--disable-rollback \
+		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name runs-on-test \
 		--template-file ./cloudformation/template.yaml \
 		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1b EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
@@ -82,4 +84,4 @@ install-stage:
 		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 30m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 300m --timestamp
