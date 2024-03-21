@@ -97,6 +97,7 @@ async function sendEmailCosts() {
 function sanitizedTagValueFor(tags, key) {
   return (tags.find((tag) => tag.Key === key)?.Value || "unknown")
     .replace(/[^\x00-\x7F]/g, "")
+    .substring(0, 250)
     .trim();
 }
 
