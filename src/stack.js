@@ -5,6 +5,29 @@ const {
 const { STACK_NAME } = require("./constants");
 const pkg = require("../package.json");
 
+const outputKeys = {
+  org: "RunsOnOrg",
+  licenseKey: "RunsOnLicenseKey",
+  s3BucketConfig: "RunsOnBucketConfig",
+  s3BucketCache: "RunsOnBucketCache",
+  subnetId: "RunsOnPublicSubnetId",
+  az: "RunsOnAvailabilityZone",
+  securityGroupId: "RunsOnSecurityGroupId",
+  instanceProfileArn: "RunsOnInstanceProfileArn",
+  instanceProfileName: "RunsOnInstanceProfileName",
+  instanceRoleName: "RunsOnInstanceRoleName",
+  launchTemplateLinuxDefault: "RunsOnLaunchTemplateLinuxDefault",
+  launchTemplateLinuxLarge: "RunsOnLaunchTemplateLinuxLarge",
+  publicSubnet1: "RunsOnPublicSubnet1",
+  publicSubnet2: "RunsOnPublicSubnet2",
+  publicSubnet3: "RunsOnPublicSubnet3",
+  topicArn: "RunsOnTopicArn",
+};
+
+function getOutput(cfOutputs, key) {
+  return cfOutputs.find((output) => output.OutputKey === key)?.OutputValue;
+}
+
 class Stack {
   constructor() {
     this.cfClient = new CloudFormationClient();
@@ -21,49 +44,25 @@ class Stack {
       const { Outputs } = response.Stacks[0];
 
       const values = {};
-      values.org = process.env["RUNS_ON_ORG"];
-      values.licenseKey = process.env["RUNS_ON_LICENSE_KEY"];
-      values.s3BucketConfig = process.env["RUNS_ON_BUCKET_CONFIG"];
-      values.s3BucketCache = process.env["RUNS_ON_BUCKET_CACHE"];
-      values.subnetId = process.env["RUNS_ON_PUBLIC_SUBNET_ID"];
-      values.az = process.env["RUNS_ON_AVAILABILITY_ZONE"];
-      values.securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
-      values.instanceProfileArn = process.env["RUNS_ON_INSTANCE_PROFILE_ARN"];
-      values.topicArn = process.env["RUNS_ON_TOPIC_ARN"];
-      // on first install, CF stack may not yet be ready
-      if (Outputs) {
-        values.org ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnOrg",
-        )?.OutputValue;
-        values.licenseKey ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnLicenseKey",
-        )?.OutputValue;
-        values.s3BucketConfig ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnBucketConfig",
-        )?.OutputValue;
-        values.s3BucketCache ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnBucketCache",
-        )?.OutputValue;
-        values.subnetId ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnPublicSubnetId",
-        )?.OutputValue;
-        values.az ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnAvailabilityZone",
-        )?.OutputValue;
-        values.securityGroupId ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnSecurityGroupId",
-        )?.OutputValue;
-        values.instanceProfileArn ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnInstanceProfileArn",
-        )?.OutputValue;
-        values.topicArn ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnTopicArn",
-        )?.OutputValue;
-        // warn: may be null if stack outputs not yet ready
-        values.entryPoint ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnEntryPoint",
-        )?.OutputValue;
+
+      for (const key in outputKeys) {
+        // e.g. RunsOnTopicArn => RUNS_ON_TOPIC_ARN
+        values[key] =
+          process.env[
+            outputKeys[key]
+              .split(/(?=[A-Z])/)
+              .join("_")
+              .toUpperCase()
+          ];
+
+        // WARN: when starting, the CF stack may not yet be ready (on install/update)
+        // so you can't be sure that all outputs will be prenset or up to date
+        // Mainly used for development
+        if (Outputs) {
+          values[key] ||= getOutput(Outputs, outputKeys[key]);
+        }
       }
+
       values.region = await this.cfClient.config.region();
       this.outputs = values;
     }

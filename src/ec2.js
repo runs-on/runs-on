@@ -5,6 +5,7 @@ const {
   DescribeImagesCommand,
   RunInstancesCommand,
   waitUntilInstanceRunning,
+  CreateFleetCommand,
   TerminateInstancesCommand,
 } = require("@aws-sdk/client-ec2");
 const memoize = require("lru-memoize").default;
@@ -318,6 +319,80 @@ function generateLaunchTemplate({ stackOutputs, instanceImage, runnerSpec }) {
   return instanceParams;
 }
 
+const createEC2Fleet = async function ({
+  launchTemplateId,
+  imageId,
+  rams,
+  cpus,
+  families,
+  subnets,
+  tags = [],
+}) {
+  const memoryRequirements = { Min: 0 };
+  const cpuRequirements = { Min: 0 };
+  const familyRequirements = [];
+  if (rams.length > 0) {
+    memoryRequirements.Min = Math.min(rams);
+    memoryRequirements.Max = Math.max(rams);
+  }
+  if (cpus.length > 0) {
+    cpuRequirements.Min = Math.min(cpus);
+    cpuRequirements.Max = Math.max(cpus);
+  }
+  families.forEach((family) => {
+    if (family.includes("*") || family.includes(".")) {
+      familyRequirements.push(family);
+    } else {
+      familyRequirements.push(`${family}*`);
+    }
+  });
+  const fleetParams = {
+    TagSpecifications: [
+      {
+        ResourceType: "instance",
+        // todo: add runs-on-launched-at, runs-on-image-id, runs-on-runner-id
+        Tags: [...tags, ...STACK_TAGS],
+      },
+    ],
+    LaunchTemplateConfigs: [
+      {
+        LaunchTemplateSpecification: {
+          LaunchTemplateId: launchTemplateId,
+          Version: "$Latest",
+        },
+        Overrides: subnets.map((subnet, i) => {
+          return {
+            SubnetId: subnet,
+            InstanceRequirements: {
+              MemoryMiB: memoryRequirements,
+              VCpuCount: cpuRequirements,
+              AllowedInstanceTypes: familyRequirements,
+            },
+            ImageId: "ami-0adbc2921c5de46f0",
+            // ImageId: imageId,
+          };
+        }),
+      },
+    ],
+    SpotOptionsRequest: {
+      AllocationStrategy: "capacity-optimized-prioritized",
+      InstanceInterruptionBehavior: "terminate",
+    },
+    TargetCapacitySpecification: {
+      TotalTargetCapacity: 1,
+      DefaultTargetCapacityType: "spot",
+    },
+    Type: "instant",
+  };
+
+  console.log(JSON.stringify(fleetParams));
+
+  const createFleetCommand = new CreateFleetCommand(fleetParams);
+  const fleetData = await ec2Client.send(createFleetCommand);
+
+  return fleetData;
+};
+
 // Attempt to create a single EC2 instance among the given instance types
 // If spot is used for the first pass and no instance can be found, it will attempt a second pass without spot
 // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html
@@ -459,39 +534,39 @@ async function fetchInstanceDetails(instanceId) {
   }
 }
 
-async function terminateInstance(instanceName, { logger }) {
-  try {
-    const describeParams = {
-      Filters: [
-        {
-          Name: "tag:Name",
-          Values: [instanceName],
-        },
-        ...STACK_FILTERS,
-      ],
-    };
+async function terminateInstance(runnerName) {
+  let describeParams = {};
+  let instanceId;
+  // new since v1.7.5, instance id is contained in runner name
+  if (runnerName.startsWith("runs-on--")) {
+    instanceId = runnerName.split("--")[1];
+    describeParams.InstanceIds = [instanceId];
+  } else {
+    // legacy: find instance from instance tag Name
+    describeParams.Filters = [
+      {
+        Name: "tag:Name",
+        Values: [runnerName],
+      },
+      ...STACK_FILTERS,
+    ];
+  }
 
-    const describeInstancesResponse = await ec2Client.send(
-      new DescribeInstancesCommand(describeParams)
+  const describeInstancesResponse = await ec2Client.send(
+    new DescribeInstancesCommand(describeParams)
+  );
+
+  if (describeInstancesResponse.Reservations.length > 0) {
+    const instanceDetails =
+      describeInstancesResponse.Reservations[0].Instances[0];
+    instanceId = instanceDetails.InstanceId;
+
+    await runInstanceQueue(
+      new TerminateInstancesCommand({ InstanceIds: [instanceId] })
     );
-
-    if (describeInstancesResponse.Reservations.length > 0) {
-      const instanceDetails =
-        describeInstancesResponse.Reservations[0].Instances[0];
-
-      const terminateParams = {
-        InstanceIds: [instanceDetails.InstanceId],
-      };
-
-      await runInstanceQueue(new TerminateInstancesCommand(terminateParams));
-      // await ec2Client.send(new TerminateInstancesCommand(terminateParams));
-      logger.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
-      return instanceDetails;
-    } else {
-      logger.warn("No instances found with the specified name.");
-    }
-  } catch (error) {
-    logger.error(`Error terminating instance: ${error}`);
+    return instanceDetails;
+  } else {
+    return;
   }
 }
 
@@ -526,4 +601,5 @@ module.exports = {
   findInstanceTypesMatching,
   instanceTypeFilters,
   generateLaunchTemplate,
+  createEC2Fleet,
 };

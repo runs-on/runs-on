@@ -27,8 +27,10 @@ module.exports = async (app, { getRouter }) => {
     return;
   }
 
+  const router = getRouter();
+
   // bind webhook path with correct credentials
-  getRouter().use(
+  router.use(
     "/",
     createWebhooksMiddleware(app.webhooks, { path: "/", log: app.log })
   );

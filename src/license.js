@@ -45,7 +45,7 @@ class License {
           );
         }
       },
-      stack.devMode ? 30 * 1000 : 72 * 3600 * 1000
+      stack.devMode ? 600 * 1000 : 72 * 3600 * 1000
     );
   }
 
