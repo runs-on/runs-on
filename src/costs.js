@@ -12,7 +12,7 @@ const {
   STACK_NAME,
   EMAIL_COSTS_TEMPLATE,
 } = require("./constants");
-const { getLast15DaysPeriod } = require("./utils");
+const { getLast15DaysPeriod, sanitizedAwsValue } = require("./utils");
 const stack = require("./stack").getInstance();
 const alerting = require("./alerting");
 const { getLogger } = require("./logger");
@@ -95,10 +95,9 @@ async function sendEmailCosts() {
 }
 
 function sanitizedTagValueFor(tags, key) {
-  return (tags.find((tag) => tag.Key === key)?.Value || "unknown")
-    .replace(/[^\x00-\x7F]/g, "")
-    .substring(0, 250)
-    .trim();
+  return sanitizedAwsValue(
+    tags.find((tag) => tag.Key === key)?.Value || "unknown"
+  );
 }
 
 async function registerAllocationTag() {
@@ -118,19 +117,15 @@ async function registerAllocationTag() {
   }
 }
 
-async function postWorkflowUsage(
-  {
-    Conclusion,
+async function postWorkflowUsage(instanceDetails, dimensions) {
+  const {
+    Tags,
     InstanceType,
     LaunchTime,
     InstanceLifecycle,
     StateTransitionReason,
-    AssumedTerminationTime,
-    Tags,
-  },
-  { logger }
-) {
-  let TerminationTime = AssumedTerminationTime;
+  } = instanceDetails;
+  let TerminationTime = new Date();
   try {
     // ensure we take the actual termination time if available
     if (StateTransitionReason && StateTransitionReason !== "") {
@@ -141,7 +136,7 @@ async function postWorkflowUsage(
       }
     }
   } catch (e) {
-    logger.warn(
+    console.warn(
       `Unable to parse termination time from StateTransitionReason: ${e}`
     );
   }
@@ -153,6 +148,7 @@ async function postWorkflowUsage(
     {
       MetricName: "minutes",
       Dimensions: [
+        // from instance details (fetched at termination time)
         {
           Name: "InstanceType",
           Value: InstanceType || "unknown",
@@ -161,22 +157,7 @@ async function postWorkflowUsage(
           Name: "InstanceLifecycle",
           Value: InstanceLifecycle || "on-demand",
         },
-        {
-          Name: "Repository",
-          Value: sanitizedTagValueFor(Tags, "runs-on-repo-full-name"),
-        },
-        {
-          Name: "WorkflowName",
-          Value: sanitizedTagValueFor(Tags, "runs-on-workflow-name"),
-        },
-        {
-          Name: "WorkflowJobConclusion",
-          Value: Conclusion || "unknown",
-        },
-        {
-          Name: "WorkflowJobName",
-          Value: sanitizedTagValueFor(Tags, "runs-on-workflow-job-name"),
-        },
+        // from instance tags (applied at fleet launch)
         {
           Name: "ImageId",
           Value: sanitizedTagValueFor(Tags, "runs-on-image-id"),
@@ -185,6 +166,7 @@ async function postWorkflowUsage(
           Name: "RunnerId",
           Value: sanitizedTagValueFor(Tags, "runs-on-runner-id"),
         },
+        ...dimensions,
       ],
       Timestamp: TerminationTime,
       Unit: "Count",

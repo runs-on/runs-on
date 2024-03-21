@@ -1,19 +1,19 @@
 const RUNNERS = {
   "1cpu-linux-x64": {
     cpu: 1,
-    family: ["m7a", "m6a"],
+    family: ["m7a", "m7i"],
     image: "ubuntu22-full-x64",
     pricing: [0.000966, 0.00036], // m7a
   },
   "2cpu-linux-x64": {
     cpu: 2,
-    family: ["m7i", "m7a"],
+    family: ["m7a", "m7i"],
     image: "ubuntu22-full-x64",
     pricing: [0.001596, 0.000712], // m7i-flex
   },
   "4cpu-linux-x64": {
     cpu: 4,
-    family: ["m7i", "m7a"],
+    family: ["m7a", "m7i"],
     image: "ubuntu22-full-x64",
     pricing: [0.003192, 0.001473], // m7i-flex
   },
@@ -66,6 +66,7 @@ const RUNNERS = {
   "2cpu-linux-arm64": {
     cpu: 2,
     family: ["m7g", "t4g.large"],
+    image: "ubuntu22-full-arm64",
     pricing: [0.00136, 0.000575], // m7g
   },
   "4cpu-linux-arm64": {

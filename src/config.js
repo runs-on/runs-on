@@ -55,4 +55,26 @@ async function update(filePath, prefix = "runs-on") {
   }
 }
 
-module.exports = { update, fetch };
+async function uploadBootstrapScript(target, content) {
+  const { s3BucketCache } = await stack.fetchOutputs();
+
+  const uploadParams = {
+    Bucket: s3BucketCache,
+    Key: target,
+    Body: content,
+    ACL: "private",
+  };
+
+  try {
+    const response = await s3Client.send(new PutObjectCommand(uploadParams));
+    logger.info(
+      `Bootstrap file uploaded successfully at ${s3BucketCache}/${target}`
+    );
+  } catch (error) {
+    logger.error(
+      `Error uploading file at ${s3BucketCache}/${target} - ${error}`
+    );
+  }
+}
+
+module.exports = { update, fetch, uploadBootstrapScript };
