@@ -17,7 +17,6 @@ const {
   RUNNERS,
   RUNS_ON_LABEL,
   RUNS_ON_ENV,
-  USER_DATA,
 } = require("./constants");
 
 class WorkflowJob {
@@ -47,6 +46,7 @@ class WorkflowJob {
         status,
         head_branch,
         html_url,
+        runner_name,
       },
     });
     this.conclusion = conclusion;
@@ -129,6 +129,7 @@ class WorkflowJob {
   }
 
   async schedule() {
+    this.scheduledAt = new Date();
     if (!this.canBeProcessedByRunsOn()) {
       this.logger.info(
         `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
@@ -164,24 +165,11 @@ class WorkflowJob {
       throw new Error(`❌ No AMI found for ${JSON.stringify(this.imageSpec)}`);
     }
 
-    const { platform } = this.instanceImage;
-    this.userDataTemplate = USER_DATA[platform];
-    if (!this.userDataTemplate) {
-      throw new Error(
-        `❌ No user data template found for platform ${platform}`
-      );
-    }
-
     return this;
   }
 
   async scheduleOnce() {
-    if (
-      !this.instanceImage ||
-      !this.runnerSpec ||
-      !this.sshSpec ||
-      !this.userDataTemplate
-    ) {
+    if (!this.instanceImage || !this.runnerSpec || !this.sshSpec) {
       throw "Please call setup() first";
     }
 
@@ -189,6 +177,7 @@ class WorkflowJob {
       s3BucketCache,
       region,
       launchTemplateLinuxDefault,
+      launchTemplateLinuxLarge,
       instanceRoleName,
       publicSubnet1,
       publicSubnet2,
@@ -197,7 +186,11 @@ class WorkflowJob {
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
-    const launchTemplateId = launchTemplateLinuxDefault;
+    let launchTemplateId = launchTemplateLinuxDefault;
+
+    if (this.instanceImage.mainDiskSize > 40) {
+      launchTemplateId = launchTemplateLinuxLarge;
+    }
 
     const { Errors, Instances = [] } = await ec2.createEC2Fleet({
       launchTemplateId,
@@ -231,6 +224,8 @@ class WorkflowJob {
       this.logger.info("✅ Runner registered with GitHub App installation");
 
       const userDataConfig = {
+        receivedAt: this.receivedAt.toISOString(),
+        scheduledAt: this.scheduledAt.toISOString(),
         runnerName: this.runnerName,
         runnerJitConfig,
         admins: this.sshSpec.admins,

@@ -63,6 +63,7 @@ module.exports = async (app, { getRouter }) => {
 
   app.on("workflow_job.queued", async (context) => {
     const workflowJob = new WorkflowJob(context);
+    workflowJob.receivedAt = new Date();
     workflowJobScheduleQueue(workflowJob);
   });
 

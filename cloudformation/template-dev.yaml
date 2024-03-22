@@ -198,16 +198,22 @@ Resources:
             Ebs:
               VolumeSize: 40
               VolumeType: gp3
-              Throughput: 1000
-              Iops: 4000
+              Throughput: 750
+              Iops: 3000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
         UserData:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
+              _the_end() {
+                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+              }
+              # agent already has watchdogs, but just it doesn't behave properly
+              sleep 12h && echo "Full timeout reached." && _the_end &
+
               if [ ! -f /opt/runs-on/agent ]; then
-                trap "shutdown -h now" EXIT INT TERM
+                trap _the_end EXIT INT TERM
                 mkdir -p /opt/runs-on
                 time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
                 chmod a+x /opt/runs-on/agent
@@ -227,6 +233,7 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
+          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
@@ -236,6 +243,24 @@ Resources:
               Iops: 4000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash -ex
+              _the_end() {
+                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+              }
+              # agent already has watchdogs, but just it doesn't behave properly
+              sleep 12h && echo "Full timeout reached." && _the_end &
+
+              if [ ! -f /opt/runs-on/agent ]; then
+                trap _the_end EXIT INT TERM
+                mkdir -p /opt/runs-on
+                time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
+                chmod a+x /opt/runs-on/agent
+                /opt/runs-on/agent
+              fi
+            - AppVersion: !FindInMap [App, Image, Tag]
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
