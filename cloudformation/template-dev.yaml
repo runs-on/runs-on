@@ -71,7 +71,7 @@ Transform: 'AWS::LanguageExtensions'
 Mappings:
   App:
     Image:
-      Tag: "v1.7.4-dev"
+      Tag: "v1.7.5-dev"
   Networking:
     AzSuffixToIndex:
       1a: 0

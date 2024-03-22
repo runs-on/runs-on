@@ -1,4 +1,4 @@
-VERSION=v1.7.4
+VERSION=v1.7.5
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v1
 SHELL:=/bin/bash
@@ -82,4 +82,4 @@ install-stage:
 		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 30m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get -i 3 --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -wGS -s 30m --timestamp
