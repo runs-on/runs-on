@@ -9,12 +9,10 @@ const {
   TerminateInstancesCommand,
 } = require("@aws-sdk/client-ec2");
 const memoize = require("lru-memoize").default;
-const pThrottle = require("p-throttle");
 
 const { flatMapInput, base64Scripts } = require("./utils");
 
 const {
-  RUNS_ON_EC2_QUEUE_SIZE,
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
   DEFAULT_CPU,
@@ -34,15 +32,6 @@ const ec2Client = new EC2Client();
 const ec2NoRetryClient = new EC2Client({
   logger: logger,
   maxAttempts: 1,
-});
-
-const runInstancesRateLimit = pThrottle({
-  limit: RUNS_ON_EC2_QUEUE_SIZE,
-  interval: 1700,
-});
-
-const runInstanceQueue = runInstancesRateLimit(async (runCommand) => {
-  return await ec2NoRetryClient.send(runCommand);
 });
 
 function extractInfosFromImage(image) {
@@ -326,6 +315,7 @@ const createEC2Fleet = async function ({
   cpus,
   families,
   subnets,
+  spot,
   tags = [],
 }) {
   const memoryRequirements = { Min: 0 };
@@ -368,8 +358,8 @@ const createEC2Fleet = async function ({
               VCpuCount: cpuRequirements,
               AllowedInstanceTypes: familyRequirements,
             },
-            ImageId: "ami-0adbc2921c5de46f0",
-            // ImageId: imageId,
+            ImageId: imageId,
+            // ImageId: "ami-01cd4cb3c309365a3",
           };
         }),
       },
@@ -378,9 +368,12 @@ const createEC2Fleet = async function ({
       AllocationStrategy: "capacity-optimized-prioritized",
       InstanceInterruptionBehavior: "terminate",
     },
+    OnDemandOptionsRequest: {
+      AllocationStrategy: "prioritized",
+    },
     TargetCapacitySpecification: {
       TotalTargetCapacity: 1,
-      DefaultTargetCapacityType: "spot",
+      DefaultTargetCapacityType: spot ? "spot" : "on-demand",
     },
     Type: "instant",
   };
@@ -496,7 +489,7 @@ async function createSingleEC2Instance({
       );
       launchTemplateForType.InstanceType = instanceType.InstanceType;
       const runCommand = new RunInstancesCommand(launchTemplateForType);
-      const instanceResponse = await runInstanceQueue(runCommand);
+      const instanceResponse = await ec2NoRetryClient.send(runCommand);
       const instance = instanceResponse.Instances[0];
       logger.info(
         `✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`
@@ -561,9 +554,10 @@ async function terminateInstance(runnerName) {
       describeInstancesResponse.Reservations[0].Instances[0];
     instanceId = instanceDetails.InstanceId;
 
-    await runInstanceQueue(
-      new TerminateInstancesCommand({ InstanceIds: [instanceId] })
-    );
+    const terminateCommand = new TerminateInstancesCommand({
+      InstanceIds: [instanceId],
+    });
+    await ec2NoRetryClient.send(terminateCommand);
     return instanceDetails;
   } else {
     return;
