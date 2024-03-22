@@ -76,15 +76,6 @@ const BOOTSTRAP_SNIPPETS = {
   docker:
     "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker $RUNS_ON_AGENT_USER\n",
 };
-const USER_DATA = {
-  [PLATFORM_LINUX]: Handlebars.compile(
-    fs
-      .readFileSync(
-        path.join(__dirname, "..", "..", "data", "user_data", "linux.sh.hbs")
-      )
-      .toString()
-  ),
-};
 
 const IMAGE_ATTRIBUTES = [
   "ami",
@@ -221,5 +212,4 @@ module.exports = {
   SUPPORTED_ARCHITECTURES,
   SUPPORTED_PLATFORMS,
   UBUNTU_OWNER,
-  USER_DATA,
 };
