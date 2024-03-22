@@ -15,3 +15,4 @@ Dockerfile
 **/test
 **/Makefile
 **/.trash
+bin/ec2-boot-bench
