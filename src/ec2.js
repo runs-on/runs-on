@@ -8,12 +8,10 @@ const {
   TerminateInstancesCommand,
 } = require("@aws-sdk/client-ec2");
 const memoize = require("lru-memoize").default;
-const pThrottle = require("p-throttle");
 
 const { flatMapInput, base64Scripts } = require("./utils");
 
 const {
-  RUNS_ON_EC2_QUEUE_SIZE,
   DEFAULT_ARCHITECTURE,
   DEFAULT_PLATFORM,
   DEFAULT_CPU,
@@ -33,15 +31,6 @@ const ec2Client = new EC2Client();
 const ec2NoRetryClient = new EC2Client({
   logger: logger,
   maxAttempts: 1,
-});
-
-const runInstancesRateLimit = pThrottle({
-  limit: RUNS_ON_EC2_QUEUE_SIZE,
-  interval: 1700,
-});
-
-const runInstanceQueue = runInstancesRateLimit(async (runCommand) => {
-  return await ec2NoRetryClient.send(runCommand);
 });
 
 function extractInfosFromImage(image) {
@@ -421,7 +410,7 @@ async function createSingleEC2Instance({
       );
       launchTemplateForType.InstanceType = instanceType.InstanceType;
       const runCommand = new RunInstancesCommand(launchTemplateForType);
-      const instanceResponse = await runInstanceQueue(runCommand);
+      const instanceResponse = await ec2NoRetryClient.send(runCommand);
       const instance = instanceResponse.Instances[0];
       logger.info(
         `✅ EC2 Instance created with ID: ${instance.InstanceId} and type ${instanceType.InstanceType}`
@@ -482,9 +471,8 @@ async function terminateInstance(instanceName, { logger }) {
       const terminateParams = {
         InstanceIds: [instanceDetails.InstanceId],
       };
-
-      await runInstanceQueue(new TerminateInstancesCommand(terminateParams));
-      // await ec2Client.send(new TerminateInstancesCommand(terminateParams));
+      const terminateCommand = new TerminateInstancesCommand(terminateParams);
+      await ec2NoRetryClient.send(terminateCommand);
       logger.info(`✅ Instance terminated: ${instanceDetails.InstanceId}`);
       return instanceDetails;
     } else {
