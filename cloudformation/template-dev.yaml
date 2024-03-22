@@ -183,7 +183,6 @@ Resources:
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub "${AWS::StackName}-linux-default"
       LaunchTemplateData:
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -193,20 +192,32 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
+          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
               VolumeSize: 40
               VolumeType: gp3
-              Throughput: 750
-              Iops: 3000
+              Throughput: 1000
+              Iops: 4000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash -ex
+              if [ ! -f /opt/runs-on/agent ]; then
+                trap "shutdown -h now" EXIT INT TERM
+                mkdir -p /opt/runs-on
+                time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
+                chmod a+x /opt/runs-on/agent
+                /opt/runs-on/agent
+              fi
+            - AppVersion: !FindInMap [App, Image, Tag]
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub "${AWS::StackName}-linux-large"
       LaunchTemplateData:
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -255,6 +266,10 @@ Resources:
     Properties:
       LifecycleConfiguration:
         Rules:
+          - Id: ExpireRunnerConfig
+            Prefix: runners/
+            Status: Enabled
+            ExpirationInDays: 1
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
@@ -291,7 +306,18 @@ Resources:
                   - s3:ListMultipartUploadParts
                 Resource:
                   - !Sub "arn:aws:s3:::${S3BucketCache}"
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/*"
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/cache/*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/runners/*"
+                  - !Join
+                    - ""
+                    - [
+                        !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
+                        "${aws:userid}/*",
+                      ]
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
@@ -347,6 +373,10 @@ Resources:
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
+                Value: !Ref EC2FleetLaunchTemplateLinuxDefault
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
+                Value: !Ref EC2FleetLaunchTemplateLinuxLarge
           ImageIdentifier: !Sub
             - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
@@ -391,22 +421,24 @@ Resources:
                   - ec2:CreateFleet
                   - ec2:DeleteFleet
                 Resource: "*"
-              # - Effect: Allow
-              #   Action:
-              #     - ec2:CreateTags
-              #     - ec2:RunInstances
-              #   Resource: arn:aws:ec2:*:*:instance/*
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:RunInstances
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}::image/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*"
               - Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt EC2InstanceRole.Arn
-              # - Effect: Allow
-              #   Action:
-              #     - ec2:TerminateInstances
-              #   Resource: "arn:aws:ec2:*:*:instance/*"
-              #   Condition:
-              #     StringEquals:
-              #       "aws:ResourceTag/stack": !Ref AWS::StackName
+              - Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: "arn:aws:ec2:*:*:instance/*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/stack": !Ref AWS::StackName
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -414,6 +446,12 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}
+                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}/runners/*
               - Effect: Allow
                 Action:
                   - sns:Publish
@@ -466,9 +504,24 @@ Outputs:
   RunsOnLicenseKey:
     Description: License key
     Value: !Ref LicenseKey
+  RunsOnPublicSubnet1:
+    Description: Public subnet 1
+    Value: !Ref PublicSubnet1
+  RunsOnPublicSubnet2:
+    Description: Public subnet 2
+    Value: !Ref PublicSubnet2
+  RunsOnPublicSubnet3:
+    Description: Public subnet 3
+    Value: !Ref PublicSubnet3
   RunsOnInstanceProfileArn:
-    Description: Runner instance profile
+    Description: Runner instance profile ARN
     Value: !GetAtt EC2InstanceProfile.Arn
+  RunsOnInstanceProfileName:
+    Description: Runner instance profile Name
+    Value: !Ref EC2InstanceProfile
+  RunsOnInstanceRoleName:
+    Description: Runner instance role Name
+    Value: !Ref EC2InstanceRole
   RunsOnSecurityGroupId:
     Description: Security group for runners
     Value: !Ref SecurityGroup
@@ -481,3 +534,9 @@ Outputs:
   RunsOnTopicArn:
     Description: SNS Topic where email alerts and reports are sent
     Value: !Ref AlertTopic
+  RunsOnLaunchTemplateLinuxDefault:
+    Description: Default Linux launch template for the RunsOn service
+    Value: !Ref EC2FleetLaunchTemplateLinuxDefault
+  RunsOnLaunchTemplateLinuxLarge:
+    Description: Large Linux launch template for the RunsOn service
+    Value: !Ref EC2FleetLaunchTemplateLinuxLarge

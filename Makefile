@@ -57,7 +57,7 @@ install-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-disable-rollback \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on-test \
+		--stack-name runs-on \
 		--template-file ./cloudformation/template-dev.yaml \
 		--parameter-overrides GithubOrganization=runs-on AvailabilityZone=us-east-1a EmailAddress=ops+dev@runs-on.com LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND

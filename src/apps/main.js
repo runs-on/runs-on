@@ -4,6 +4,27 @@ const {
 const stack = require("../stack").getInstance();
 const alerting = require("../alerting");
 const WorkflowJob = require("../workflow_job");
+const pThrottle = require("p-throttle");
+
+const { RUNS_ON_EC2_QUEUE_SIZE } = require("../constants");
+
+const scheduleWorkflowThrottled = pThrottle({
+  limit: RUNS_ON_EC2_QUEUE_SIZE,
+  interval: 1700,
+});
+
+const terminateWorkflowThrottled = pThrottle({
+  limit: RUNS_ON_EC2_QUEUE_SIZE,
+  interval: 1700,
+});
+
+const workflowJobScheduleQueue = scheduleWorkflowThrottled((workflowJob) =>
+  workflowJob.schedule()
+);
+
+const workflowJobCompleteQueue = terminateWorkflowThrottled((workflowJob) =>
+  workflowJob.complete()
+);
 
 module.exports = async (app, { getRouter }) => {
   app.log.info("🎉 Yay, the app was loaded!");
@@ -42,7 +63,7 @@ module.exports = async (app, { getRouter }) => {
 
   app.on("workflow_job.queued", async (context) => {
     const workflowJob = new WorkflowJob(context);
-    workflowJob.schedule();
+    workflowJobScheduleQueue(workflowJob);
   });
 
   app.on("workflow_job.in_progress", async (context) => {
@@ -52,6 +73,6 @@ module.exports = async (app, { getRouter }) => {
 
   app.on("workflow_job.completed", async (context) => {
     const workflowJob = new WorkflowJob(context);
-    workflowJob.complete();
+    workflowJobCompleteQueue(workflowJob);
   });
 };

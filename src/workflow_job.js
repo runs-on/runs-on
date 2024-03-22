@@ -3,7 +3,6 @@ const {
   extractLabels,
   sanitizeImageSpec,
   sanitizeRunnerSpec,
-  base64Scripts,
   sanitizedAwsValue,
 } = require("./utils");
 const alerting = require("./alerting");
@@ -83,6 +82,13 @@ class WorkflowJob {
     if (!this.canBeProcessedByEnvironment()) {
       this.logger.info(
         `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
+      );
+      return false;
+    }
+
+    if (!this.runnerName || this.runnerName === "") {
+      this.logger.info(
+        `Skipping termination of runner since runner name is empty`
       );
       return false;
     }
@@ -193,18 +199,14 @@ class WorkflowJob {
 
     const launchTemplateId = launchTemplateLinuxDefault;
 
-    const launchedAt = new Date().toISOString();
-    const {
-      FleetId,
-      Errors,
-      Instances = [],
-    } = await ec2.createEC2Fleet({
+    const { Errors, Instances = [] } = await ec2.createEC2Fleet({
       launchTemplateId,
       imageId: this.instanceImage.ami,
       subnets: [publicSubnet1, publicSubnet2, publicSubnet3],
       rams: this.runnerSpec.ram,
       cpus: this.runnerSpec.cpu,
-      families: this.runnerSpec.family || [],
+      families: this.runnerSpec.family,
+      spot,
       tags: [
         { Key: "runs-on-bucket-cache", Value: s3BucketCache },
         {
@@ -215,7 +217,10 @@ class WorkflowJob {
           Key: "runs-on-runner-id",
           Value: sanitizedAwsValue(this.runnerSpec.id),
         },
-        { Key: "runs-on-labels", Value: sanitizedAwsValue(this.labels) },
+        {
+          Key: "runs-on-labels",
+          Value: sanitizedAwsValue(this.labels.join(",")),
+        },
       ],
     });
     if (Instances.length > 0) {
@@ -226,7 +231,7 @@ class WorkflowJob {
       this.logger.info("✅ Runner registered with GitHub App installation");
 
       const userDataConfig = {
-        runnerName: instanceId,
+        runnerName: this.runnerName,
         runnerJitConfig,
         admins: this.sshSpec.admins,
         debug: this.isDebug(),
@@ -235,14 +240,11 @@ class WorkflowJob {
         preinstall,
       };
 
-      const userData = this.userDataTemplate({
-        ...userDataConfig,
-        launchedAt,
-        preinstallScripts: base64Scripts(userDataConfig.preinstall),
-      });
-
-      const target = `runners/${instanceRoleName}:${instanceId}/bootstrap.sh`;
-      await config.uploadBootstrapScript(target, userData);
+      const target = `runners/${instanceRoleName}:${instanceId}/user-data.json`;
+      await config.uploadBootstrapScript(
+        target,
+        JSON.stringify(userDataConfig)
+      );
     } else {
       this.logger.error(Errors);
       throw `Unable to launch instance`;
@@ -364,6 +366,7 @@ class WorkflowJob {
         .flat()
         .filter((i) => i)
         .map((i) => parseInt(i));
+      this.runnerSpec.family = [this.runnerSpec.family].flat().filter((i) => i);
 
       this.logger.info(`runnerSpec: ${JSON.stringify(this.runnerSpec)}`);
     }
