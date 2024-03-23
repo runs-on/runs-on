@@ -34,6 +34,7 @@ class WorkflowJob {
       html_url,
       runner_name,
       conclusion,
+      created_at,
     } = workflow_job;
     this.repoFullName = repository.full_name;
     this.logger = context.log.child({
@@ -47,8 +48,10 @@ class WorkflowJob {
         head_branch,
         html_url,
         runner_name,
+        created_at,
       },
     });
+    this.createdAt = new Date(created_at);
     this.conclusion = conclusion;
     this.labels = labels;
     this.workflowName = workflow_name;
@@ -224,6 +227,7 @@ class WorkflowJob {
       this.logger.info("✅ Runner registered with GitHub App installation");
 
       const userDataConfig = {
+        createdAt: this.createdAt.toISOString(),
         receivedAt: this.receivedAt.toISOString(),
         scheduledAt: this.scheduledAt.toISOString(),
         runnerName: this.runnerName,
