@@ -2,6 +2,7 @@ const Handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
 const { RUNNERS } = require("./runners");
+const { IMAGES } = require("./images");
 
 Handlebars.registerHelper("round", function (value) {
   if (!value) return "N/A";
@@ -72,11 +73,6 @@ const SUPPORTED_PLATFORMS = {
   windows: PLATFORM_WINDOWS, // shortname
 };
 
-const BOOTSTRAP_SNIPPETS = {
-  docker:
-    "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker $RUNS_ON_AGENT_USER\n",
-};
-
 const IMAGE_ATTRIBUTES = [
   "ami",
   "owner",
@@ -85,53 +81,6 @@ const IMAGE_ATTRIBUTES = [
   "arch",
   "preinstall",
 ];
-
-const RUNS_ON_OWNER = "135269210855";
-const UBUNTU_OWNER = "099720109477";
-// can also get ami key if user wants a specific AMI
-const IMAGES = {
-  // equivalent to GitHub runner images
-  "ubuntu22-full-x64": {
-    platform: "linux",
-    arch: "x64",
-    name: "runs-on-ubuntu22-full-x64-*",
-    owner: RUNS_ON_OWNER,
-  },
-  // LEGACY - ubuntu + docker, much faster to boot
-  "ubuntu22-docker-x64": {
-    platform: "linux",
-    arch: "x64",
-    name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
-    owner: UBUNTU_OWNER,
-    preinstall: BOOTSTRAP_SNIPPETS["docker"],
-  },
-  // just ubuntu
-  "ubuntu22-base-x64": {
-    platform: "linux",
-    arch: "x64",
-    name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*",
-    owner: UBUNTU_OWNER,
-  },
-  "ubuntu22-full-arm64": {
-    platform: "linux",
-    arch: "arm64",
-    name: "runs-on-ubuntu22-full-arm64-*",
-    owner: RUNS_ON_OWNER,
-  },
-  "ubuntu22-docker-arm64": {
-    platform: "linux",
-    arch: "arm64",
-    name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*",
-    owner: UBUNTU_OWNER,
-    preinstall: BOOTSTRAP_SNIPPETS["docker"],
-  },
-  "ubuntu22-base-arm64": {
-    platform: "linux",
-    arch: "arm64",
-    name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*",
-    owner: UBUNTU_OWNER,
-  },
-};
 const DEFAULT_IMAGE_SPEC_KEY = "ubuntu22-full-x64";
 const DEFAULT_IMAGE_SPEC = IMAGES[DEFAULT_IMAGE_SPEC_KEY];
 
@@ -146,6 +95,8 @@ const RUNNER_ATTRIBUTES = [
   "ssh",
   "image",
 ];
+const DEFAULT_RUNNER_SPEC_KEY = "2cpu-linux-x64";
+const DEFAULT_RUNNER_SPEC = RUNNERS[DEFAULT_RUNNER_SPEC_KEY];
 
 const MINUTES_PER_MONTH = 60 * 24 * 30;
 
@@ -173,9 +124,6 @@ Object.keys(RUNNERS).forEach((key) => {
     ).toFixed(0);
   }
 });
-
-const DEFAULT_RUNNER_SPEC_KEY = "2cpu-linux-x64";
-const DEFAULT_RUNNER_SPEC = RUNNERS[DEFAULT_RUNNER_SPEC_KEY];
 
 let RUNS_ON_EC2_QUEUE_SIZE = Number(process.env["RUNS_ON_EC2_QUEUE_SIZE"]);
 if (isNaN(RUNS_ON_EC2_QUEUE_SIZE) || RUNS_ON_EC2_QUEUE_SIZE < 0) {
@@ -211,5 +159,4 @@ module.exports = {
   STACK_FILTERS,
   SUPPORTED_ARCHITECTURES,
   SUPPORTED_PLATFORMS,
-  UBUNTU_OWNER,
 };
