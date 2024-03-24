@@ -17,6 +17,7 @@ const {
   RUNNERS,
   RUNS_ON_LABEL,
   RUNS_ON_ENV,
+  RUNS_ON_SERVICE_ENABLED,
 } = require("./constants");
 
 class WorkflowJob {
@@ -59,76 +60,6 @@ class WorkflowJob {
     this.extractedLabels = extractLabels(labels);
     this.env = this.extractedLabels.env || "prod";
     this.runnerName = runner_name;
-  }
-
-  generateRunnerName(instanceId) {
-    // A valid runner name is 64 characters or less in length and does not include '\"', '/', ':', '<', '>', '\\', '|', '*' and '?'
-    // 19-character instanceId + 8-character random string + 11 other chars = 38
-    const uniqueString = crypto.randomBytes(4).toString("hex");
-    return `runs-on--${instanceId}--${uniqueString}`;
-  }
-
-  inProgress() {
-    this.logger.info(`Workflow job in_progress`);
-    return this;
-  }
-
-  async complete() {
-    this.logger.info(`Workflow job completed`);
-    if (!this.canBeProcessedByRunsOn()) {
-      this.logger.info(
-        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
-      );
-      return false;
-    }
-
-    if (!this.canBeProcessedByEnvironment()) {
-      this.logger.info(
-        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
-      );
-      return false;
-    }
-
-    if (!this.runnerName || this.runnerName === "") {
-      this.logger.info(
-        `Skipping termination of runner since runner name is empty`
-      );
-      return false;
-    }
-
-    try {
-      const instanceDetails = await ec2.terminateInstance(this.runnerName);
-      if (instanceDetails) {
-        this.logger.info(
-          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`
-        );
-        const minutes = await costs.postWorkflowUsage(instanceDetails, [
-          {
-            Name: "WorkflowJobConclusion",
-            Value: sanitizedAwsValue(this.conclusion),
-          },
-          {
-            Name: "WorkflowJobName",
-            Value: sanitizedAwsValue(this.workflowJobName),
-          },
-          {
-            Name: "WorkflowName",
-            Value: sanitizedAwsValue(this.workflowName),
-          },
-          { Name: "Repository", Value: sanitizedAwsValue(this.repoFullName) },
-        ]);
-
-        this.logger.info(`✅ Posted ${minutes} minute(s) of workflow usage.`);
-      } else {
-        this.logger.warn(`No instances found for ${this.runnerName}.`);
-      }
-    } catch (error) {
-      this.sendError(
-        `❌ Error when attempting to terminate instance: ${error}`
-      );
-    }
-
-    return this;
   }
 
   async schedule() {
@@ -217,6 +148,10 @@ class WorkflowJob {
           Key: "runs-on-labels",
           Value: sanitizedAwsValue(this.labels.join(",")),
         },
+        {
+          Key: "runs-on-service-enabled",
+          Value: RUNS_ON_SERVICE_ENABLED,
+        },
       ],
     });
     if (Instances.length > 0) {
@@ -248,6 +183,70 @@ class WorkflowJob {
       this.logger.error(Errors);
       throw `Unable to launch instance`;
     }
+  }
+
+  inProgress() {
+    this.logger.info(`Workflow job in_progress`);
+    return this;
+  }
+
+  async complete() {
+    this.logger.info(`Workflow job completed`);
+
+    if (!this.canBeProcessedByRunsOn()) {
+      this.logger.info(
+        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
+      );
+      return false;
+    }
+
+    if (!this.canBeProcessedByEnvironment()) {
+      this.logger.info(
+        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
+      );
+      return false;
+    }
+
+    if (!this.runnerName || this.runnerName === "") {
+      this.logger.info(
+        `Skipping termination of runner since runner name is empty`
+      );
+      return false;
+    }
+
+    try {
+      const instanceDetails = await ec2.terminateInstance(this.runnerName);
+      if (instanceDetails) {
+        this.logger.info(
+          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`
+        );
+        const minutes = await costs.postWorkflowUsage(instanceDetails, [
+          {
+            Name: "WorkflowJobConclusion",
+            Value: sanitizedAwsValue(this.conclusion),
+          },
+          {
+            Name: "WorkflowJobName",
+            Value: sanitizedAwsValue(this.workflowJobName),
+          },
+          {
+            Name: "WorkflowName",
+            Value: sanitizedAwsValue(this.workflowName),
+          },
+          { Name: "Repository", Value: sanitizedAwsValue(this.repoFullName) },
+        ]);
+
+        this.logger.info(`✅ Posted ${minutes} minute(s) of workflow usage.`);
+      } else {
+        this.logger.warn(`No instances found for ${this.runnerName}.`);
+      }
+    } catch (error) {
+      this.sendError(
+        `❌ Error when attempting to terminate instance: ${error}`
+      );
+    }
+
+    return this;
   }
 
   // labels must include the runs-on* label
@@ -440,6 +439,13 @@ class WorkflowJob {
     }
     // if we end up here, throw error
     throw error;
+  }
+
+  generateRunnerName(instanceId) {
+    // A valid runner name is 64 characters or less in length and does not include '\"', '/', ':', '<', '>', '\\', '|', '*' and '?'
+    // 19-character instanceId + 8-character random string + 11 other chars = 38
+    const uniqueString = crypto.randomBytes(4).toString("hex");
+    return `runs-on--${instanceId}--${uniqueString}`;
   }
 
   sendError(error) {

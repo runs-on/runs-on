@@ -6,24 +6,15 @@ const alerting = require("../alerting");
 const WorkflowJob = require("../workflow_job");
 const pThrottle = require("p-throttle");
 
-const { RUNS_ON_EC2_QUEUE_SIZE } = require("../constants");
+const { RUNS_ON_WORKFLOW_QUEUE_SIZE } = require("../constants");
 
-const scheduleWorkflowThrottled = pThrottle({
-  limit: RUNS_ON_EC2_QUEUE_SIZE,
-  interval: 1700,
+const workflowThrottled = pThrottle({
+  limit: RUNS_ON_WORKFLOW_QUEUE_SIZE,
+  interval: 3600 * 1000,
 });
 
-const terminateWorkflowThrottled = pThrottle({
-  limit: RUNS_ON_EC2_QUEUE_SIZE,
-  interval: 1700,
-});
-
-const workflowJobScheduleQueue = scheduleWorkflowThrottled((workflowJob) =>
+const workflowJobScheduleQueue = workflowThrottled((workflowJob) =>
   workflowJob.schedule()
-);
-
-const workflowJobCompleteQueue = terminateWorkflowThrottled((workflowJob) =>
-  workflowJob.complete()
 );
 
 module.exports = async (app, { getRouter }) => {
@@ -74,6 +65,6 @@ module.exports = async (app, { getRouter }) => {
 
   app.on("workflow_job.completed", async (context) => {
     const workflowJob = new WorkflowJob(context);
-    workflowJobCompleteQueue(workflowJob);
+    workflowJob.complete();
   });
 };

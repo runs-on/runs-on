@@ -6,6 +6,7 @@ const {
   TerminateInstancesCommand,
 } = require("@aws-sdk/client-ec2");
 const memoize = require("lru-memoize").default;
+const stack = require("./stack").getInstance();
 
 const {
   DEFAULT_ARCHITECTURE,
@@ -117,7 +118,6 @@ const createEC2Fleet = async function ({
     TagSpecifications: [
       {
         ResourceType: "instance",
-        // todo: add runs-on-launched-at, runs-on-image-id, runs-on-runner-id
         Tags: [...tags, ...STACK_TAGS],
       },
     ],
@@ -136,7 +136,6 @@ const createEC2Fleet = async function ({
               AllowedInstanceTypes: familyRequirements,
             },
             ImageId: imageId,
-            // ImageId: "ami-092c38a7074289025",
           };
         }),
       },
@@ -155,10 +154,11 @@ const createEC2Fleet = async function ({
     Type: "instant",
   };
 
-  console.log(JSON.stringify(fleetParams));
+  logger.info(`EC2 Fleet parameters: ${JSON.stringify(fleetParams)}`);
 
   const createFleetCommand = new CreateFleetCommand(fleetParams);
-  const fleetData = await ec2Client.send(createFleetCommand);
+  await stack.ec2RateLimiter.waitForToken();
+  const fleetData = await ec2NoRetryClient.send(createFleetCommand);
 
   return fleetData;
 };
@@ -193,6 +193,8 @@ async function terminateInstance(runnerName) {
     const terminateCommand = new TerminateInstancesCommand({
       InstanceIds: [instanceId],
     });
+
+    await stack.ec2RateLimiter.waitForToken();
     await ec2NoRetryClient.send(terminateCommand);
     return instanceDetails;
   } else {

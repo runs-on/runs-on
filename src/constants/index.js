@@ -29,6 +29,8 @@ const STACK_FILTERS = [{ Name: `tag:${STACK_TAG_KEY}`, Values: [STACK_NAME] }];
 
 const RUNS_ON_LABEL = process.env["RUNS_ON_LABEL"] || "runs-on";
 const RUNS_ON_ENV = process.env["RUNS_ON_ENV"] || "prod";
+const RUNS_ON_SERVICE_ENABLED =
+  process.env["RUNS_ON_SERVICE_ENABLED"] || "true";
 
 const EMAIL_COSTS_TEMPLATE = Handlebars.compile(
   fs
@@ -130,8 +132,24 @@ if (isNaN(RUNS_ON_EC2_QUEUE_SIZE) || RUNS_ON_EC2_QUEUE_SIZE < 0) {
   RUNS_ON_EC2_QUEUE_SIZE = 2;
 }
 
+// Min 5000 requests/hour for GitHub Apps. So setting max workflow launched/hour to 2500 because:
+// - 1 request for runner registration
+// - ~1 request for admins
+// - ~1 request for repo config
+// => ignoring repo admins since could set ssh=false if rate-limiting issues.
+//
+// https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28
+let RUNS_ON_WORKFLOW_QUEUE_SIZE = Number(
+  process.env["RUNS_ON_WORKFLOW_QUEUE_SIZE"]
+);
+if (isNaN(RUNS_ON_WORKFLOW_QUEUE_SIZE) || RUNS_ON_WORKFLOW_QUEUE_SIZE < 0) {
+  RUNS_ON_WORKFLOW_QUEUE_SIZE = 5000;
+}
+
 module.exports = {
   RUNS_ON_EC2_QUEUE_SIZE,
+  RUNS_ON_WORKFLOW_QUEUE_SIZE,
+  RUNS_ON_SERVICE_ENABLED,
   DEFAULT_ARCHITECTURE,
   DEFAULT_CPU,
   DEFAULT_FAMILY_FOR_PLATFORM,

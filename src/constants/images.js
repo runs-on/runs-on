@@ -3,6 +3,7 @@ const BOOTSTRAP_SNIPPETS = {
     "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker $RUNS_ON_AGENT_USER\n",
 };
 
+const AMI_PREFIX = process.env.RUNS_ON_AMI_PREFIX || "runs-on";
 const RUNS_ON_OWNER = "135269210855";
 const UBUNTU_OWNER = "099720109477";
 // can also get ami key if user wants a specific AMI
@@ -11,7 +12,7 @@ const IMAGES = {
   "ubuntu22-full-x64": {
     platform: "linux",
     arch: "x64",
-    name: "runs-on-ubuntu22-full-x64-*",
+    name: `${AMI_PREFIX}-ubuntu22-full-x64-*`,
     owner: RUNS_ON_OWNER,
   },
   // LEGACY - ubuntu + docker, much faster to boot
@@ -32,7 +33,7 @@ const IMAGES = {
   "ubuntu22-full-arm64": {
     platform: "linux",
     arch: "arm64",
-    name: "runs-on-ubuntu22-full-arm64-*",
+    name: `${AMI_PREFIX}-ubuntu22-full-arm64-*`,
     owner: RUNS_ON_OWNER,
   },
   "ubuntu22-docker-arm64": {
