@@ -30,7 +30,6 @@ push:
 	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION)
 
 s3-upload:
-	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 
 release: check bump commit login build push s3-upload
