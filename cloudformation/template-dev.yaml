@@ -16,6 +16,8 @@ Metadata:
           default: "Advanced Configuration"
         Parameters:
           - AppEc2QueueSize
+          - AppWorkflowQueueSize
+          - AppAlarmDailyMinutes
           - AppCPU
           - AppMemory
     ParameterLabels:
@@ -52,17 +54,27 @@ Parameters:
   AppEc2QueueSize:
     Type: Number
     Default: "2"
-    Description: "Queue size for launching and terminating EC2 instances (default rate limit from AWS: 2/s). Only increase if you have requested a higher limit from AWS."
+    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase if you have requested a higher limit from AWS."
+
+  AppWorkflowQueueSize:
+    Type: Number
+    Default: "2500"
+    Description: "Rate limit for launching workflows, per hour."
+
+  AppAlarmDailyMinutes:
+    Type: Number
+    Default: "4000"
+    Description: "Trigger an alarm if the cumulative number of minutes consumed during a day is over that number."
 
   AppCPU:
     Type: Number
     Default: "256"
-    Description: CPU units for RunsOn service (256 or higher)
+    Description: CPU units for RunsOn service (256 or higher). If you have many workflows, you may need to increase this (512, 1024, etc.).
 
   AppMemory:
     Type: Number
     Default: "512"
-    Description: Memory in MB for RunsOn service (512 or higher)
+    Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
 
 Mappings:
   App:
@@ -384,8 +396,8 @@ Resources:
         Protocol: HTTP
         HealthyThreshold: 1
         UnhealthyThreshold: 10
-        Interval: 5
-      AutoScalingConfigurationArn: !GetAtt RunsOnServiceAutoScalingConfiguration.Arn
+        Interval: 3
+      AutoScalingConfigurationArn: !Ref RunsOnServiceAutoScalingConfiguration
       SourceConfiguration:
         ImageRepository:
           ImageConfiguration:
@@ -409,6 +421,8 @@ Resources:
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
+              - Name: RUNS_ON_WORKFLOW_QUEUE_SIZE
+                Value: !Ref AppWorkflowQueueSize
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
                 Value: !Ref EC2FleetLaunchTemplateLinuxDefault
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
@@ -496,13 +510,13 @@ Resources:
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alerts when the daily usage of the RunsOn service exceeds 6000 minutes
+      AlarmDescription: !Sub "RunsOn daily usage exceeds ${AppAlarmDailyMinutes} minutes"
       Namespace: RunsOn
-      MetricName: minutes
-      Statistic: Sum # Choose the appropriate statistic (e.g., Sum, Average, Maximum)
-      Period: 86400 # Set to 24 hours for 1-day periods (adjust as needed)
+      MetricName: minutesNoDimension
+      Statistic: Sum
+      Period: 86400 # 24h
       EvaluationPeriods: 1
-      Threshold: 40
+      Threshold: !Ref AppAlarmDailyMinutes
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref AlertTopic
