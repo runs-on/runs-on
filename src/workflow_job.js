@@ -218,7 +218,7 @@ class WorkflowJob {
       const instanceDetails = await ec2.terminateInstance(this.runnerName);
       if (instanceDetails) {
         this.logger.info(
-          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`
+          `✅ Terminated instance: ${instanceDetails.InstanceId}`
         );
         const minutes = await costs.postWorkflowUsage(instanceDetails, [
           {
