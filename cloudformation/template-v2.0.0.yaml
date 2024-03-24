@@ -221,7 +221,7 @@ Resources:
               _the_end() {
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
               }
-              # agent already has watchdogs, but just it doesn't behave properly
+              # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
@@ -262,7 +262,7 @@ Resources:
               _the_end() {
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
               }
-              # agent already has watchdogs, but just it doesn't behave properly
+              # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then

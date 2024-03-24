@@ -108,6 +108,7 @@ class WorkflowJob {
     }
 
     const {
+      org,
       s3BucketCache,
       region,
       launchTemplateLinuxDefault,
@@ -135,6 +136,14 @@ class WorkflowJob {
       families: this.runnerSpec.family,
       spot,
       tags: [
+        {
+          Key: "runs-on-org",
+          Value: org,
+        },
+        {
+          Key: "runs-on-version",
+          Value: stack.appVersion,
+        },
         { Key: "runs-on-bucket-cache", Value: s3BucketCache },
         {
           Key: "runs-on-image-id",

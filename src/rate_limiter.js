@@ -1,29 +1,38 @@
 class RateLimiter {
-  constructor(tokensPerInterval, interval) {
-    this.tokens = 0;
-    this.maxTokens = tokensPerInterval;
+  constructor(tokensPerInterval, interval, { logger, name }) {
+    this.tokensPerInterval = tokensPerInterval;
+    this.interval = interval || 1000;
+    this.logger = logger;
+    this.name = name || "RateLimiter";
+    this.maxTokens = this.tokensPerInterval;
+    this.tokens = this.tokensPerInterval;
     this.queue = [];
-    this.interval = setInterval(
-      () => this.renewTokens(tokensPerInterval),
-      interval || 1000
-    );
+    this.schedule();
+  }
+
+  schedule() {
+    this.timeout = setTimeout(() => this.renewTokens(), this.interval);
   }
 
   stop() {
-    clearInterval(this.interval);
+    clearTimeout(this.timeout);
   }
 
-  renewTokens(tokensPerInterval) {
-    console.log("tokens", this.tokens);
-    this.tokens = tokensPerInterval;
-    while (this.tokens > 0 && this.queue.length > 0) {
-      console.log("renewTokens", this.tokens, this.queue.length);
-      const nextResolve = this.queue.shift();
-      this.tokens--;
-      setImmediate(() => nextResolve);
-      // process.nextTick(nextResolve);
-      // nextResolve();
+  renewTokens() {
+    this.tokens = this.tokensPerInterval;
+    try {
+      while (this.tokens > 0 && this.queue.length > 0) {
+        this.logger.info(
+          `${this.name} tokens=${this.tokens} queue=${this.queue.length}`
+        );
+        const nextResolve = this.queue.shift();
+        this.tokens--;
+        nextResolve();
+      }
+    } catch (err) {
+      this.logger.error(`${this.name} error`, err);
     }
+    this.schedule();
   }
 
   async waitForToken() {
@@ -36,11 +45,6 @@ class RateLimiter {
       });
     }
   }
-  // async waitForToken() {
-  //   while (this.tokens === 0) {
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-  //   }
-  //   this.tokens--;
-  // }
 }
+
 module.exports = RateLimiter;
