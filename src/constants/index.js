@@ -1,6 +1,8 @@
 const Handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
+
+const APP_VERSION = process.env["RUNS_ON_APP_VERSION"] || "dev";
 const { RUNNERS } = require("./runners");
 const { IMAGES } = require("./images");
 
@@ -147,6 +149,7 @@ if (isNaN(RUNS_ON_WORKFLOW_QUEUE_SIZE) || RUNS_ON_WORKFLOW_QUEUE_SIZE < 0) {
 }
 
 module.exports = {
+  APP_VERSION,
   RUNS_ON_EC2_QUEUE_SIZE,
   RUNS_ON_WORKFLOW_QUEUE_SIZE,
   RUNS_ON_SERVICE_ENABLED,

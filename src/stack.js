@@ -3,8 +3,11 @@ const {
   DescribeStacksCommand,
 } = require("@aws-sdk/client-cloudformation");
 const RateLimiter = require("./rate_limiter");
-const { STACK_NAME, RUNS_ON_EC2_QUEUE_SIZE } = require("./constants");
-const pkg = require("../package.json");
+const {
+  STACK_NAME,
+  RUNS_ON_EC2_QUEUE_SIZE,
+  APP_VERSION,
+} = require("./constants");
 
 const outputKeys = {
   org: "RunsOnOrg",
@@ -36,12 +39,24 @@ class Stack {
     this.devMode = process.env["RUNS_ON_ENV"] === "dev";
     this.outputs = {};
     this.configured = false;
-    this.appVersion = pkg.version;
+    this.appVersion = APP_VERSION;
     // EC2 API throttling - https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-throttling.html
-    this.ec2RateLimiter = new RateLimiter(RUNS_ON_EC2_QUEUE_SIZE, 1000, {
-      logger: this.logger,
-      name: "ec2-rate-limiter",
-    });
+    this.ec2RateLimiterRunInstances = new RateLimiter(
+      RUNS_ON_EC2_QUEUE_SIZE,
+      1000,
+      {
+        logger: this.logger,
+        name: "ec2-rate-limiter-run-instances",
+      }
+    );
+    this.ec2RateLimiterTerminateInstances = new RateLimiter(
+      RUNS_ON_EC2_QUEUE_SIZE,
+      1000,
+      {
+        logger: this.logger,
+        name: "ec2-rate-limiter-terminate-instances",
+      }
+    );
   }
 
   async fetchOutputs() {

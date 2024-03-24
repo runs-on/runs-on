@@ -1,15 +1,22 @@
-VERSION=v2.0.0
+VERSION=v2.0.5
+PREV_VERSION=v2.0.4
 VERSION_DEV=$(VERSION)-dev
+PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
+
+show:
+	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
+	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
+	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
 	if ! git diff --exit-code :^Makefile :^cloudformation/* :^package.json &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
+	cp cloudformation/template-$(PREV_VERSION).yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|"version": "v.*|"version": "$(VERSION)",|' package.json
-	# Will fail if no template exists. This is by design. Must be copied manually.
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 
@@ -31,8 +38,15 @@ push: login build
 
 s3-upload:
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
+	# automatically copy previous agent if none has already been uploaded for the current version
+	aws s3 ls s3://runs-on/agent/$(VERSION)/ || aws s3 sync s3://runs-on/agent/$(PREV_VERSION)/ s3://runs-on/agent/$(VERSION)/
+	aws s3 ls s3://runs-on/agent/$(VERSION_DEV)/ || aws s3 sync s3://runs-on/agent/$(PREV_VERSION_DEV)/ s3://runs-on/agent/$(VERSION_DEV)/
 
-release: check bump commit push s3-upload
+# bump (if needed), build and push current VERSION to registry, then publish the template to S3
+stage: bump push s3-upload
+
+# same as stage, but with added check and commit + tag the result
+release: check bump push commit s3-upload
 
 release-prod:
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/template.yaml
@@ -62,7 +76,7 @@ install-dev:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com LicenseKey=$(LICENSE_KEY) \
-		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
 install-test:
@@ -73,7 +87,7 @@ install-test:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
-		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+		--capabilities CAPABILITY_IAM
 
 delete-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name runs-on-test
@@ -87,7 +101,7 @@ install-stage:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com LicenseKey=$(LICENSE_KEY) \
-		--capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+		--capabilities CAPABILITY_IAM
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -wGS -s 300m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -wGS -s 60m --timestamp

@@ -3,7 +3,7 @@ const BOOTSTRAP_SNIPPETS = {
     "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker $RUNS_ON_AGENT_USER\n",
 };
 
-const AMI_PREFIX = process.env.RUNS_ON_AMI_PREFIX || "runs-on";
+const AMI_PREFIX = process.env.RUNS_ON_AMI_PREFIX || "runs-on-v2";
 const RUNS_ON_OWNER = "135269210855";
 const UBUNTU_OWNER = "099720109477";
 // can also get ami key if user wants a specific AMI

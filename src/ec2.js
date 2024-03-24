@@ -157,7 +157,7 @@ const createEC2Fleet = async function ({
   logger.info(`EC2 Fleet parameters: ${JSON.stringify(fleetParams)}`);
 
   const createFleetCommand = new CreateFleetCommand(fleetParams);
-  await stack.ec2RateLimiter.waitForToken();
+  await stack.ec2RateLimiterRunInstances.waitForToken();
   const fleetData = await ec2NoRetryClient.send(createFleetCommand);
 
   return fleetData;
@@ -194,7 +194,7 @@ async function terminateInstance(runnerName) {
       InstanceIds: [instanceId],
     });
 
-    await stack.ec2RateLimiter.waitForToken();
+    await stack.ec2RateLimiterTerminateInstances.waitForToken();
     await ec2NoRetryClient.send(terminateCommand);
     return instanceDetails;
   } else {

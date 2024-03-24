@@ -10,7 +10,6 @@ Metadata:
           - GithubOrganization
           - LicenseKey
           - EmailAddress
-          - AvailabilityZone
           - SSHCidrRange
       - Label:
           default: "Advanced Configuration"
@@ -38,11 +37,6 @@ Parameters:
   EmailAddress:
     Type: String
     Description: Email address for cost and alert reports.
-    MinLength: 1
-
-  AvailabilityZone:
-    Type: AWS::EC2::AvailabilityZone::Name
-    Description: "The availability zone where the stack will be created. You can update this at any time, for instance if you find out that some AZ does not have the latest instance types."
     MinLength: 1
 
   SSHCidrRange:
@@ -79,7 +73,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.0.0"
+      Tag: "v2.0.5"
 
 Resources:
   VPC:
@@ -289,8 +283,10 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+
   S3Bucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: RetainExceptOnCreate
     Properties:
       Tags:
         - Key: "stack"
@@ -300,6 +296,7 @@ Resources:
 
   S3BucketCache:
     Type: AWS::S3::Bucket
+    DeletionPolicy: RetainExceptOnCreate
     Properties:
       LifecycleConfiguration:
         Rules:
@@ -407,6 +404,8 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG
                 Value: !Ref GithubOrganization
+              - Name: RUNS_ON_APP_VERSION
+                Value: !FindInMap [App, Image, Tag]
               - Name: RUNS_ON_LICENSE_KEY
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_BUCKET_CONFIG
