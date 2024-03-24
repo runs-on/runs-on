@@ -1,4 +1,4 @@
-name: Test dev
+name: Stage / Test
 
 on:
   workflow_dispatch:
@@ -15,20 +15,21 @@ jobs:
       matrix:
         runner:
           - runs-on
-          - runs-on,cpu=1
-          - runs-on,runner=2cpu-linux,iops=800
+          - runs-on,runner=1cpu-linux-x64
           - runs-on,runner=gofast,image=custom
           - runs-on,runner=gofast,cpu=1
-          - runs-on,cpu=1,image=ubuntu22-base-arm64
-          - runs-on,cpu=1,image=ubuntu22-docker-x64,spot=false
-          - runs-on,cpu=1,image=ubuntu22-full-arm64
-          - runs-on,cpu=1,image=ubuntu22-full-arm64,ssh=false
+          - runs-on,runner=1cpu-linux-x64,image=ubuntu22-base-arm64
+          - runs-on,image=ubuntu22-docker-x64,spot=false
+          - runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64
+          - runs-on,runner=2cpu-linux-arm64,ssh=false
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Check preinstall
+        run: test -f /tmp/preinstalled || true
       - name: Setup
         run: |
           sudo apt-get update -qq && sudo apt-get install build-essential -y
