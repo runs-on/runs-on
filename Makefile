@@ -51,7 +51,7 @@ s3-upload-dev:
 release-dev: login bump build-dev push-dev s3-upload-dev
 
 run-dev:
-	RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev AWS_PROFILE=runs-on-dev npm run dev
+	RUNS_ON_AMI_PREFIX=runs-on-dev RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev AWS_PROFILE=runs-on-dev npm run dev
 
 install-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \

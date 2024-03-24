@@ -44,7 +44,7 @@ async function getDailyCosts({ start, end, granularity = "DAILY" } = {}) {
 async function init() {
   const WAIT_TIME_BEFORE_REGISTERING_COST_ALLOCATION_TAG = stack.devMode
     ? 1000 * 10
-    : 1000 * 60 * 60 * 24; // 24h
+    : 1000 * 60 * 60 * 12; // 12h
   const INTERVAL_BETWEEN_COST_REPORTS = stack.devMode
     ? 1000 * 60 * 60 * 1
     : 1000 * 60 * 60 * 24; // 24h
@@ -72,9 +72,6 @@ async function init() {
       await sendEmailCosts();
     }
   }, INTERVAL_BETWEEN_COST_REPORTS);
-
-  // always send a first cost report after install, even if tag allocation registration is not yet done
-  await sendEmailCosts();
 }
 
 async function sendEmailCosts() {

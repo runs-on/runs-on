@@ -2,7 +2,8 @@ const {
   CloudFormationClient,
   DescribeStacksCommand,
 } = require("@aws-sdk/client-cloudformation");
-const { STACK_NAME } = require("./constants");
+const RateLimiter = require("./rate_limiter");
+const { STACK_NAME, RUNS_ON_EC2_QUEUE_SIZE } = require("./constants");
 const pkg = require("../package.json");
 
 const outputKeys = {
@@ -35,6 +36,8 @@ class Stack {
     this.outputs = {};
     this.configured = false;
     this.appVersion = pkg.version;
+    // EC2 API throttling - https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-throttling.html
+    this.ec2RateLimiter = new RateLimiter(RUNS_ON_EC2_QUEUE_SIZE, 1000);
   }
 
   async fetchOutputs() {

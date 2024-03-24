@@ -212,7 +212,7 @@ Resources:
               # agent already has watchdogs, but just it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
-              if [ ! -f /opt/runs-on/agent ]; then
+              if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
                 mkdir -p /opt/runs-on
                 time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
@@ -253,7 +253,7 @@ Resources:
               # agent already has watchdogs, but just it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
-              if [ ! -f /opt/runs-on/agent ]; then
+              if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
                 mkdir -p /opt/runs-on
                 time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
@@ -353,6 +353,16 @@ Resources:
       Roles:
         - !Ref EC2InstanceRole
 
+  RunsOnServiceAutoScalingConfiguration:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      MaxConcurrency: 200
+      MaxSize: 10
+      MinSize: 1
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
   RunsOnService:
     Type: AWS::AppRunner::Service
     Properties:
@@ -375,6 +385,7 @@ Resources:
         HealthyThreshold: 1
         UnhealthyThreshold: 10
         Interval: 5
+      AutoScalingConfigurationArn: !GetAtt RunsOnServiceAutoScalingConfiguration.Arn
       SourceConfiguration:
         ImageRepository:
           ImageConfiguration:
