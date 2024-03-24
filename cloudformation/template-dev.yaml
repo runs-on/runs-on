@@ -79,7 +79,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v1.7.4-dev"
+      Tag: "v2.0.0-dev"
 
 Resources:
   VPC:
