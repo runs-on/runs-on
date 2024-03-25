@@ -4,15 +4,12 @@ images:
     owner: "099720109477"
     name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
     arch: x64
-    user: ubuntu
     platform: linux
     preinstall: |
       #!/bin/bash
-      set -eo pipefail
-      apt-get update -qq && apt-get install build-essential -y
-      curl https://nodejs.org/dist/v20.10.0/node-v20.10.0-linux-x64.tar.gz | tar -xzf - -C /usr/local --strip-components=1
+      touch /tmp/preinstalled
 
 runners:
   gofast:
-    cpu: 16
-    family: c7a
+    cpu: 4
+    family: [c7a, c7i]
