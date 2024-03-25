@@ -221,10 +221,18 @@ class WorkflowJob {
         throw `AWS launch errors: ${JSON.stringify(Errors)}`;
       }
     } catch (err) {
-      this.logger.error(err);
-      throw `Unable to launch instance with the following parameters: ${JSON.stringify(
-        fleetParams
-      )}. Error was: ${err}`;
+      if (spot) {
+        this.logger.warn(
+          `⚠️ Error while launching instance: ${err}. Attempting to launch on-demand instance...`
+        );
+        this.runnerSpec.spot = false;
+        await this.scheduleOnce();
+      } else {
+        this.logger.error(`❌ Error while launching instance: ${err}.`);
+        throw `Unable to launch instance with the following parameters: ${JSON.stringify(
+          fleetParams
+        )}. Error was: ${err}`;
+      }
     }
   }
 
