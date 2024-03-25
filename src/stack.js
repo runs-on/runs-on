@@ -21,6 +21,7 @@ const outputKeys = {
   publicSubnet1: "RunsOnPublicSubnet1",
   publicSubnet2: "RunsOnPublicSubnet2",
   publicSubnet3: "RunsOnPublicSubnet3",
+  defaultAdmins: "RunsOnDefaultAdmins",
   topicArn: "RunsOnTopicArn",
 };
 
@@ -82,6 +83,10 @@ class Stack {
       }
 
       this.outputs = values;
+      this.outputs.defaultAdmins = (this.outputs.defaultAdmins || "")
+        .split(/\s+|,/)
+        .map((i) => i.trim())
+        .filter((i) => i !== "");
     }
     return this.outputs;
   }

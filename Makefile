@@ -1,5 +1,5 @@
-VERSION=v2.0.9
-PREV_VERSION=v2.0.8
+VERSION=v2.0.10
+PREV_VERSION=v2.0.9
 VERSION_DEV=$(VERSION)-dev
 PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
@@ -75,7 +75,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultRootAdmins="crohr" LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)

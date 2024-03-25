@@ -11,7 +11,7 @@ Metadata:
           - LicenseKey
           - EmailAddress
           - SSHCidrRange
-          - DefaultRootAdmins
+          - DefaultAdmins
       - Label:
           default: "Advanced Configuration"
         Parameters:
@@ -46,10 +46,10 @@ Parameters:
     Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
     MinLength: 1
 
-  DefaultRootAdmins:
+  DefaultAdmins:
     Type: String
     Default: ""
-    Description: Space separated list of GitHub usernames that will be granted root access to all the runner instances. If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled). If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
 
   AppEc2QueueSize:
     Type: Number
@@ -79,7 +79,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.0.9"
+      Tag: "v2.0.10"
 
 Resources:
   VPC:
@@ -224,16 +224,6 @@ Resources:
               # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
-              _add_root_ssh_keys() {
-                mkdir -p /root/.ssh/ && touch /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
-                ADMINS="${DefaultRootAdmins}"
-                for admin in $ADMINS; do
-                  echo "Allow root SSH access for $admin"
-                  curl -L https://github.com/$admin.keys >> /root/.ssh/authorized_keys || true
-                done
-              }
-              _add_root_ssh_keys || true
-
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
                 mkdir -p /opt/runs-on
@@ -274,16 +264,6 @@ Resources:
               }
               # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
-
-              _add_root_ssh_keys() {
-                mkdir -p /root/.ssh/ && touch /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
-                ADMINS="${DefaultRootAdmins}"
-                for admin in $ADMINS; do
-                  echo "Allow root SSH access for $admin"
-                  curl -L https://github.com/$admin.keys >> /root/.ssh/authorized_keys || true
-                done
-              }
-              _add_root_ssh_keys || true
 
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
@@ -450,6 +430,8 @@ Resources:
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_WORKFLOW_QUEUE_SIZE
                 Value: !Ref AppWorkflowQueueSize
+              - Name: RUNS_ON_DEFAULT_ADMINS
+                Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
                 Value: !Ref EC2FleetLaunchTemplateLinuxDefault
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
@@ -614,6 +596,9 @@ Outputs:
   RunsOnTopicArn:
     Description: SNS Topic where email alerts and reports are sent
     Value: !Ref AlertTopic
+  RunsOnDefaultAdmins:
+    Description: Default GitHub usernames with SSH access to the runners
+    Value: !Ref DefaultAdmins
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
     Value: !Ref EC2FleetLaunchTemplateLinuxDefault
