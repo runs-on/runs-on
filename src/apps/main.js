@@ -39,6 +39,9 @@ module.exports = async (app, { getRouter }) => {
     return;
   }
 
+  stack.ec2RateLimiterRunInstances.schedule();
+  stack.ec2RateLimiterTerminateInstances.schedule();
+
   const router = getRouter();
 
   // bind webhook path with correct credentials

@@ -143,7 +143,7 @@ async function postWorkflowUsage(instanceDetails, dimensions) {
   // Define the metric data
   const metricData = [
     {
-      // used for cloudwatch metric, as it can't work on metrics with many dimensions
+      // used for cloudwatch Alarm, as it can't work on metrics with many dimensions
       MetricName: "minutesNoDimension",
       Timestamp: TerminationTime,
       Unit: "Count",

@@ -7,7 +7,6 @@ class RateLimiter {
     this.maxTokens = this.tokensPerInterval;
     this.tokens = this.tokensPerInterval;
     this.queue = [];
-    this.schedule();
   }
 
   schedule() {

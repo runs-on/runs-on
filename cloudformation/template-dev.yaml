@@ -11,6 +11,7 @@ Metadata:
           - LicenseKey
           - EmailAddress
           - SSHCidrRange
+          - DefaultRootAdmins
       - Label:
           default: "Advanced Configuration"
         Parameters:
@@ -45,6 +46,11 @@ Parameters:
     Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
     MinLength: 1
 
+  DefaultRootAdmins:
+    Type: String
+    Default: ""
+    Description: Space separated list of GitHub usernames that will be granted root access to all the runner instances. If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
+
   AppEc2QueueSize:
     Type: Number
     Default: "2"
@@ -73,7 +79,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.0.5-dev"
+      Tag: "v2.0.8-dev"
 
 Resources:
   VPC:
@@ -218,6 +224,16 @@ Resources:
               # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
 
+              _add_root_ssh_keys() {
+                mkdir -p /root/.ssh/ && touch /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
+                ADMINS="${DefaultRootAdmins}"
+                for admin in $ADMINS; do
+                  echo "Allow root SSH access for $admin"
+                  curl -L https://github.com/$admin.keys >> /root/.ssh/authorized_keys || true
+                done
+              }
+              _add_root_ssh_keys || true
+
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
                 mkdir -p /opt/runs-on
@@ -258,6 +274,16 @@ Resources:
               }
               # agent already has watchdogs, but just if it doesn't behave properly
               sleep 12h && echo "Full timeout reached." && _the_end &
+
+              _add_root_ssh_keys() {
+                mkdir -p /root/.ssh/ && touch /root/.ssh/authorized_keys && chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys
+                ADMINS="${DefaultRootAdmins}"
+                for admin in $ADMINS; do
+                  echo "Allow root SSH access for $admin"
+                  curl -L https://github.com/$admin.keys >> /root/.ssh/authorized_keys || true
+                done
+              }
+              _add_root_ssh_keys || true
 
               if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
                 trap _the_end EXIT INT TERM
@@ -418,6 +444,8 @@ Resources:
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_TOPIC_ARN
                 Value: !Ref AlertTopic
+              - Name: RUNS_ON_REGION
+                Value: !Ref AWS::Region
               - Name: RUNS_ON_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_WORKFLOW_QUEUE_SIZE
@@ -553,6 +581,9 @@ Outputs:
   RunsOnLicenseKey:
     Description: License key
     Value: !Ref LicenseKey
+  RunsOnRegion:
+    Description: AWS region
+    Value: !Ref AWS::Region
   RunsOnPublicSubnet1:
     Description: Public subnet 1
     Value: !Ref PublicSubnet1

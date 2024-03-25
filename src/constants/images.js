@@ -1,6 +1,6 @@
 const BOOTSTRAP_SNIPPETS = {
   docker:
-    "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker $RUNS_ON_AGENT_USER\n",
+    "#!/bin/bash\ncurl -fsSL https://get.docker.com | sh\nusermod -aG docker runner\n",
 };
 
 const AMI_PREFIX = process.env.RUNS_ON_AMI_PREFIX || "runs-on-v2";

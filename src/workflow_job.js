@@ -62,19 +62,38 @@ class WorkflowJob {
     this.runnerName = runner_name;
   }
 
-  async schedule() {
-    this.scheduledAt = new Date();
-    if (!this.canBeProcessedByRunsOn()) {
+  canBeProcessedByStack() {
+    if (!this.labels.find((label) => label.startsWith(RUNS_ON_LABEL))) {
       this.logger.info(
         `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
       );
       return false;
     }
 
-    if (!this.canBeProcessedByEnvironment()) {
+    if (this.env !== RUNS_ON_ENV) {
       this.logger.info(
         `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
       );
+      return false;
+    }
+
+    if (this.extractedLabels.region) {
+      const { region } = stack.outputs;
+      if (this.extractedLabels.region !== region) {
+        this.logger.info(
+          `Ignoring workflow since region label '${this.extractedLabels.region}' does not match current region label '${region}'`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async schedule() {
+    this.scheduledAt = new Date();
+
+    if (!this.canBeProcessedByStack()) {
       return false;
     }
 
@@ -82,7 +101,7 @@ class WorkflowJob {
       await this.setup();
       await this.scheduleOnce();
     } catch (e) {
-      this.sendError(e);
+      this.sendError(`❌ Error when attempting to schedule instance: ${e}`);
     }
   }
 
@@ -117,7 +136,7 @@ class WorkflowJob {
       publicSubnet1,
       publicSubnet2,
       publicSubnet3,
-    } = await stack.fetchOutputs();
+    } = stack.outputs;
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
@@ -127,7 +146,7 @@ class WorkflowJob {
       launchTemplateId = launchTemplateLinuxLarge;
     }
 
-    const { Errors, Instances = [] } = await ec2.createEC2Fleet({
+    const fleetParams = ec2.generateEC2FleetParams({
       launchTemplateId,
       imageId: this.instanceImage.ami,
       subnets: [publicSubnet1, publicSubnet2, publicSubnet3],
@@ -159,38 +178,53 @@ class WorkflowJob {
         },
         {
           Key: "runs-on-service-enabled",
-          Value: RUNS_ON_SERVICE_ENABLED,
+          Value: this.isAgentServiceEnabled() ? "true" : "false",
         },
       ],
     });
-    if (Instances.length > 0) {
-      const instanceId = Instances[0].InstanceIds[0];
-      this.logger.info(`✅ Instance ${instanceId} launched`);
 
-      const runnerJitConfig = await this.registerRunner(instanceId);
-      this.logger.info("✅ Runner registered with GitHub App installation");
+    this.logger.info({ fleet_parameters: fleetParams }, `ec2-fleet-parameters`);
 
-      const userDataConfig = {
-        createdAt: this.createdAt.toISOString(),
-        receivedAt: this.receivedAt.toISOString(),
-        scheduledAt: this.scheduledAt.toISOString(),
-        runnerName: this.runnerName,
-        runnerJitConfig,
-        admins: this.sshSpec.admins,
-        debug: this.isDebug(),
-        s3BucketCache,
-        awsRegion: region,
-        preinstall,
-      };
+    try {
+      const { Errors, Instances = [] } = await ec2.createEC2Fleet(fleetParams);
 
-      const target = `runners/${instanceRoleName}:${instanceId}/user-data.json`;
-      await config.uploadBootstrapScript(
-        target,
-        JSON.stringify(userDataConfig)
-      );
-    } else {
-      this.logger.error(Errors);
-      throw `Unable to launch instance`;
+      if (Instances.length > 0) {
+        const instanceId = Instances[0].InstanceIds[0];
+        this.logger.info(`✅ Instance ${instanceId} launched`);
+
+        const runnerJitConfig = await this.registerRunner(instanceId);
+        this.logger.info("✅ Runner registered with GitHub App installation");
+
+        const userDataConfig = {
+          createdAt: this.createdAt.toISOString(),
+          receivedAt: this.receivedAt.toISOString(),
+          scheduledAt: this.scheduledAt.toISOString(),
+          runnerName: this.runnerName,
+          runnerJitConfig,
+          admins: this.sshSpec.admins,
+          imageName: this.instanceImage.name,
+          debug: this.isDebug(),
+          s3BucketCache,
+          awsRegion: region,
+          preinstall,
+        };
+
+        const target = `runners/${instanceRoleName}:${instanceId}/user-data.json`;
+        await config.uploadBootstrapScript(
+          target,
+          JSON.stringify(userDataConfig)
+        );
+        this.logger.info(
+          `✅ UserData file uploaded successfully at ${s3BucketCache}/${target}`
+        );
+      } else {
+        throw `AWS launch errors: ${JSON.stringify(Errors)}`;
+      }
+    } catch (err) {
+      this.logger.error(err);
+      throw `Unable to launch instance with the following parameters: ${JSON.stringify(
+        fleetParams
+      )}. Error was: ${err}`;
     }
   }
 
@@ -202,17 +236,7 @@ class WorkflowJob {
   async complete() {
     this.logger.info(`Workflow job completed`);
 
-    if (!this.canBeProcessedByRunsOn()) {
-      this.logger.info(
-        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
-      );
-      return false;
-    }
-
-    if (!this.canBeProcessedByEnvironment()) {
-      this.logger.info(
-        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
-      );
+    if (!this.canBeProcessedByStack()) {
       return false;
     }
 
@@ -265,16 +289,19 @@ class WorkflowJob {
       : false;
   }
 
-  // current env must match given env label (defaults to 'prod')
-  canBeProcessedByEnvironment() {
-    return (
-      this.env === RUNS_ON_ENV || this.env === process.env.RUNS_ON_ENV_OVERRIDE
-    );
-  }
-
   isDebug() {
     const { debug = false } = this.extractedLabels;
     return debug === true;
+  }
+
+  isAgentServiceEnabled() {
+    if (this.extractedLabels.agent === false) {
+      return false;
+    }
+    if (this.extractedLabels.agent === true) {
+      return true;
+    }
+    return RUNS_ON_SERVICE_ENABLED === "true";
   }
 
   async findMatchingInstanceImage() {
@@ -317,6 +344,10 @@ class WorkflowJob {
           };
 
       if (Object.keys(result).length === 0) {
+        // if image was given but no spec found, throw error
+        if (image) {
+          throw `No imageSpec found for image=${image}. Verify your labels and config file.`;
+        }
         this.logger.info(`Overriding default image spec since none given`);
         const id = DEFAULT_IMAGE_SPEC_KEY;
         this.imageSpec = { ...IMAGES[DEFAULT_IMAGE_SPEC_KEY], id };
@@ -347,7 +378,10 @@ class WorkflowJob {
       };
 
       if (Object.keys(result).length === 0) {
-        this.logger.info(`Defaulting to default runner spec since none given`);
+        if (runner) {
+          throw `No runnerSpec found for runner=${runner}. Verify your labels and config file.`;
+        }
+        this.logger.info(`Defaulting to default runnerSpec since none given`);
         const id = DEFAULT_RUNNER_SPEC_KEY;
         this.runnerSpec = { ...RUNNERS[id], id };
       } else {
@@ -361,6 +395,12 @@ class WorkflowJob {
               )
               .join("-");
         this.runnerSpec = { ...result, id };
+
+        if (!this.runnerSpec.family || this.runnerSpec.family.length === 0) {
+          throw `No family specified in runnerSpec: ${JSON.stringify(
+            this.runnerSpec
+          )}`;
+        }
       }
 
       // set defaults for ssh and spot
@@ -463,7 +503,7 @@ class WorkflowJob {
     this.logger.error(error);
     alerting.sendError(
       [
-        `${this.repo_full_name} - Error`,
+        `${this.repoFullName} - Error`,
         `* Workflow: [\`${workflow_name}\`](${workflow_job.html_url})`,
         `* Run ID: \`${run_id}\``,
         `* Job name: \`${name}\``,

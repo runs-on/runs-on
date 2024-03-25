@@ -86,7 +86,7 @@ async function _findCustomImage(inputs) {
   }
 }
 
-const createEC2Fleet = async function ({
+function generateEC2FleetParams({
   launchTemplateId,
   imageId,
   rams,
@@ -100,12 +100,12 @@ const createEC2Fleet = async function ({
   const cpuRequirements = { Min: 0 };
   const familyRequirements = [];
   if (rams.length > 0) {
-    memoryRequirements.Min = Math.min(rams);
-    memoryRequirements.Max = Math.max(rams);
+    memoryRequirements.Min = Math.min(...rams);
+    memoryRequirements.Max = Math.max(...rams);
   }
   if (cpus.length > 0) {
-    cpuRequirements.Min = Math.min(cpus);
-    cpuRequirements.Max = Math.max(cpus);
+    cpuRequirements.Min = Math.min(...cpus);
+    cpuRequirements.Max = Math.max(...cpus);
   }
   families.forEach((family) => {
     if (family.includes("*") || family.includes(".")) {
@@ -154,14 +154,16 @@ const createEC2Fleet = async function ({
     Type: "instant",
   };
 
-  logger.info(`EC2 Fleet parameters: ${JSON.stringify(fleetParams)}`);
+  return fleetParams;
+}
 
+async function createEC2Fleet(fleetParams) {
   const createFleetCommand = new CreateFleetCommand(fleetParams);
   await stack.ec2RateLimiterRunInstances.waitForToken();
-  const fleetData = await ec2NoRetryClient.send(createFleetCommand);
+  const fleetResponse = await ec2NoRetryClient.send(createFleetCommand);
 
-  return fleetData;
-};
+  return fleetResponse;
+}
 
 async function terminateInstance(runnerName) {
   let describeParams = {};
@@ -205,5 +207,6 @@ async function terminateInstance(runnerName) {
 module.exports = {
   findCustomImage,
   terminateInstance,
+  generateEC2FleetParams,
   createEC2Fleet,
 };

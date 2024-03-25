@@ -1,5 +1,5 @@
-VERSION=v2.0.5
-PREV_VERSION=v2.0.4
+VERSION=v2.0.8
+PREV_VERSION=v2.0.7
 VERSION_DEV=$(VERSION)-dev
 PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
@@ -15,7 +15,7 @@ check:
 	if ! git diff --exit-code :^Makefile :^cloudformation/* :^package.json &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
-	cp cloudformation/template-$(PREV_VERSION).yaml cloudformation/template-$(VERSION).yaml
+	test -f cloudformation/template-$(VERSION).yaml || cp cloudformation/template-$(PREV_VERSION).yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|"version": "v.*|"version": "$(VERSION)",|' package.json
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
@@ -65,7 +65,7 @@ s3-upload-dev:
 release-dev: bump push-dev s3-upload-dev
 
 run-dev:
-	RUNS_ON_AMI_PREFIX=runs-on-dev RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev AWS_PROFILE=runs-on-dev npm run dev
+	AWS_PROFILE=runs-on-dev RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev npm run dev
 
 # Install with the dev template
 install-dev:
@@ -75,7 +75,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultRootAdmins="crohr" LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)

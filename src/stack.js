@@ -11,14 +11,10 @@ const {
 
 const outputKeys = {
   org: "RunsOnOrg",
+  region: "RunsOnRegion",
   licenseKey: "RunsOnLicenseKey",
   s3BucketConfig: "RunsOnBucketConfig",
   s3BucketCache: "RunsOnBucketCache",
-  subnetId: "RunsOnPublicSubnetId",
-  az: "RunsOnAvailabilityZone",
-  securityGroupId: "RunsOnSecurityGroupId",
-  instanceProfileArn: "RunsOnInstanceProfileArn",
-  instanceProfileName: "RunsOnInstanceProfileName",
   instanceRoleName: "RunsOnInstanceRoleName",
   launchTemplateLinuxDefault: "RunsOnLaunchTemplateLinuxDefault",
   launchTemplateLinuxLarge: "RunsOnLaunchTemplateLinuxLarge",
@@ -85,7 +81,6 @@ class Stack {
         }
       }
 
-      values.region = await this.cfClient.config.region();
       this.outputs = values;
     }
     return this.outputs;
