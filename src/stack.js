@@ -9,20 +9,26 @@ const {
   APP_VERSION,
 } = require("./constants");
 
-const outputKeys = {
-  org: "RunsOnOrg",
-  region: "RunsOnRegion",
-  licenseKey: "RunsOnLicenseKey",
-  s3BucketConfig: "RunsOnBucketConfig",
-  s3BucketCache: "RunsOnBucketCache",
-  instanceRoleName: "RunsOnInstanceRoleName",
-  launchTemplateLinuxDefault: "RunsOnLaunchTemplateLinuxDefault",
-  launchTemplateLinuxLarge: "RunsOnLaunchTemplateLinuxLarge",
-  publicSubnet1: "RunsOnPublicSubnet1",
-  publicSubnet2: "RunsOnPublicSubnet2",
-  publicSubnet3: "RunsOnPublicSubnet3",
-  defaultAdmins: "RunsOnDefaultAdmins",
-  topicArn: "RunsOnTopicArn",
+const configMappings = {
+  org: ["RunsOnOrg", "RUNS_ON_ORG"],
+  region: ["RunsOnRegion", "RUNS_ON_REGION"],
+  licenseKey: ["RunsOnLicenseKey", "RUNS_ON_LICENSE_KEY"],
+  s3BucketConfig: ["RunsOnBucketConfig", "RUNS_ON_BUCKET_CONFIG"],
+  s3BucketCache: ["RunsOnBucketCache", "RUNS_ON_BUCKET_CACHE"],
+  instanceRoleName: ["RunsOnInstanceRoleName", "RUNS_ON_INSTANCE_ROLE_NAME"],
+  launchTemplateLinuxDefault: [
+    "RunsOnLaunchTemplateLinuxDefault",
+    "RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT",
+  ],
+  launchTemplateLinuxLarge: [
+    "RunsOnLaunchTemplateLinuxLarge",
+    "RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE",
+  ],
+  publicSubnet1: ["RunsOnPublicSubnet1", "RUNS_ON_PUBLIC_SUBNET_1"],
+  publicSubnet2: ["RunsOnPublicSubnet2", "RUNS_ON_PUBLIC_SUBNET_2"],
+  publicSubnet3: ["RunsOnPublicSubnet3", "RUNS_ON_PUBLIC_SUBNET_3"],
+  defaultAdmins: ["RunsOnDefaultAdmins", "RUNS_ON_DEFAULT_ADMINS"],
+  topicArn: ["RunsOnTopicArn", "RUNS_ON_TOPIC_ARN"],
 };
 
 function getOutput(cfOutputs, key) {
@@ -64,21 +70,14 @@ class Stack {
 
       const values = {};
 
-      for (const key in outputKeys) {
-        // e.g. RunsOnTopicArn => RUNS_ON_TOPIC_ARN
-        values[key] =
-          process.env[
-            outputKeys[key]
-              .split(/(?=[A-Z])/)
-              .join("_")
-              .toUpperCase()
-          ];
+      for (const key in configMappings) {
+        values[key] = process.env[configMappings[key][1]];
 
         // WARN: when starting, the CF stack may not yet be ready (on install/update)
         // so you can't be sure that all outputs will be prenset or up to date
         // Mainly used for development
         if (Outputs) {
-          values[key] ||= getOutput(Outputs, outputKeys[key]);
+          values[key] ||= getOutput(Outputs, configMappings[key][0]);
         }
       }
 

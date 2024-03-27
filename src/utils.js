@@ -131,7 +131,7 @@ function base64Scripts(scripts = []) {
 }
 
 function sanitizedAwsValue(value) {
-  return (value || "")
+  return (value || "unknown")
     .replace(/[^\x00-\x7F]/g, "")
     .substring(0, 250)
     .trim();

@@ -100,8 +100,8 @@ function generateEC2FleetParams({
   const cpuRequirements = { Min: 0 };
   const familyRequirements = [];
   if (rams.length > 0) {
-    memoryRequirements.Min = Math.min(...rams);
-    memoryRequirements.Max = Math.max(...rams);
+    memoryRequirements.Min = Math.min(...rams) * 1024;
+    memoryRequirements.Max = Math.max(...rams) * 1024;
   }
   if (cpus.length > 0) {
     cpuRequirements.Min = Math.min(...cpus);
@@ -128,12 +128,17 @@ function generateEC2FleetParams({
           Version: "$Latest",
         },
         Overrides: subnets.map((subnet, i) => {
+          // https://docs.aws.amazon.com/cli/latest/reference/ec2/get-instance-types-from-instance-requirements.html
           return {
             SubnetId: subnet,
             InstanceRequirements: {
               MemoryMiB: memoryRequirements,
               VCpuCount: cpuRequirements,
               AllowedInstanceTypes: familyRequirements,
+              BurstablePerformance: "included",
+              LocalStorage: "included",
+              MaxSpotPriceAsPercentageOfOptimalOnDemandPrice: "999999",
+              OnDemandMaxPricePercentageOverLowestPrice: "999999",
             },
             ImageId: imageId,
           };

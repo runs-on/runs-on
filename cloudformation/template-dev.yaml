@@ -79,7 +79,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.0.10-dev"
+      Tag: "v2.0.13-dev"
 
 Resources:
   VPC:
@@ -201,6 +201,8 @@ Resources:
         SecurityGroupIds:
           - !Ref SecurityGroup
         EbsOptimized: "true"
+        # Can't set CreditSpecification here, because standard instances would raise e.g.:
+        #   InstanceCreditSpecification.NotSupported - The c7a.large instance type does not support T2 Unlimited.
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
@@ -371,8 +373,8 @@ Resources:
   RunsOnServiceAutoScalingConfiguration:
     Type: AWS::AppRunner::AutoScalingConfiguration
     Properties:
-      MaxConcurrency: 200
-      MaxSize: 10
+      MaxConcurrency: 20
+      MaxSize: 25
       MinSize: 1
       Tags:
         - Key: "stack"
@@ -422,6 +424,8 @@ Resources:
                 Value: !Ref SecurityGroup
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
+              - Name: RUNS_ON_INSTANCE_ROLE_NAME
+                Value: !Ref EC2InstanceRole
               - Name: RUNS_ON_TOPIC_ARN
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_REGION
@@ -430,6 +434,12 @@ Resources:
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_WORKFLOW_QUEUE_SIZE
                 Value: !Ref AppWorkflowQueueSize
+              - Name: RUNS_ON_PUBLIC_SUBNET_1
+                Value: !Ref PublicSubnet1
+              - Name: RUNS_ON_PUBLIC_SUBNET_2
+                Value: !Ref PublicSubnet2
+              - Name: RUNS_ON_PUBLIC_SUBNET_3
+                Value: !Ref PublicSubnet3
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT

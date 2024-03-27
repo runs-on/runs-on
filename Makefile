@@ -1,9 +1,11 @@
-VERSION=v2.0.10
-PREV_VERSION=v2.0.9
+VERSION=v2.0.13
+PREV_VERSION=v2.0.12
 VERSION_DEV=$(VERSION)-dev
 PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
+
+include .env.local
 
 show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
@@ -104,4 +106,4 @@ install-stage:
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -wGS -s 60m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -w -s 60m --timestamp
