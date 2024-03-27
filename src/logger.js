@@ -1,5 +1,5 @@
 const pino = require("pino");
-const appVersion = require("../package.json").version;
+const { APP_VERSION } = require("./constants");
 
 const pinoOptions = {
   timestamp: () => `,"date":"${new Date(Date.now()).toISOString()}"`,
@@ -10,7 +10,7 @@ const pinoOptions = {
       return { level: label.toUpperCase() };
     },
     bindings: (bindings) => {
-      return { version: appVersion };
+      return { version: APP_VERSION };
     },
   },
 };

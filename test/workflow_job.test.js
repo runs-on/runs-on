@@ -66,42 +66,29 @@ describe("WorkflowJob", () => {
       runsOn: true,
     });
     expect(workflowJob.env).toBe("dev");
-    expect(workflowJob.repo_full_name).toBe("runs-on/test");
-    expect(workflowJob.defaultTags).toMatchObject([
-      { Key: "runs-on-repo-full-name", Value: "runs-on/test" },
-      { Key: "runs-on-workflow-name", Value: "RunsOn ARM Full" },
-      { Key: "runs-on-workflow-run-id", Value: "8097221654" },
-      { Key: "runs-on-workflow-job-name", Value: "default" },
-      { Key: "runs-on-workflow-job-id", Value: "22127780802" },
-    ]);
-    expect(workflowJob.runnerName).toMatch(/runs-on-aws-/);
+    expect(workflowJob.repoFullName).toBe("runs-on/test");
     expect(workflowJob.logger).toBeTruthy();
-    expect(workflowJob.canBeProcessedByRunsOn()).toBe(true);
-    expect(workflowJob.canBeProcessedByEnvironment()).toBe(false);
+    expect(workflowJob.canBeProcessedByStack()).toBe(false);
   });
 
   it("can't be processed if no runs-on label", async () => {
     context.payload.workflow_job.labels = ["runner=2cpu-linux"];
     const workflowJob = new WorkflowJob(context);
-    expect(workflowJob.canBeProcessedByRunsOn()).toBe(false);
-    expect(workflowJob.canBeProcessedByEnvironment()).toBe(true);
+    expect(workflowJob.canBeProcessedByStack()).toBe(false);
 
     expect(await workflowJob.schedule()).toBe(false);
   });
 
   describe("findRunnerSpec", () => {
-    it("returns the default runner spec if none found in labels", async () => {
+    it("throws if given runner not found", async () => {
       context.payload.workflow_job.labels = ["runs-on,runner=not-found"];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = {};
-      const spec = await workflowJob.findRunnerSpec();
-      expect(spec).toMatchObject({
-        id: "2cpu-linux",
-        cpu: 2,
-        family: ["m7a", "m7g", "m7i"],
-        spot: true,
-        ssh: true,
-      });
+      expect(() => {
+        workflowJob.findRunnerSpec();
+      }).toThrow(
+        "No runnerSpec found for runner=not-found. Verify your labels and config file."
+      );
     });
 
     it("returns the config runner spec if found", async () => {
@@ -115,7 +102,7 @@ describe("WorkflowJob", () => {
         id: "cheap-arm64",
         cpu: [1, 2, 4],
         ram: [4, 8],
-        family: "m7g",
+        family: ["m7g"],
         spot: false,
         ssh: true,
       });
@@ -130,7 +117,8 @@ describe("WorkflowJob", () => {
       const spec = await workflowJob.findRunnerSpec();
       expect(spec).toStrictEqual({
         id: "cpu=2-family=c7+m7-image=my-image-spot=false",
-        cpu: "2",
+        cpu: [2],
+        ram: [],
         family: ["c7", "m7"],
         image: "my-image",
         spot: false,
@@ -140,19 +128,17 @@ describe("WorkflowJob", () => {
   });
 
   describe("findImageSpec", () => {
-    it("returns the default image spec if none found in labels", async () => {
+    it("throws if given image not found", async () => {
       context.payload.workflow_job.labels = ["runs-on,image=not-found"];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = {};
       workflowJob.runnerSpec = {};
-      const spec = await workflowJob.findImageSpec();
-      expect(spec).toStrictEqual({
-        id: "ubuntu22-full-x64",
-        owner: "135269210855",
-        name: "runs-on-ubuntu22-full-x64-*",
-        platform: "linux",
-        arch: "x64",
-      });
+
+      expect(() => {
+        workflowJob.findImageSpec();
+      }).toThrow(
+        "No imageSpec found for image=not-found. Verify your labels and config file."
+      );
     });
 
     it("returns the config image spec if found", async () => {
@@ -170,7 +156,7 @@ describe("WorkflowJob", () => {
 
     it("returns a custom image spec", async () => {
       context.payload.workflow_job.labels = [
-        "runs-on,image=my-custom-image,ami=ami-5678909",
+        "runs-on,runner=2cpu-linux-x64,image=my-custom-image,ami=ami-5678909",
       ];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = {};
@@ -322,7 +308,7 @@ describe("WorkflowJob", () => {
 
     it("[deprecated] finds the docker image", async () => {
       context.payload.workflow_job.labels = [
-        "runs-on,image=ubuntu22-docker-arm64",
+        "runs-on,runner=2cpu-linux-arm64,image=ubuntu22-docker-arm64",
       ];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = repoConfig;
@@ -339,15 +325,14 @@ describe("WorkflowJob", () => {
       );
     });
 
-    it("finds the arm image and default runner types", async () => {
+    it("finds the arm image", async () => {
       context.payload.workflow_job.labels = [
-        "runs-on,image=ubuntu22-full-arm64",
+        "runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64",
       ];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = repoConfig;
       await workflowJob.setup();
       const instanceImage = workflowJob.instanceImage;
-      const instanceTypes = workflowJob.instanceTypes;
       expect(instanceImage).toMatchObject({
         arch: "arm64",
         id: "ubuntu22-full-arm64",
@@ -355,25 +340,16 @@ describe("WorkflowJob", () => {
         platform: "Linux/UNIX",
       });
       expect(instanceImage.ami).toMatch(/ami-/);
-      expect(instanceImage.name).toMatch(/runs-on-ubuntu22-full-arm64-/);
-      expect(instanceImage.minHddSize).toBeGreaterThan(10);
-
-      expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
-        "m7g.large",
-        "m7gd.large",
-        "c7g.large",
-        "c7gd.large",
-        "c7gn.large",
-      ]);
+      expect(instanceImage.name).toMatch(/runs-on-v2-ubuntu22-full-arm64-/);
+      expect(instanceImage.mainDiskSize).toBeGreaterThan(10);
     });
 
     it("finds the default x64 image and custom runner types", async () => {
-      context.payload.workflow_job.labels = ["runs-on,runner=4cpu-linux"];
+      context.payload.workflow_job.labels = ["runs-on,runner=4cpu-linux-x64"];
       const workflowJob = new WorkflowJob(context);
       workflowJob.repoConfig = repoConfig;
       await workflowJob.setup();
       const instanceImage = workflowJob.instanceImage;
-      const instanceTypes = workflowJob.instanceTypes;
       expect(instanceImage).toMatchObject({
         arch: "x86_64",
         id: "ubuntu22-full-x64",
@@ -381,71 +357,8 @@ describe("WorkflowJob", () => {
         platform: "Linux/UNIX",
       });
       expect(instanceImage.ami).toMatch(/ami-/);
-      expect(instanceImage.name).toMatch(/runs-on-ubuntu22-full-x64-/);
-      expect(instanceImage.minHddSize).toBeGreaterThan(10);
-
-      expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
-        "m7a.xlarge",
-        "m7i-flex.xlarge",
-        "m7i.xlarge",
-        "c7a.xlarge",
-      ]);
-    });
-
-    it("return instance types in the correct order", async () => {
-      context.payload.workflow_job.labels = [
-        "runs-on,runner=4cpu-linux,family=c7a+r7i,cpu=8+4+2",
-      ];
-      const workflowJob = new WorkflowJob(context);
-      workflowJob.repoConfig = repoConfig;
-      await workflowJob.setup();
-      const instanceTypes = workflowJob.instanceTypes;
-      expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
-        "c7a.large",
-        "c7a.xlarge",
-        "c7a.2xlarge",
-        "r7i.large",
-        "r7i.xlarge",
-        "r7i.2xlarge",
-        "r7iz.large",
-        "r7iz.xlarge",
-        "r7iz.2xlarge",
-      ]);
-    });
-
-    it("returns instance types with custom runner", async () => {
-      context.payload.workflow_job.labels = [
-        "runs-on,runner=choose-fast,run-id=12345",
-      ];
-      const workflowJob = new WorkflowJob(context);
-      workflowJob.repoConfig = {
-        admins: [],
-        runners: {
-          "choose-fast": {
-            cpu: 4,
-            family: ["m7i-flex", "m7a"],
-            spot: true,
-            ssh: false,
-          },
-        },
-      };
-      await workflowJob.setup();
-      const instanceTypes = workflowJob.instanceTypes;
-      expect(instanceTypes.map((i) => i.InstanceType)).toStrictEqual([
-        "m7i-flex.xlarge",
-        "m7a.xlarge",
-      ]);
-    });
-
-    it("can't find matching instance types for labels", async () => {
-      context.payload.workflow_job.labels = [
-        "runs-on,runner=4cpu-linux,family=t4g",
-      ];
-      const workflowJob = new WorkflowJob(context);
-      workflowJob.repoConfig = repoConfig;
-      await expect(workflowJob.setup()).rejects.toThrow(
-        `❌ No instance types found for {"ssh":true,"spot":true,"cpu":4,"family":"t4g","id":"4cpu-linux"}`
-      );
+      expect(instanceImage.name).toMatch(/runs-on-v2-ubuntu22-full-x64-/);
+      expect(instanceImage.mainDiskSize).toBeGreaterThan(10);
     });
 
     it("can't find matching instance image for labels", async () => {

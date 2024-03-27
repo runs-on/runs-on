@@ -2,16 +2,64 @@ const {
   CloudFormationClient,
   DescribeStacksCommand,
 } = require("@aws-sdk/client-cloudformation");
-const { STACK_NAME } = require("./constants");
-const pkg = require("../package.json");
+const RateLimiter = require("./rate_limiter");
+const {
+  STACK_NAME,
+  RUNS_ON_EC2_QUEUE_SIZE,
+  APP_VERSION,
+} = require("./constants");
+
+const configMappings = {
+  org: ["RunsOnOrg", "RUNS_ON_ORG"],
+  region: ["RunsOnRegion", "RUNS_ON_REGION"],
+  licenseKey: ["RunsOnLicenseKey", "RUNS_ON_LICENSE_KEY"],
+  s3BucketConfig: ["RunsOnBucketConfig", "RUNS_ON_BUCKET_CONFIG"],
+  s3BucketCache: ["RunsOnBucketCache", "RUNS_ON_BUCKET_CACHE"],
+  instanceRoleName: ["RunsOnInstanceRoleName", "RUNS_ON_INSTANCE_ROLE_NAME"],
+  launchTemplateLinuxDefault: [
+    "RunsOnLaunchTemplateLinuxDefault",
+    "RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT",
+  ],
+  launchTemplateLinuxLarge: [
+    "RunsOnLaunchTemplateLinuxLarge",
+    "RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE",
+  ],
+  publicSubnet1: ["RunsOnPublicSubnet1", "RUNS_ON_PUBLIC_SUBNET_1"],
+  publicSubnet2: ["RunsOnPublicSubnet2", "RUNS_ON_PUBLIC_SUBNET_2"],
+  publicSubnet3: ["RunsOnPublicSubnet3", "RUNS_ON_PUBLIC_SUBNET_3"],
+  defaultAdmins: ["RunsOnDefaultAdmins", "RUNS_ON_DEFAULT_ADMINS"],
+  topicArn: ["RunsOnTopicArn", "RUNS_ON_TOPIC_ARN"],
+};
+
+function getOutput(cfOutputs, key) {
+  return cfOutputs.find((output) => output.OutputKey === key)?.OutputValue;
+}
 
 class Stack {
   constructor() {
+    this.logger = require("./logger").getLogger();
     this.cfClient = new CloudFormationClient();
     this.devMode = process.env["RUNS_ON_ENV"] === "dev";
     this.outputs = {};
     this.configured = false;
-    this.appVersion = pkg.version;
+    this.appVersion = APP_VERSION;
+    // EC2 API throttling - https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-throttling.html
+    this.ec2RateLimiterRunInstances = new RateLimiter(
+      RUNS_ON_EC2_QUEUE_SIZE,
+      1000,
+      {
+        logger: this.logger,
+        name: "ec2-rate-limiter-run-instances",
+      }
+    );
+    this.ec2RateLimiterTerminateInstances = new RateLimiter(
+      RUNS_ON_EC2_QUEUE_SIZE,
+      1000,
+      {
+        logger: this.logger,
+        name: "ec2-rate-limiter-terminate-instances",
+      }
+    );
   }
 
   async fetchOutputs() {
@@ -21,51 +69,23 @@ class Stack {
       const { Outputs } = response.Stacks[0];
 
       const values = {};
-      values.org = process.env["RUNS_ON_ORG"];
-      values.licenseKey = process.env["RUNS_ON_LICENSE_KEY"];
-      values.s3BucketConfig = process.env["RUNS_ON_BUCKET_CONFIG"];
-      values.s3BucketCache = process.env["RUNS_ON_BUCKET_CACHE"];
-      values.subnetId = process.env["RUNS_ON_PUBLIC_SUBNET_ID"];
-      values.az = process.env["RUNS_ON_AVAILABILITY_ZONE"];
-      values.securityGroupId = process.env["RUNS_ON_SECURITY_GROUP_ID"];
-      values.instanceProfileArn = process.env["RUNS_ON_INSTANCE_PROFILE_ARN"];
-      values.topicArn = process.env["RUNS_ON_TOPIC_ARN"];
-      // on first install, CF stack may not yet be ready
-      if (Outputs) {
-        values.org ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnOrg",
-        )?.OutputValue;
-        values.licenseKey ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnLicenseKey",
-        )?.OutputValue;
-        values.s3BucketConfig ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnBucketConfig",
-        )?.OutputValue;
-        values.s3BucketCache ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnBucketCache",
-        )?.OutputValue;
-        values.subnetId ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnPublicSubnetId",
-        )?.OutputValue;
-        values.az ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnAvailabilityZone",
-        )?.OutputValue;
-        values.securityGroupId ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnSecurityGroupId",
-        )?.OutputValue;
-        values.instanceProfileArn ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnInstanceProfileArn",
-        )?.OutputValue;
-        values.topicArn ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnTopicArn",
-        )?.OutputValue;
-        // warn: may be null if stack outputs not yet ready
-        values.entryPoint ||= Outputs.find(
-          (output) => output.OutputKey == "RunsOnEntryPoint",
-        )?.OutputValue;
+
+      for (const key in configMappings) {
+        values[key] = process.env[configMappings[key][1]];
+
+        // WARN: when starting, the CF stack may not yet be ready (on install/update)
+        // so you can't be sure that all outputs will be prenset or up to date
+        // Mainly used for development
+        if (Outputs) {
+          values[key] ||= getOutput(Outputs, configMappings[key][0]);
+        }
       }
-      values.region = await this.cfClient.config.region();
+
       this.outputs = values;
+      this.outputs.defaultAdmins = (this.outputs.defaultAdmins || "")
+        .split(/\s+|,/)
+        .map((i) => i.trim())
+        .filter((i) => i !== "");
     }
     return this.outputs;
   }

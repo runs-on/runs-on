@@ -130,6 +130,13 @@ function base64Scripts(scripts = []) {
     .map((script) => Buffer.from(script).toString("base64"));
 }
 
+function sanitizedAwsValue(value) {
+  return (value || "unknown")
+    .replace(/[^\x00-\x7F]/g, "")
+    .substring(0, 250)
+    .trim();
+}
+
 module.exports = {
   base64Scripts,
   flatMapInput,
@@ -139,4 +146,5 @@ module.exports = {
   sanitizeImageSpec,
   isStringFloat,
   objToArray,
+  sanitizedAwsValue,
 };

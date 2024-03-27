@@ -4,6 +4,18 @@ const {
 const stack = require("../stack").getInstance();
 const alerting = require("../alerting");
 const WorkflowJob = require("../workflow_job");
+const pThrottle = require("p-throttle");
+
+const { RUNS_ON_WORKFLOW_QUEUE_SIZE } = require("../constants");
+
+const workflowThrottled = pThrottle({
+  limit: RUNS_ON_WORKFLOW_QUEUE_SIZE,
+  interval: 3600 * 1000,
+});
+
+const workflowJobScheduleQueue = workflowThrottled((workflowJob) =>
+  workflowJob.schedule()
+);
 
 module.exports = async (app, { getRouter }) => {
   app.log.info("🎉 Yay, the app was loaded!");
@@ -27,8 +39,13 @@ module.exports = async (app, { getRouter }) => {
     return;
   }
 
+  stack.ec2RateLimiterRunInstances.schedule();
+  stack.ec2RateLimiterTerminateInstances.schedule();
+
+  const router = getRouter();
+
   // bind webhook path with correct credentials
-  getRouter().use(
+  router.use(
     "/",
     createWebhooksMiddleware(app.webhooks, { path: "/", log: app.log })
   );
@@ -40,7 +57,8 @@ module.exports = async (app, { getRouter }) => {
 
   app.on("workflow_job.queued", async (context) => {
     const workflowJob = new WorkflowJob(context);
-    workflowJob.schedule();
+    workflowJob.receivedAt = new Date();
+    workflowJobScheduleQueue(workflowJob);
   });
 
   app.on("workflow_job.in_progress", async (context) => {

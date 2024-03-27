@@ -1,13 +1,15 @@
-const { v4: uuidv4 } = require("uuid");
+const crypto = require("crypto");
 const {
   extractLabels,
   sanitizeImageSpec,
   sanitizeRunnerSpec,
+  sanitizedAwsValue,
 } = require("./utils");
 const alerting = require("./alerting");
 const ec2 = require("./ec2");
 const costs = require("./costs");
 const stack = require("./stack").getInstance();
+const config = require("./config");
 const {
   DEFAULT_RUNNER_SPEC_KEY,
   DEFAULT_IMAGE_SPEC_KEY,
@@ -15,7 +17,7 @@ const {
   RUNNERS,
   RUNS_ON_LABEL,
   RUNS_ON_ENV,
-  USER_DATA,
+  RUNS_ON_SERVICE_ENABLED,
 } = require("./constants");
 
 class WorkflowJob {
@@ -33,8 +35,9 @@ class WorkflowJob {
       html_url,
       runner_name,
       conclusion,
+      created_at,
     } = workflow_job;
-    this.repo_full_name = repository.full_name;
+    this.repoFullName = repository.full_name;
     this.logger = context.log.child({
       workflow_job: {
         id,
@@ -45,87 +48,52 @@ class WorkflowJob {
         status,
         head_branch,
         html_url,
+        runner_name,
+        created_at,
       },
     });
+    this.createdAt = new Date(created_at);
     this.conclusion = conclusion;
     this.labels = labels;
+    this.workflowName = workflow_name;
+    this.workflowJobName = name;
     this.extractedLabels = extractLabels(labels);
     this.env = this.extractedLabels.env || "prod";
-    this.defaultTags = [
-      { Key: "runs-on-repo-full-name", Value: this.repo_full_name },
-      { Key: "runs-on-workflow-name", Value: workflow_name },
-      { Key: "runs-on-workflow-run-id", Value: String(run_id) },
-      { Key: "runs-on-workflow-job-name", Value: name },
-      { Key: "runs-on-workflow-job-id", Value: String(id) },
-    ];
-    this.runnerName = runner_name || this.generateRunnerName();
+    this.runnerName = runner_name;
   }
 
-  generateRunnerName() {
-    return `runs-on-aws-${uuidv4()}`;
-  }
-
-  inProgress() {
-    this.logger.info(`Workflow job in_progress`);
-    return this;
-  }
-
-  async complete() {
-    this.logger.info(`Workflow job completed`);
-    if (!this.canBeProcessedByRunsOn()) {
+  canBeProcessedByStack() {
+    if (!this.labels.find((label) => label.startsWith(RUNS_ON_LABEL))) {
       this.logger.info(
         `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
       );
       return false;
     }
 
-    if (!this.canBeProcessedByEnvironment()) {
+    if (this.env !== RUNS_ON_ENV) {
       this.logger.info(
         `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
       );
       return false;
     }
 
-    try {
-      const instanceDetails = await ec2.terminateInstance(this.runnerName, {
-        logger: this.logger,
-      });
-      if (instanceDetails) {
+    if (this.extractedLabels.region) {
+      const { region } = stack.outputs;
+      if (this.extractedLabels.region !== region) {
         this.logger.info(
-          `✅ Terminated instance: ${JSON.stringify(instanceDetails)}`
+          `Ignoring workflow since region label '${this.extractedLabels.region}' does not match current region label '${region}'`
         );
-        const minutes = await costs.postWorkflowUsage(
-          {
-            ...instanceDetails,
-            AssumedTerminationTime: new Date(),
-            Conclusion: this.conclusion,
-          },
-          { logger: this.logger }
-        );
-
-        this.logger.info(`✅ Posted ${minutes} minute(s) of workflow usage.`);
+        return false;
       }
-    } catch (error) {
-      this.sendError(
-        `❌ Error when attempting to terminate instance: ${error}`
-      );
     }
 
-    return this;
+    return true;
   }
 
   async schedule() {
-    if (!this.canBeProcessedByRunsOn()) {
-      this.logger.info(
-        `Ignoring workflow since no label with ${RUNS_ON_LABEL} word`
-      );
-      return false;
-    }
+    this.scheduledAt = new Date();
 
-    if (!this.canBeProcessedByEnvironment()) {
-      this.logger.info(
-        `Ignoring workflow since its env label '${this.env}' does not match current env label '${RUNS_ON_ENV}'`
-      );
+    if (!this.canBeProcessedByStack()) {
       return false;
     }
 
@@ -133,7 +101,7 @@ class WorkflowJob {
       await this.setup();
       await this.scheduleOnce();
     } catch (e) {
-      this.sendError(e);
+      this.sendError(`❌ Error when attempting to schedule instance: ${e}`);
     }
   }
 
@@ -150,79 +118,178 @@ class WorkflowJob {
       throw new Error(`❌ No AMI found for ${JSON.stringify(this.imageSpec)}`);
     }
 
-    const { platform } = this.instanceImage;
-    this.userDataTemplate = USER_DATA[platform];
-    if (!this.userDataTemplate) {
-      throw new Error(
-        `❌ No user data template found for platform ${platform}`
-      );
-    }
-
-    this.instanceTypes = await this.findMatchingInstanceTypes();
-    if (this.instanceTypes.length === 0) {
-      throw new Error(
-        `❌ No instance types found for ${JSON.stringify(this.runnerSpec)}`
-      );
-    }
-
-    this.launchTemplate = ec2.generateLaunchTemplate({
-      stackOutputs: await stack.fetchOutputs(),
-      instanceImage: this.instanceImage,
-      runnerSpec: this.runnerSpec,
-    });
-
     return this;
   }
 
   async scheduleOnce() {
-    if (
-      !this.instanceImage ||
-      !this.instanceTypes ||
-      !this.runnerName ||
-      !this.sshSpec ||
-      !this.launchTemplate ||
-      !this.userDataTemplate
-    ) {
+    if (!this.instanceImage || !this.runnerSpec || !this.sshSpec) {
       throw "Please call setup() first";
     }
 
-    const { s3BucketCache, region } = await stack.fetchOutputs();
+    const {
+      org,
+      s3BucketCache,
+      region,
+      launchTemplateLinuxDefault,
+      launchTemplateLinuxLarge,
+      defaultAdmins,
+      instanceRoleName,
+      publicSubnet1,
+      publicSubnet2,
+      publicSubnet3,
+    } = stack.outputs;
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
-    const runnerJitConfig = await this.registerRunner();
-    this.logger.info("✅ Runner registered with GitHub App installation");
+    let launchTemplateId = launchTemplateLinuxDefault;
 
-    const userDataConfig = {
-      runnerName: this.runnerName,
-      runnerJitConfig,
-      admins: this.sshSpec.admins,
-      debug: this.isDebug(),
-      s3BucketCache,
-      awsRegion: region,
-      preinstall,
-    };
+    if (this.instanceImage.mainDiskSize > 40) {
+      launchTemplateId = launchTemplateLinuxLarge;
+    }
 
-    const { instance, error } = await ec2.createAndWaitForInstance({
-      logger: this.logger,
-      instanceTypes: this.instanceTypes,
-      instanceName: this.runnerName,
-      launchTemplate: this.launchTemplate,
-      userDataTemplate: this.userDataTemplate,
-      userDataConfig,
+    const fleetParams = ec2.generateEC2FleetParams({
+      launchTemplateId,
+      imageId: this.instanceImage.ami,
+      subnets: [publicSubnet1, publicSubnet2, publicSubnet3],
+      rams: this.runnerSpec.ram,
+      cpus: this.runnerSpec.cpu,
+      families: this.runnerSpec.family,
       spot,
       tags: [
-        { Key: "runs-on-runner-id", Value: this.runnerSpec.id },
-        { Key: "runs-on-image-id", Value: this.imageSpec.id },
-        ...this.defaultTags,
+        {
+          Key: "runs-on-org",
+          Value: org,
+        },
+        {
+          Key: "runs-on-version",
+          Value: stack.appVersion,
+        },
+        { Key: "runs-on-bucket-cache", Value: s3BucketCache },
+        {
+          Key: "runs-on-image-id",
+          Value: sanitizedAwsValue(this.instanceImage.id),
+        },
+        {
+          Key: "runs-on-runner-id",
+          Value: sanitizedAwsValue(this.runnerSpec.id),
+        },
+        {
+          Key: "runs-on-labels",
+          Value: sanitizedAwsValue(this.labels.join(",")),
+        },
+        {
+          Key: "runs-on-service-enabled",
+          Value: this.isAgentServiceEnabled() ? "true" : "false",
+        },
       ],
     });
 
-    if (error) {
-      throw `Error while launching instance: ${error}`;
-    } else {
-      this.logger.info(`✅ Instance is running: ${JSON.stringify(instance)}`);
+    this.logger.info({ fleet_parameters: fleetParams }, `ec2-fleet-parameters`);
+
+    try {
+      const { Errors, Instances = [] } = await ec2.createEC2Fleet(fleetParams);
+
+      if (Instances.length > 0) {
+        const instanceId = Instances[0].InstanceIds[0];
+        this.logger.info(`✅ Instance ${instanceId} launched`);
+
+        const runnerJitConfig = await this.registerRunner(instanceId);
+        this.logger.info("✅ Runner registered with GitHub App installation");
+
+        const userDataConfig = {
+          createdAt: this.createdAt.toISOString(),
+          receivedAt: this.receivedAt.toISOString(),
+          scheduledAt: this.scheduledAt.toISOString(),
+          runnerName: this.runnerName,
+          runnerJitConfig,
+          admins: this.sshSpec.admins,
+          imageName: this.instanceImage.name,
+          debug: this.isDebug(),
+          defaultAdmins,
+          s3BucketCache,
+          awsRegion: region,
+          preinstall,
+        };
+
+        const target = `runners/${instanceRoleName}:${instanceId}/user-data.json`;
+        await config.uploadBootstrapScript(
+          target,
+          JSON.stringify(userDataConfig)
+        );
+        this.logger.info(
+          `✅ UserData file uploaded successfully at ${s3BucketCache}/${target}`
+        );
+      } else {
+        throw `AWS launch errors: ${JSON.stringify(Errors)}`;
+      }
+    } catch (err) {
+      if (spot) {
+        this.logger.warn(
+          `⚠️ Error while launching instance: ${err}. Attempting to launch on-demand instance...`
+        );
+        this.runnerSpec.spot = false;
+        await this.scheduleOnce();
+      } else {
+        this.logger.error(`❌ Error while launching instance: ${err}.`);
+        throw `Unable to launch instance with the following parameters: ${JSON.stringify(
+          fleetParams
+        )}. Error was: ${err}`;
+      }
     }
+  }
+
+  inProgress() {
+    this.logger.info(`Workflow job in_progress`);
+    return this;
+  }
+
+  async complete() {
+    this.logger.info(`Workflow job completed`);
+
+    if (!this.canBeProcessedByStack()) {
+      return false;
+    }
+
+    if (!this.runnerName || this.runnerName === "") {
+      this.logger.info(
+        `Skipping termination of runner since runner name is empty`
+      );
+      return false;
+    }
+
+    try {
+      const instanceDetails = await ec2.terminateInstance(this.runnerName);
+      if (instanceDetails) {
+        this.logger.info(
+          `✅ Terminated instance: ${instanceDetails.InstanceId}`
+        );
+        const minutes = await costs.postWorkflowUsage(instanceDetails, [
+          {
+            Name: "WorkflowJobConclusion",
+            Value: sanitizedAwsValue(this.conclusion),
+          },
+          {
+            Name: "WorkflowJobName",
+            Value: sanitizedAwsValue(this.workflowJobName),
+          },
+          {
+            Name: "WorkflowName",
+            Value: sanitizedAwsValue(this.workflowName),
+          },
+          { Name: "Repository", Value: sanitizedAwsValue(this.repoFullName) },
+        ]);
+
+        this.logger.info(`✅ Posted ${minutes} minute(s) of workflow usage.`);
+      } else {
+        this.logger.warn(`No instances found for ${this.runnerName}.`);
+      }
+    } catch (error) {
+      this.sendError(
+        `❌ Error when attempting to terminate instance: ${error}`
+      );
+    }
+
+    return this;
   }
 
   // labels must include the runs-on* label
@@ -232,16 +299,19 @@ class WorkflowJob {
       : false;
   }
 
-  // current env must match given env label (defaults to 'prod')
-  canBeProcessedByEnvironment() {
-    return (
-      this.env === RUNS_ON_ENV || this.env === process.env.RUNS_ON_ENV_OVERRIDE
-    );
-  }
-
   isDebug() {
     const { debug = false } = this.extractedLabels;
     return debug === true;
+  }
+
+  isAgentServiceEnabled() {
+    if (this.extractedLabels.agent === false) {
+      return false;
+    }
+    if (this.extractedLabels.agent === true) {
+      return true;
+    }
+    return RUNS_ON_SERVICE_ENABLED === "true";
   }
 
   async findMatchingInstanceImage() {
@@ -256,38 +326,6 @@ class WorkflowJob {
     });
 
     return instanceImage;
-  }
-
-  async findMatchingInstanceTypes() {
-    if (!this.runnerSpec) {
-      throw "runnerSpec has not been resolved";
-    }
-    if (!this.instanceImage) {
-      throw "instanceImage has not been resolved";
-    }
-
-    const { arch, platform } = this.instanceImage;
-    const { cpu, ram, family } = this.runnerSpec;
-
-    const { families, filters } = ec2.instanceTypeFilters({
-      arch,
-      platform,
-      cpu,
-      ram,
-      family,
-    });
-    this.logger.info(`Instance search filters: ${JSON.stringify(filters)}`);
-
-    const instanceTypes = await ec2.findInstanceTypesMatching({
-      families,
-      filters,
-    });
-    this.logger.info(
-      `Selected instance types: ${JSON.stringify(
-        instanceTypes.map((instanceType) => instanceType.InstanceType)
-      )}`
-    );
-    return instanceTypes;
   }
 
   async findRepoConfig() {
@@ -316,6 +354,10 @@ class WorkflowJob {
           };
 
       if (Object.keys(result).length === 0) {
+        // if image was given but no spec found, throw error
+        if (image) {
+          throw `No imageSpec found for image=${image}. Verify your labels and config file.`;
+        }
         this.logger.info(`Overriding default image spec since none given`);
         const id = DEFAULT_IMAGE_SPEC_KEY;
         this.imageSpec = { ...IMAGES[DEFAULT_IMAGE_SPEC_KEY], id };
@@ -346,7 +388,10 @@ class WorkflowJob {
       };
 
       if (Object.keys(result).length === 0) {
-        this.logger.info(`Defaulting to default runner spec since none given`);
+        if (runner) {
+          throw `No runnerSpec found for runner=${runner}. Verify your labels and config file.`;
+        }
+        this.logger.info(`Defaulting to default runnerSpec since none given`);
         const id = DEFAULT_RUNNER_SPEC_KEY;
         this.runnerSpec = { ...RUNNERS[id], id };
       } else {
@@ -360,10 +405,25 @@ class WorkflowJob {
               )
               .join("-");
         this.runnerSpec = { ...result, id };
+
+        if (!this.runnerSpec.family || this.runnerSpec.family.length === 0) {
+          throw `No family specified in runnerSpec: ${JSON.stringify(
+            this.runnerSpec
+          )}`;
+        }
       }
 
       // set defaults for ssh and spot
       this.runnerSpec = { ssh: true, spot: true, ...this.runnerSpec };
+      this.runnerSpec.cpu = [this.runnerSpec.cpu]
+        .flat()
+        .filter((i) => i)
+        .map((i) => parseInt(i));
+      this.runnerSpec.ram = [this.runnerSpec.ram]
+        .flat()
+        .filter((i) => i)
+        .map((i) => parseInt(i));
+      this.runnerSpec.family = [this.runnerSpec.family].flat().filter((i) => i);
 
       this.logger.info(`runnerSpec: ${JSON.stringify(this.runnerSpec)}`);
     }
@@ -406,11 +466,12 @@ class WorkflowJob {
     return this.sshSpec;
   }
 
-  async registerRunner() {
+  async registerRunner(instanceId) {
     let attempts = 0;
     let error = new Error("Unable to register runner with GitHub");
     while (attempts < 3) {
       this.logger.info("attempting registration");
+      this.runnerName = this.generateRunnerName(instanceId);
       attempts++;
       try {
         const response = await this.context.octokit.request(
@@ -431,7 +492,6 @@ class WorkflowJob {
         if (attempts < 3 && error.name === "HttpError") {
           const delay = Math.pow(2, attempts) * 300;
           this.logger.info(`Retrying runner registration in ${delay}ms...`);
-          this.runnerName = this.generateRunnerName();
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
@@ -440,13 +500,20 @@ class WorkflowJob {
     throw error;
   }
 
+  generateRunnerName(instanceId) {
+    // A valid runner name is 64 characters or less in length and does not include '\"', '/', ':', '<', '>', '\\', '|', '*' and '?'
+    // 19-character instanceId + 8-character random string + 11 other chars = 38
+    const uniqueString = crypto.randomBytes(4).toString("hex");
+    return `runs-on--${instanceId}--${uniqueString}`;
+  }
+
   sendError(error) {
     const { workflow_job } = this.context.payload;
     const { name, run_id, workflow_name, labels } = workflow_job;
     this.logger.error(error);
     alerting.sendError(
       [
-        `${this.repo_full_name} - Error`,
+        `${this.repoFullName} - Error`,
         `* Workflow: [\`${workflow_name}\`](${workflow_job.html_url})`,
         `* Run ID: \`${run_id}\``,
         `* Job name: \`${name}\``,

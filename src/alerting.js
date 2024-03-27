@@ -7,11 +7,6 @@ const snsClient = new SNSClient();
 const errorQueue = [];
 
 async function init() {
-  await publishAlert(
-    "🎉 RunsOn Application is online",
-    `Congrats, your RunsOn installation is up and running.`,
-  );
-
   setInterval(() => {
     const content = [];
     while (errorQueue.length) {
@@ -25,10 +20,10 @@ async function init() {
           content.length
         } errors for RunsOn: \n\n${content
           .map((c) => [c].flat().join("\n"))
-          .join("\n\n-------------------------------\n\n")}`,
+          .join("\n\n-------------------------------\n\n")}`
       );
     }
-  }, 8000);
+  }, 10000);
 }
 
 function sendError(message) {
@@ -43,7 +38,7 @@ async function publishAlert(subject, message) {
 
   if (stack.devMode) {
     logger.info(
-      `[dev] Would have published message to SNS: ${subject} - ${message}`,
+      `[dev] Would have published message to SNS: ${subject} - ${message}`
     );
     return;
   }

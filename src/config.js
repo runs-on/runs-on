@@ -31,9 +31,9 @@ async function fetch(filePath, prefix = "runs-on") {
 
     // Save the file locally
     await fs.writeFile(filePath, fileBuffer);
-    logger.info(`File fetched from S3 and saved locally at ${filePath}`);
+    logger.info(`✅ File fetched from S3 and saved locally at ${filePath}`);
   } catch (error) {
-    logger.error(`Error fetching ${filePath} file from S3: ${error}`);
+    logger.error(`❌ Error fetching ${filePath} file from S3: ${error}`);
   }
 }
 
@@ -49,10 +49,22 @@ async function update(filePath, prefix = "runs-on") {
 
   try {
     const response = await s3Client.send(new PutObjectCommand(uploadParams));
-    logger.info(`File uploaded successfully. ETag: ${response.ETag}`);
+    logger.info(`✅ File uploaded successfully. ETag: ${response.ETag}`);
   } catch (error) {
-    logger.error("Error uploading file:", error);
+    logger.error("❌ Error uploading file:", error);
   }
 }
 
-module.exports = { update, fetch };
+async function uploadBootstrapScript(target, content) {
+  const { s3BucketCache } = await stack.fetchOutputs();
+
+  const uploadParams = {
+    Bucket: s3BucketCache,
+    Key: target,
+    Body: content,
+    ACL: "private",
+  };
+  await s3Client.send(new PutObjectCommand(uploadParams));
+}
+
+module.exports = { update, fetch, uploadBootstrapScript };
