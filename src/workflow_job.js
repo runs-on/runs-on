@@ -143,7 +143,7 @@ class WorkflowJob {
 
     let launchTemplateId = launchTemplateLinuxDefault;
 
-    if (this.instanceImage.mainDiskSize > 40) {
+    if (this.instanceImage.mainDiskSize > 40 || this.runnerSpec.hdd > 40) {
       launchTemplateId = launchTemplateLinuxLarge;
     }
 

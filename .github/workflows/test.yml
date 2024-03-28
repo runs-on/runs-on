@@ -17,7 +17,7 @@ jobs:
           - runs-on
           - runs-on,runner=1cpu-linux-x64
           - runs-on,runner=gofast,image=custom
-          - runs-on,runner=gofast,cpu=1
+          - runs-on,runner=gofast,cpu=1,hdd=41
           - runs-on,runner=1cpu-linux-arm64,image=ubuntu22-base-arm64
           - runs-on,runner=2cpu-linux-x64,image=ubuntu22-docker-x64,spot=false
           - runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64
