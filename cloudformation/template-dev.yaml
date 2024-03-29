@@ -373,7 +373,7 @@ Resources:
   RunsOnServiceAutoScalingConfiguration:
     Type: AWS::AppRunner::AutoScalingConfiguration
     Properties:
-      MaxConcurrency: 20
+      MaxConcurrency: 200
       MaxSize: 25
       MinSize: 1
       Tags:
