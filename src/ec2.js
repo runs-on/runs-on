@@ -137,6 +137,7 @@ function generateEC2FleetParams({
               AllowedInstanceTypes: familyRequirements,
               BurstablePerformance: "included",
               LocalStorage: "included",
+              BareMetal: "included",
               MaxSpotPriceAsPercentageOfOptimalOnDemandPrice: "999999",
               OnDemandMaxPricePercentageOverLowestPrice: "999999",
             },
