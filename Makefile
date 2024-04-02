@@ -1,11 +1,14 @@
-VERSION=v2.0.14
-PREV_VERSION=v2.0.13
+VERSION=v2.1.0
+PREV_VERSION=v2.0.14
 VERSION_DEV=$(VERSION)-dev
 PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
 
 include .env.local
+
+pull:
+	git submodule update --remote
 
 show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
@@ -14,25 +17,25 @@ show:
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
-	if ! git diff --exit-code :^Makefile :^cloudformation/* :^package.json &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
+	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server :^agent &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 
 bump:
 	test -f cloudformation/template-$(VERSION).yaml || cp cloudformation/template-$(PREV_VERSION).yaml cloudformation/template-$(VERSION).yaml
-	sed -i 's|"version": "v.*|"version": "$(VERSION)",|' package.json
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 
 commit-add:
-	git add Makefile package.json cloudformation/template-$(VERSION).yaml cloudformation/template-dev.yaml
+	git add Makefile agent server cloudformation/template-$(VERSION).yaml cloudformation/template-dev.yaml
 
 commit: commit-add
-	if ! git diff --staged --exit-code Makefile package.json cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" ; fi ; git tag -m "$(VERSION)" "$(VERSION)" ;
+	if ! git diff --staged --exit-code Makefile agent server cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" ; fi ; git tag -m "$(VERSION)" "$(VERSION)" ;
 
 login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
 
 build:
-	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
+	cd agent && make build VERSION=$(VERSION)
+	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) sh -c "ls -al . && ! test -s .env"
 
 push: login build
@@ -41,8 +44,8 @@ push: login build
 s3-upload:
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 	# automatically copy previous agent if none has already been uploaded for the current version
-	aws s3 ls s3://runs-on/agent/$(VERSION)/ || aws s3 sync s3://runs-on/agent/$(PREV_VERSION)/ s3://runs-on/agent/$(VERSION)/
-	aws s3 ls s3://runs-on/agent/$(VERSION_DEV)/ || aws s3 sync s3://runs-on/agent/$(PREV_VERSION_DEV)/ s3://runs-on/agent/$(VERSION_DEV)/
+	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION)/
+	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION_DEV)/
 
 # bump (if needed), build and push current VERSION to registry, then publish the template to S3
 stage: bump push s3-upload
@@ -55,7 +58,7 @@ release-prod:
 
 # DEV commands
 build-dev:
-	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
+	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
 
 push-dev: login build-dev
@@ -77,7 +80,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" RunnerLargeDiskSize=60 LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
