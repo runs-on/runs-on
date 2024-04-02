@@ -13,3 +13,4 @@ runners:
   gofast:
     cpu: 4
     family: [c7a, c7i]
+    image: ubuntu22-full-x64
