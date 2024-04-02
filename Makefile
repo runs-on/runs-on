@@ -34,7 +34,7 @@ login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
 
 build:
-	cd agent && make build VERSION=$(VERSION)
+	cd agent && make build
 	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) sh -c "ls -al . && ! test -s .env"
 
@@ -43,9 +43,7 @@ push: login build
 
 s3-upload:
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
-	# automatically copy previous agent if none has already been uploaded for the current version
 	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION)/
-	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION_DEV)/
 
 # bump (if needed), build and push current VERSION to registry, then publish the template to S3
 stage: bump push s3-upload
@@ -58,6 +56,7 @@ release-prod:
 
 # DEV commands
 build-dev:
+	cd agent && make build
 	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
 
@@ -66,6 +65,7 @@ push-dev: login build-dev
 
 s3-upload-dev:
 	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
+	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION_DEV)/
 
 release-dev: bump push-dev s3-upload-dev
 
