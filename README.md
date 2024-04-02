@@ -4,22 +4,24 @@ On-demand, self-hosted runners, for your GitHub Action workflows.
 
 Any size, at the cheapest price available.
 
-Runs in your own AWS account. 
+Runs in your own AWS account.
 
 Quick overview:
-* Each workflow job triggers a fresh new runner (i.e. ephemeral).
-* Access to all Linux runner types available on AWS.
-* Supports both x64 and arm64.
-* 1-1 workflow compatibility with your existing workflows.
-* No concurrency limit: you can launch as many workflows in parallel as needed.
-* SSH access into the runners if needed.
-* 🆕 in v1.6.1: local S3 cache for greater speed with `runs-on/cache` action, and UNLIMITED cache sizes.
 
+- Each workflow job triggers a fresh new runner (i.e. ephemeral).
+- Access to all Linux runner types available on AWS.
+- Supports both x64 and arm64.
+- 1-1 workflow compatibility with your existing workflows.
+- No concurrency limit: you can launch as many workflows in parallel as needed.
+- SSH access into the runners if needed.
+- 🆕 in v1.6.1: local S3 cache for greater speed with `runs-on/cache` action, and UNLIMITED cache sizes.
+- 🆕 in v2.1.0: much better concurrency control, thanks to the switch to a more efficient runner pooling algorithm.
 
 ```diff
 - runs-on: ubuntu-latest
 + runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-full-x64
 ```
+
 <img width="675" alt="RunsOn is the fastest and cheapest GitHub Action self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/92933f39-c173-4afd-ae43-cc7532f82f77">
 
 ## Prices
@@ -32,17 +34,19 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 
 ## Documentation
 
-→ [Read the RunsOn docs](https://runs-on.com/docs) for all the details.
+→ [Read the RunsOn docs](https://runs-on.com/docs/) for all the details.
 
 ## License
 
-The source code for this software is open, but licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice this means that:
+This software is licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice this means that:
 
-* It is indefinitely free to use for non-commercial usage.
+- It is indefinitely free to use for non-commercial usage.
 
-* If you install for use in a for-profit organization, you are free to install and evaluate it for 15 days, after which you must buy a license.
+- If you install for use in a for-profit organization, you are free to install and evaluate it for 15 days, after which you must buy a license.
 
-→ [Learn more about licensing](https://runs-on.com/pricing).
+- Starting with v2.1, only the cloudformation template is public. With a Sponsorship license, you get access to the source code.
+
+→ [Learn more about licensing](https://runs-on.com/pricing/).
 
 ## Author
 
