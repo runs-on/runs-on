@@ -9,17 +9,17 @@ Runs in your own AWS account.
 Quick overview:
 
 - Each workflow job triggers a fresh new runner (i.e. ephemeral).
-- Access to all Linux runner types available on AWS.
-- Supports both x64 and arm64.
-- 1-1 workflow compatibility with your existing workflows.
-- No concurrency limit: you can launch as many workflows in parallel as needed.
+- Access to all Linux runner types available on AWS. Even bare-metal.
+- Supports x64 and arm64 images. You can even bring your own AMIs!
+- 1-1 workflow compatibility with official GitHub runners.
+- Scales with your needs: you can launch as many workflows in parallel as needed. No concurrency limit.
 - SSH access into the runners if needed.
 - 🆕 in v1.6.1: local S3 cache for greater speed with `runs-on/cache` action, and UNLIMITED cache sizes.
 - 🆕 in v2.1.0: much better concurrency control, thanks to the switch to a more efficient runner pooling algorithm.
 
 ```diff
 - runs-on: ubuntu-latest
-+ runs-on: runs-on,runner=16cpu-linux,image=ubuntu22-full-x64
++ runs-on: runs-on,runner=16cpu-linux-x64
 ```
 
 <img width="675" alt="RunsOn is the fastest and cheapest GitHub Action self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/92933f39-c173-4afd-ae43-cc7532f82f77">
@@ -38,13 +38,15 @@ The crazy thing is that even if you use larger instance types (e.g. 16cpu) for y
 
 ## License
 
-This software is licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice this means that:
+This software is licensed under the [Prosperity Public License 3.0.0](https://prosperitylicense.com). In practice:
 
-- It is indefinitely free to use for non-commercial usage.
+- Free to use if you are a non-profit or for personal use.
 
-- If you install for use in a for-profit organization, you are free to install and evaluate it for 15 days, after which you must buy a license.
+- For commercial organizations, you can evaluate for free for 15 days, after which you must buy a license.
 
-- Starting with v2.1, only the cloudformation template is public. With a Sponsorship license, you get access to the source code.
+Starting with v2.1, only the cloudformation template is public. With a Sponsorship license, you get access to the source code.
+
+RunsOn has an insane ROI for commercial organizations. Monthly license cost is usually recouped within a few days at most.
 
 → [Learn more about licensing](https://runs-on.com/pricing/).
 
