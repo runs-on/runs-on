@@ -15,8 +15,9 @@ Metadata:
       - Label:
           default: "Advanced Configuration"
         Parameters:
+          - RunnerDefaultDiskSize
+          - RunnerLargeDiskSize
           - AppEc2QueueSize
-          - AppWorkflowQueueSize
           - AppAlarmDailyMinutes
           - AppCPU
           - AppMemory
@@ -53,13 +54,9 @@ Parameters:
 
   AppEc2QueueSize:
     Type: Number
-    Default: "2"
+    Default: 2
+    MinValue: 1
     Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase if you have requested a higher limit from AWS."
-
-  AppWorkflowQueueSize:
-    Type: Number
-    Default: "2500"
-    Description: "Rate limit for launching workflows, per hour."
 
   AppAlarmDailyMinutes:
     Type: Number
@@ -76,10 +73,22 @@ Parameters:
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
 
+  RunnerDefaultDiskSize:
+    Type: Number
+    Default: 40
+    MinValue: 40
+    Description: Disk size in GB for default runners.
+
+  RunnerLargeDiskSize:
+    Type: Number
+    Default: 80
+    MinValue: 40
+    Description: Disk size in GB for large runners.
+
 Mappings:
   App:
     Image:
-      Tag: "v2.0.14-dev"
+      Tag: "v2.1.0-dev"
 
 Resources:
   VPC:
@@ -210,7 +219,7 @@ Resources:
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
-              VolumeSize: 40
+              VolumeSize: !Ref RunnerDefaultDiskSize
               VolumeType: gp3
               Throughput: 750
               Iops: 3000
@@ -251,7 +260,7 @@ Resources:
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
-              VolumeSize: 80
+              VolumeSize: !Ref RunnerLargeDiskSize
               VolumeType: gp3
               Throughput: 1000
               Iops: 4000
@@ -373,7 +382,7 @@ Resources:
   RunsOnServiceAutoScalingConfiguration:
     Type: AWS::AppRunner::AutoScalingConfiguration
     Properties:
-      MaxConcurrency: 200
+      MaxConcurrency: 100
       MaxSize: 25
       MinSize: 1
       Tags:
@@ -406,7 +415,7 @@ Resources:
       SourceConfiguration:
         ImageRepository:
           ImageConfiguration:
-            Port: 3000
+            Port: 8080
             RuntimeEnvironmentVariables:
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
@@ -430,15 +439,13 @@ Resources:
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_REGION
                 Value: !Ref AWS::Region
-              - Name: RUNS_ON_EC2_QUEUE_SIZE
+              - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
-              - Name: RUNS_ON_WORKFLOW_QUEUE_SIZE
-                Value: !Ref AppWorkflowQueueSize
-              - Name: RUNS_ON_PUBLIC_SUBNET_1
+              - Name: RUNS_ON_PUBLIC_SUBNET1
                 Value: !Ref PublicSubnet1
-              - Name: RUNS_ON_PUBLIC_SUBNET_2
+              - Name: RUNS_ON_PUBLIC_SUBNET2
                 Value: !Ref PublicSubnet2
-              - Name: RUNS_ON_PUBLIC_SUBNET_3
+              - Name: RUNS_ON_PUBLIC_SUBNET3
                 Value: !Ref PublicSubnet3
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
@@ -446,6 +453,12 @@ Resources:
                 Value: !Ref EC2FleetLaunchTemplateLinuxDefault
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
                 Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+              - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
+                Value: !Ref RunnerDefaultDiskSize
+              - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
+                Value: !Ref RunnerLargeDiskSize
+              - Name: RUNS_ON_QUEUE
+                Value: !Ref RunsOnQueue
           ImageIdentifier: !Sub
             - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
@@ -525,6 +538,13 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource: !Ref AlertTopic
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt RunsOnQueue.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -541,6 +561,18 @@ Resources:
         - !Ref AlertTopic
       OKActions:
         - !Ref AlertTopic
+
+  RunsOnQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 86400
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 60
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
 
   AlertTopic:
     Type: AWS::SNS::Topic
@@ -585,6 +617,12 @@ Outputs:
   RunsOnPublicSubnet3:
     Description: Public subnet 3
     Value: !Ref PublicSubnet3
+  RunsOnRunnerDefaultDiskSize:
+    Description: Default disk size for runners
+    Value: !Ref RunnerDefaultDiskSize
+  RunsOnRunnerLargeDiskSize:
+    Description: Large disk size for runners
+    Value: !Ref RunnerLargeDiskSize
   RunsOnInstanceProfileArn:
     Description: Runner instance profile ARN
     Value: !GetAtt EC2InstanceProfile.Arn
@@ -615,3 +653,15 @@ Outputs:
   RunsOnLaunchTemplateLinuxLarge:
     Description: Large Linux launch template for the RunsOn service
     Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+  RunsOnAppVersion:
+    Description: Version of the RunsOn service
+    Value: !FindInMap [App, Image, Tag]
+  RunsOnStackName:
+    Description: Name of the stack
+    Value: !Ref AWS::StackName
+  RunsOnAppEc2QueueSize:
+    Description: Size of the EC2 queue
+    Value: !Ref AppEc2QueueSize
+  RunsOnQueue:
+    Description: SQS queue for the RunsOn service
+    Value: !Ref RunsOnQueue

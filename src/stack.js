@@ -24,9 +24,17 @@ const configMappings = {
     "RunsOnLaunchTemplateLinuxLarge",
     "RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE",
   ],
-  publicSubnet1: ["RunsOnPublicSubnet1", "RUNS_ON_PUBLIC_SUBNET_1"],
-  publicSubnet2: ["RunsOnPublicSubnet2", "RUNS_ON_PUBLIC_SUBNET_2"],
-  publicSubnet3: ["RunsOnPublicSubnet3", "RUNS_ON_PUBLIC_SUBNET_3"],
+  publicSubnet1: ["RunsOnPublicSubnet1", "RUNS_ON_PUBLIC_SUBNET1"],
+  publicSubnet2: ["RunsOnPublicSubnet2", "RUNS_ON_PUBLIC_SUBNET2"],
+  publicSubnet3: ["RunsOnPublicSubnet3", "RUNS_ON_PUBLIC_SUBNET3"],
+  runnerDefaultDiskSize: [
+    "RunsOnRunnerDefaultDiskSize",
+    "RUNS_ON_RUNNER_DEFAULT_DISK_SIZE",
+  ],
+  runnerLargeDiskSize: [
+    "RunsOnRunnerLargeDiskSize",
+    "RUNS_ON_RUNNER_LARGE_DISK_SIZE",
+  ],
   defaultAdmins: ["RunsOnDefaultAdmins", "RUNS_ON_DEFAULT_ADMINS"],
   topicArn: ["RunsOnTopicArn", "RUNS_ON_TOPIC_ARN"],
 };

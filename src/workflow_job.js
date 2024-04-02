@@ -137,13 +137,17 @@ class WorkflowJob {
       publicSubnet1,
       publicSubnet2,
       publicSubnet3,
+      runnerDefaultDiskSize,
     } = stack.outputs;
     const { preinstall = [] } = this.instanceImage;
     const { spot } = this.runnerSpec;
 
     let launchTemplateId = launchTemplateLinuxDefault;
 
-    if (this.instanceImage.mainDiskSize > 40 || this.runnerSpec.hdd > 40) {
+    if (
+      this.instanceImage.mainDiskSize > parseInt(runnerDefaultDiskSize) ||
+      this.runnerSpec.hdd > parseInt(runnerDefaultDiskSize)
+    ) {
       launchTemplateId = launchTemplateLinuxLarge;
     }
 
