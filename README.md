@@ -44,7 +44,7 @@ This software is licensed under the [Prosperity Public License 3.0.0](https://pr
 
 - For commercial organizations, you can evaluate for free for 15 days, after which you must buy a license.
 
-Starting with v2.1, only the cloudformation template is public. With a Sponsorship license, you get access to the source code.
+Starting with v2.1, only the cloudformation template and the base AMIs are public. With a Sponsorship license, you get access to the source code.
 
 RunsOn has an insane ROI for commercial organizations. Monthly license cost is usually recouped within a few days at most.
 
