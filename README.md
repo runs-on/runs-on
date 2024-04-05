@@ -14,6 +14,7 @@ Quick overview:
 - 1-1 workflow compatibility with official GitHub runners.
 - Scales with your needs: you can launch as many workflows in parallel as needed. No concurrency limit.
 - SSH access into the runners if needed.
+- Spot pricing, across many availability zones, fallback to on-demand for the rare cases where it's needed (still 5x cheaper!).
 - 🆕 in v1.6.1: local S3 cache for greater speed with `runs-on/cache` action, and UNLIMITED cache sizes.
 - 🆕 in v2.1.0: much better concurrency control, thanks to the switch to a more efficient runner pooling algorithm.
 
@@ -24,13 +25,17 @@ Quick overview:
 
 <img width="675" alt="RunsOn is the fastest and cheapest GitHub Action self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/92933f39-c173-4afd-ae43-cc7532f82f77">
 
+## Fast, stable, can handle thousands of job per day
+
+![queue-time](https://github.com/runs-on/runs-on/assets/6114/0a0a5a0c-5bc2-49e5-bc31-49c62a265490)
+
 ## Prices
 
 At least 2x cheaper than SaaS offerings, up to 10x cheaper than GitHub hosted runners. And the [largest choice of configs](https://instances.vantage.sh) ever. All in infrastructure that you control.
 
 The crazy thing is that even if you use larger instance types (e.g. 16cpu) for your workflows, it might actually be cheaper than using a 2cpu instance since your workflow _should_ finish much more quickly (assuming you can take advantage of the higher core number).
 
-→ Use the [GitHub Action pricing calculator](https://runs-on.com/calculator/) to get an idea of the savings.
+→ Use our [GitHub Action pricing calculator](https://runs-on.com/calculator/) to get an idea of the savings.
 
 ## Documentation
 
