@@ -5,6 +5,8 @@ PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
 
+.PHONY: agent
+
 include .env.local
 
 pull:
@@ -33,8 +35,10 @@ commit: commit-add
 login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
 
-build:
+agent:
 	cd agent && make build
+
+build: agent
 	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) sh -c "ls -al . && ! test -s .env"
 
@@ -80,7 +84,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" RunnerLargeDiskSize=60 LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
