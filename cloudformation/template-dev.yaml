@@ -576,14 +576,39 @@ Resources:
       OKActions:
         - !Ref AlertTopic
 
+  RunsOnQueueDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      MessageRetentionPeriod: 259200 # 3 days
+
+  RunsOnQueueDeadLetterPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref RunsOnQueueDeadLetter
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt RunsOnQueueDeadLetter.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref RunsOnQueue
+
   RunsOnQueue:
     Type: AWS::SQS::Queue
     Properties:
       FifoQueue: true
       ContentBasedDeduplication: true
-      MessageRetentionPeriod: 86400
+      MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
-      VisibilityTimeout: 60
+      VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
+        maxReceiveCount: 5
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
