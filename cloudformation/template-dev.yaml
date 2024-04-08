@@ -359,6 +359,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: "RunsOn/Runners"
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
