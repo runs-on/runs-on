@@ -16,6 +16,7 @@ Metadata:
           default: "Advanced Configuration"
         Parameters:
           - CostReportsEnabled
+          - AlertTopicSubscriptionHttpsEndpoint
           - AppAlarmDailyMinutes
           - RunnerDefaultDiskSize
           - RunnerLargeDiskSize
@@ -41,6 +42,11 @@ Parameters:
     Type: String
     Description: Email address for cost and alert reports.
     MinLength: 1
+
+  AlertTopicSubscriptionHttpsEndpoint:
+    Type: String
+    Description: HTTPS endpoint for cost and alert reports.
+    Default: ""
 
   SSHCidrRange:
     Type: String
@@ -635,8 +641,18 @@ Resources:
       TopicArn: !Ref AlertTopic
       Endpoint: !If [EmailProvided, !Ref EmailAddress, ""]
 
+  AlertTopicSubscriptionHttps:
+    Condition: AlertTopicSubscriptionHttpsProvided
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: https
+      TopicArn: !Ref AlertTopic
+      Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
+
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
+  AlertTopicSubscriptionHttpsProvided:
+    !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
 
 Outputs:
   RunsOnEntryPoint:
