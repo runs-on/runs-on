@@ -74,7 +74,7 @@ s3-upload-dev:
 release-dev: bump push-dev s3-upload-dev
 
 run-dev:
-	AWS_PROFILE=runs-on-dev RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev npm run dev
+	cd server && AWS_PROFILE=runs-on-dev go run .
 
 # Install with the dev template
 install-dev:
