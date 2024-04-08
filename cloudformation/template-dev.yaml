@@ -237,20 +237,12 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -ex
+              #!/bin/bash -e
               _the_end() {
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
-              }
-              # agent already has watchdogs, but just if it doesn't behave properly
-              sleep 12h && echo "Full timeout reached." && _the_end &
-
-              if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
-                trap _the_end EXIT INT TERM
-                mkdir -p /opt/runs-on
-                time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
-                chmod a+x /opt/runs-on/agent
-                /opt/runs-on/agent
-              fi
+              } ; trap _the_end EXIT INT TERM
+              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
   EC2FleetLaunchTemplateLinuxLarge:
@@ -278,20 +270,12 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -ex
+              #!/bin/bash -e
               _the_end() {
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
-              }
-              # agent already has watchdogs, but just if it doesn't behave properly
-              sleep 12h && echo "Full timeout reached." && _the_end &
-
-              if [ ! -f /opt/runs-on/agent ] || [ ! -f /opt/runs-on/service-enabled ]; then
-                trap _the_end EXIT INT TERM
-                mkdir -p /opt/runs-on
-                time curl -Ls https://runs-on.s3.eu-west-1.amazonaws.com/agent/${AppVersion}/agent-linux-$(uname -i) -o /opt/runs-on/agent
-                chmod a+x /opt/runs-on/agent
-                /opt/runs-on/agent
-              fi
+              } ; trap _the_end EXIT INT TERM
+              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
   SecurityGroup:
@@ -314,11 +298,29 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
         - Key: "runs-on/purpose"
           Value: "config"
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPublicReadForAgentBinaries
+            Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
 
   S3BucketCache:
     Type: AWS::S3::Bucket
@@ -545,6 +547,7 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${S3BucketCache}
                   - Fn::Sub: arn:aws:s3:::${S3BucketCache}/runners/*
+                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}/agents/*
               - Effect: Allow
                 Action:
                   - sns:Publish
