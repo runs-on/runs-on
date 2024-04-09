@@ -10,6 +10,7 @@ Metadata:
           - GithubOrganization
           - LicenseKey
           - EmailAddress
+          - Private
           - SSHCidrRange
           - DefaultAdmins
       - Label:
@@ -51,8 +52,16 @@ Parameters:
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for SSH access. By default, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: CIDR range for SSH access (only useful if Private=false). By default, only repository collaborators with push permission will be able to SSH into the runner instances.
     MinLength: 1
+
+  Private:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable or disable private subnets. Note that enabling will create 3 managed NAT gateways, with the corresponding costs."
 
   DefaultAdmins:
     Type: String
@@ -105,6 +114,12 @@ Mappings:
     Image:
       Tag: "v2.1.1-dev"
 
+Conditions:
+  EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
+  AlertTopicSubscriptionHttpsProvided:
+    !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
+  HasPrivateSubnet: !Equals ["true", !Ref Private]
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -112,6 +127,174 @@ Resources:
       CidrBlock: 10.1.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet1RouteTable:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet2RouteTable:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet3RouteTable:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet1Route:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PrivateSubnetGateway1
+
+  PrivateSubnet2Route:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PrivateSubnetGateway2
+
+  PrivateSubnet3Route:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet3RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PrivateSubnetGateway3
+
+  PrivateSubnet1RouteTableAssociation:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateSubnet2RouteTable
+
+  PrivateSubnet3RouteTableAssociation:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateSubnet3RouteTable
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnetGateway1:
+    Condition: HasPrivateSubnet
+    DependsOn: ElasticIP1
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt [ElasticIP1, AllocationId]
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnetGateway2:
+    Condition: HasPrivateSubnet
+    DependsOn: ElasticIP2
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt [ElasticIP2, AllocationId]
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  PrivateSubnetGateway3:
+    Condition: HasPrivateSubnet
+    DependsOn: ElasticIP3
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt [ElasticIP3, AllocationId]
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  ElasticIP1:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  ElasticIP2:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  ElasticIP3:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
@@ -167,6 +350,9 @@ Resources:
       VpcEndpointType: Gateway
       RouteTableIds:
         - !Ref PublicRouteTable
+        - !Ref PrivateSubnet1RouteTable
+        - !Ref PrivateSubnet2RouteTable
+        - !Ref PrivateSubnet3RouteTable
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -470,6 +656,14 @@ Resources:
                 Value: !Ref PublicSubnet2
               - Name: RUNS_ON_PUBLIC_SUBNET3
                 Value: !Ref PublicSubnet3
+              - Name: RUNS_ON_PRIVATE_SUBNET1
+                Value: !Ref PrivateSubnet1
+              - Name: RUNS_ON_PRIVATE_SUBNET2
+                Value: !Ref PrivateSubnet2
+              - Name: RUNS_ON_PRIVATE_SUBNET3
+                Value: !Ref PrivateSubnet3
+              - Name: RUNS_ON_PRIVATE
+                Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
@@ -649,11 +843,6 @@ Resources:
       TopicArn: !Ref AlertTopic
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
 
-Conditions:
-  EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
-  AlertTopicSubscriptionHttpsProvided:
-    !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-
 Outputs:
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
@@ -679,6 +868,18 @@ Outputs:
   RunsOnPublicSubnet3:
     Description: Public subnet 3
     Value: !Ref PublicSubnet3
+  RunsOnPrivateSubnet1:
+    Description: Private subnet 1
+    Value: !Ref PrivateSubnet1
+  RunsOnPrivateSubnet2:
+    Description: Private subnet 2
+    Value: !Ref PrivateSubnet2
+  RunsOnPrivateSubnet3:
+    Description: Private subnet 3
+    Value: !Ref PrivateSubnet3
+  RunsOnPrivate:
+    Description: Private subnets enabled
+    Value: !Ref Private
   RunsOnRunnerDefaultDiskSize:
     Description: Default disk size for runners
     Value: !Ref RunnerDefaultDiskSize
