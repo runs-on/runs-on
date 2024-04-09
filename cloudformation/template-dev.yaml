@@ -52,7 +52,7 @@ Parameters:
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for SSH access (only useful if Private=false). By default, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: CIDR range for SSH access (mainly useful when Private=false). By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
     MinLength: 1
 
   Private:
@@ -132,7 +132,6 @@ Resources:
           Value: !Ref AWS::StackName
 
   PrivateSubnet1RouteTable:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -141,7 +140,6 @@ Resources:
           Value: !Ref AWS::StackName
 
   PrivateSubnet2RouteTable:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -150,7 +148,6 @@ Resources:
           Value: !Ref AWS::StackName
 
   PrivateSubnet3RouteTable:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -183,21 +180,18 @@ Resources:
       NatGatewayId: !Ref PrivateSubnetGateway3
 
   PrivateSubnet1RouteTableAssociation:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateSubnet1RouteTable
 
   PrivateSubnet2RouteTableAssociation:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateSubnet2RouteTable
 
   PrivateSubnet3RouteTableAssociation:
-    Condition: HasPrivateSubnet
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet3
