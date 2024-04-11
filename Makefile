@@ -86,7 +86,7 @@ install-stage:
 		--stack-name runs-on-stage \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
