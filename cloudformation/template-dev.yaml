@@ -10,20 +10,20 @@ Metadata:
           - GithubOrganization
           - LicenseKey
           - EmailAddress
-          - Private
           - SSHCidrRange
-          - DefaultAdmins
       - Label:
           default: "Advanced Configuration"
         Parameters:
-          - CostReportsEnabled
-          - AlertTopicSubscriptionHttpsEndpoint
+          - Private
           - AppAlarmDailyMinutes
-          - RunnerDefaultDiskSize
-          - RunnerLargeDiskSize
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
+          - RunnerDefaultDiskSize
+          - RunnerLargeDiskSize
+          - DefaultAdmins
+          - CostReportsEnabled
+          - AlertTopicSubscriptionHttpsEndpoint
     ParameterLabels:
       GithubOrganization:
         default: "Your GitHub organization or personal name."
@@ -31,7 +31,7 @@ Metadata:
 Parameters:
   GithubOrganization:
     Type: String
-    Description: "For instance if your GitHub organization lives at https://github.com/my-org, then the value of this parameter should be: my-org"
+    Description: "For instance if your GitHub organization lives at github.com/my-org, then the value of this parameter should be: my-org"
     MinLength: 1
 
   LicenseKey:
@@ -61,7 +61,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable or disable private subnets. Note that enabling will create 3 managed NAT gateways, with the corresponding costs."
+    Description: "Enable (true) or disable (false) private subnets. Note that enabling will create 3 managed NAT gateways, with the corresponding costs."
 
   DefaultAdmins:
     Type: String
