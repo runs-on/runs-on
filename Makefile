@@ -1,9 +1,9 @@
-VERSION=v2.1.1
-PREV_VERSION=v2.1.0
+VERSION=v2.2.0
 VERSION_DEV=$(VERSION)-dev
-PREV_VERSION_DEV=$(PREV_VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
+
+.PHONY: bump check tag login dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
 
 include .env.local
 
@@ -15,62 +15,43 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-check:
-	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
-	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server :^agent &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
-
 bump:
-	test -f cloudformation/template-$(VERSION).yaml || cp cloudformation/template-$(PREV_VERSION).yaml cloudformation/template-$(VERSION).yaml
+	test -f cloudformation/template-$(VERSION).yaml || cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
 
-commit-add:
-	git add Makefile agent server cloudformation/template-$(VERSION).yaml cloudformation/template-dev.yaml
+check:
+	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
+	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server :^agent &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
+	if ! grep -q "$(VERSION)" cloudformation/template-$(VERSION).yaml ; then echo "Invalid version in template" ; exit 1 ; fi
 
-commit: commit-add
-	if ! git diff --staged --exit-code Makefile agent server cloudformation/template-$(VERSION).yaml ; then git commit -m "Bump template to $(VERSION)" ; fi ; git tag -m "$(VERSION)" "$(VERSION)" ;
+tag:
+	git tag -m "$(VERSION)" "$(VERSION)" ;
 
 login:
 	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
 
-build:
-	cd agent && make build
-	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
+# generates a dev release
+dev: login
+	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
+	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
+	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV)
+	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
+
+# generates a stage release
+stage: login
+	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
 	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) sh -c "ls -al . && ! test -s .env"
-
-push: login build
 	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION)
-
-s3-upload:
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
-	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION)/
 
-# bump (if needed), build and push current VERSION to registry, then publish the template to S3
-stage: bump push s3-upload
-
-# same as stage, but with added check and commit + tag the result
-release: check bump push commit s3-upload
-
-release-prod:
+# promotes the stage release as latest production version
+promote: check tag stage
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/template.yaml
 
-# DEV commands
-build-dev:
-	cd agent && make build
-	cd server && docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
-	docker run --rm -it public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) sh -c "ls -al . && ! test -s .env"
-
-push-dev: login build-dev
-	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV)
-
-s3-upload-dev:
-	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
-	aws s3 sync agent/dist/ s3://runs-on/agent/$(VERSION_DEV)/
-
-release-dev: bump push-dev s3-upload-dev
-
 run-dev:
-	AWS_PROFILE=runs-on-dev RUNS_ON_STACK_NAME=runs-on RUNS_ON_ENV=dev npm run dev
+	cd agent && make build
+	cd server && AWS_PROFILE=runs-on-dev go run .
 
 # Install with the dev template
 install-dev:
@@ -80,7 +61,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com DefaultAdmins="crohr,github" RunnerLargeDiskSize=60 LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
@@ -105,7 +86,7 @@ install-stage:
 		--stack-name runs-on-stage \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
