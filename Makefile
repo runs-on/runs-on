@@ -1,4 +1,4 @@
-VERSION=v2.2.0
+VERSION=v2.2.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
@@ -51,7 +51,7 @@ promote: check tag stage
 
 run-dev:
 	cd agent && make build
-	cd server && AWS_PROFILE=runs-on-dev go run .
+	cd server && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run . 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 install-dev:
@@ -61,7 +61,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
@@ -90,4 +90,4 @@ install-stage:
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -w -s 60m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -w -s 120m --timestamp
