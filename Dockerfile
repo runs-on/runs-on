@@ -27,8 +27,8 @@ WORKDIR /app
 RUN mkdir -p /app/agent/
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=server /app/server /app/server
 COPY --from=agent /app/agent/dist /app/agent/dist
+COPY --from=server /app/server /app/server
 
 ENV RUNS_ON_ENV="prod"
 ENV RUNS_ON_AGENT_FOLDER="/app/agent/dist"
