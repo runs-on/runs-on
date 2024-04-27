@@ -1,4 +1,4 @@
-VERSION=v2.2.1
+VERSION=v2.2.2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
@@ -33,13 +33,13 @@ login:
 
 # generates a dev release
 dev: login
-	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
+	docker build --pull -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
 	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV)
 	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
 # generates a stage release
 stage: login
-	docker build -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
+	docker build --pull -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
 	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION)
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 
