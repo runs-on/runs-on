@@ -124,7 +124,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.2.2-dev"
+      Tag: "v2.2.2"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
