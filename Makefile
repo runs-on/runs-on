@@ -46,7 +46,8 @@ stage: login
 
 # promotes the stage release as latest production version
 promote: check tag stage
-	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/template.yaml
+	diff cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
+	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
 	cd agent && make build
