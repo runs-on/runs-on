@@ -16,9 +16,10 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
 bump:
-	test -f cloudformation/template-$(VERSION).yaml || cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
+	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
 	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
+	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
+	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi

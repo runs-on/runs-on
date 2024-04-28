@@ -499,9 +499,9 @@ Resources:
     Properties:
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: false
         IgnorePublicAcls: true
-        RestrictPublicBuckets: false
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
@@ -515,11 +515,14 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowPublicReadForAgentBinaries
+          - Sid: AllowReadForAgentBinariesFromVpcEndpoint
             Effect: Allow
             Principal: "*"
             Action: "s3:GetObject"
             Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
+            Condition:
+              StringEquals:
+                aws:SourceVpce: !Ref S3VpcEndpoint
 
   S3BucketCache:
     Type: AWS::S3::Bucket
