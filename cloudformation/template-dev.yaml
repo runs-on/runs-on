@@ -27,7 +27,9 @@ Metadata:
           default: "Advanced app configuration [optional]"
         Parameters:
           - RunnerDefaultDiskSize
+          - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
+          - RunnerLargeVolumeThroughput
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
@@ -102,11 +104,25 @@ Parameters:
     MinValue: 40
     Description: Disk size in GB for default runners.
 
+  RunnerDefaultVolumeThroughput:
+    Type: Number
+    Default: 400
+    MinValue: 125
+    MaxValue: 1000
+    Description: Volume throughput in MiB/s for default runners (helps with faster boot times, but costs more).
+
   RunnerLargeDiskSize:
     Type: Number
     Default: 80
     MinValue: 40
     Description: Disk size in GB for large runners.
+
+  RunnerLargeVolumeThroughput:
+    Type: Number
+    Default: 750
+    MinValue: 125
+    MaxValue: 1000
+    Description: Volume throughput in MiB/s for large runners (helps with faster boot times, but costs more).
 
   CostReportsEnabled:
     Type: String
@@ -124,7 +140,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.2.2-dev"
+      Tag: "v2.2.3-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -429,7 +445,7 @@ Resources:
             Ebs:
               VolumeSize: !Ref RunnerDefaultDiskSize
               VolumeType: gp3
-              Throughput: 750
+              Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
@@ -462,7 +478,7 @@ Resources:
             Ebs:
               VolumeSize: !Ref RunnerLargeDiskSize
               VolumeType: gp3
-              Throughput: 750
+              Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
