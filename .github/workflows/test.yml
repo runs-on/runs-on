@@ -1,28 +1,63 @@
-name: Stage / Test
+name: Test
 
 on:
   workflow_dispatch:
-  push:
+    inputs:
+      env:
+        description: "env"
+        required: true
+        default: "prod"
 
 permissions:
   contents: read
 
 jobs:
+  test-environment:
+    runs-on:
+      labels:
+        - runs-on
+        - runner=2cpu-linux-x64
+        - tag=env-test-protected
+        - env=${{ inputs.env || 'prod' }}
+    environment:
+      name: test
+      url: https://protected.example.com
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Hello world
+
+  test-environment-no-protection:
+    runs-on:
+      labels:
+        - runs-on
+        - runner=2cpu-linux-x64
+        - tag=env-test-no-protection
+        - env=${{ inputs.env || 'prod' }}
+    environment:
+      name: test-no-protection
+      url: https://not-protected.example.com
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Hello world
+
   test-linux:
-    # if: ${{ contains(github.event.head_commit.message, '[dev]') || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
         runner:
           - runs-on
-          - runs-on,runner=1cpu-linux-x64
+          - runs-on,runner=4cpu-linux-x64
           - runs-on,runner=gofast,image=custom
           - runs-on,runner=gofast,cpu=1,hdd=41
           - runs-on,runner=1cpu-linux-arm64,image=ubuntu22-base-arm64
-          - runs-on,runner=2cpu-linux-x64,image=ubuntu22-docker-x64,spot=false
           - runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64
           - runs-on,runner=2cpu-linux-arm64,ssh=false
-    runs-on: ${{ matrix.runner }}
+    runs-on:
+      labels:
+        - ${{ matrix.runner }}
+        - env=${{ inputs.env || 'prod' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
