@@ -8,13 +8,13 @@ RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any si
 
 - ✅ **Faster**. Raw [CPU performance is up 30%](https://runs-on.com/benchmarks/github-actions-runners/) compared to official runners.
 - ✅ **Cheaper**. Between [7x to 15x cheaper](https://runs-on.com/calculator/) than official runners.
-- ✅ **Scalable**. Handles bursts of multiple hundred jobs at once without issue. No concurrency limit
+- ✅ **Scalable**. Handles bursts of multiple hundred jobs at once without issue. No concurrency limit.
 - ✅ **Full workflow compatibility** with official GitHub runners. Use the [compatible public AMIs for AWS](https://github.com/runs-on/runner-images-for-aws), or [bring your own images](https://runs-on.com/features/byoi/).
 - ✅ **Low maintenance**. A single [CloudFormation template](./cloudformation/template.yaml) with all the resources, 1-click install, 1-click upgrades. Costs $1.5/month.
 
 ## Secondary features
 
-- **On-demand ephemeral runner** for each job.
+- **Ephemeral VM** for each job.
 - [Spot pricing](https://runs-on.com/features/spot-instances/), with **automatic fallback** to on-demand.
 - Supports **native x64 and arm64** architectures.
 - **Faster and unlimited caches**. An [integrated cache backend based on a local S3 bucket](https://runs-on.com/features/s3-cache-for-github-actions/) allows for up to 5x faster and unlimited cache for dependencies and docker layers.
