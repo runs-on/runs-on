@@ -44,6 +44,14 @@ RunsOn is available in 7 AWS regions. Use the [installation guide](https://runs-
 
 ![queue-time](https://github.com/runs-on/runs-on/assets/6114/0a0a5a0c-5bc2-49e5-bc31-49c62a265490)
 
+**Much faster caches:**
+
+![Faster and unlimited GitHUb Actions cache](https://github.com/runs-on/runs-on/assets/6114/27dfbb5e-c979-4892-8b2c-8fe6024c0d41)
+
+**Metadata and timings about your job:**
+
+<img width="642" alt="Metadata and timings about your job" src="https://github.com/runs-on/runs-on/assets/6114/7ff224a1-e5e2-47a1-8131-5cacd6d69b65">
+
 ## License
 
 - Free to use if you are a non-profit or for personal use.
