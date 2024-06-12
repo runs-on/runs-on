@@ -86,8 +86,8 @@ install-stage:
 		--stack-name runs-on-stage \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-SPfhpcSJYhXM/aec9ac295e2f413db62d20d944dca07c/application -i 2 -w -s 120m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-shyBfRT8HRRB/83aa99d2d11c4180b373c4d4b0cf3fb6/application -i 2 -w -s 120m --timestamp
