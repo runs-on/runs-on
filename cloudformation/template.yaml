@@ -573,7 +573,18 @@ Resources:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: EC2AccessS3BucketPolicy
+        - PolicyName: TagInstance
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "aws:ARN": "${ec2:SourceInstanceARN}"
+        - PolicyName: SendMetrics
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -584,6 +595,10 @@ Resources:
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: "RunsOn/Runners"
+        - PolicyName: EC2AccessS3BucketPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
               - Effect: Allow
                 Action:
                   - s3:GetObject
