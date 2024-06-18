@@ -1,4 +1,4 @@
-FROM golang:1.22 as server
+FROM golang:1.22 as build
 ENV GOCACHE=/root/.gocache
 ENV CGO_ENABLED=0
 
@@ -6,28 +6,18 @@ WORKDIR /app
 COPY server/go.* ./
 RUN go mod download
 COPY server/ ./
-RUN --mount=type=cache,target=/root/.gocache GOOS=linux CGO_ENABLED=0 go build -o ./server
-
-FROM golang:1.22 as agent
-ENV GOCACHE=/root/.gocache
-ENV CGO_ENABLED=0
-
-WORKDIR /app/agent
-COPY agent/go.* ./
-RUN go mod download
-COPY agent/ ./
-RUN --mount=type=cache,target=/root/.gocache CGO_ENABLED=0 make build
+RUN --mount=type=cache,target=/root/.gocache make server
+RUN --mount=type=cache,target=/root/.gocache make agent
 
 FROM gcr.io/distroless/static-debian12
 
 WORKDIR /app
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=agent /app/agent/dist /app/agent/dist
-COPY --from=server /app/server /app/server
+COPY --from=build /app/dist .
 
 ENV RUNS_ON_ENV="prod"
-ENV RUNS_ON_AGENT_FOLDER="/app/agent/dist"
+ENV RUNS_ON_AGENT_FOLDER="/app/dist"
 
-CMD ["/app/server"]
+CMD ["/app/dist/server"]
 

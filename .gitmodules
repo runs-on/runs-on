@@ -2,7 +2,3 @@
 	path = server
 	url = git@github.com:runs-on/server
 	branch = main
-[submodule "agent"]
-	path = agent
-	url = git@github.com:runs-on/agent
-	branch = main

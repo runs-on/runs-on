@@ -1,4 +1,4 @@
-VERSION=v2.3.0
+VERSION=v2.3.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
@@ -50,8 +50,7 @@ promote: check tag stage
 	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd agent && make build
-	cd server && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run . 2>&1 | tee tmp/dev.log
+	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 install-dev:
