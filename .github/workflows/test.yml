@@ -50,11 +50,14 @@ jobs:
   test-ssd-mount:
     runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'prod' }}
     steps:
-      - name: Disk usage
+      - name: Show disk setup
         run: |
           sudo lsblk -l
           sudo df -ah
-      - uses: actions/checkout@v4
+      - name: Check SSD mount
+        run: sudo df -ah | grep /home/runner/_work | grep /dev/md0
+      - name: Ensure checkout can be done
+        uses: actions/checkout@v4
 
   test-linux:
     strategy:
