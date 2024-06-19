@@ -23,7 +23,7 @@ bump:
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
-	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server :^agent &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
+	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
 	if ! grep -q "$(VERSION)" cloudformation/template-$(VERSION).yaml ; then echo "Invalid version in template" ; exit 1 ; fi
 
 tag:
