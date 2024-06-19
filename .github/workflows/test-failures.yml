@@ -16,3 +16,8 @@ jobs:
     runs-on: runs-on,runner=preinstall-ko,env=${{ inputs.env || 'prod' }}
     steps:
       - run: echo Should never run
+
+  test-runner-unknown:
+    runs-on: runs-on,runner=unknown,env=${{ inputs.env || 'prod' }}
+    steps:
+      - run: echo Should never run
