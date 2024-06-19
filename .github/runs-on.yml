@@ -13,12 +13,14 @@ runners:
   preinstall-ok:
     image: ubuntu22-full-x64
     cpu: 2
+    family: [c7]
     preinstall: |
       #!/bin/bash
       echo "preinstall ok"
   preinstall-ko:
     image: ubuntu22-full-x64
     cpu: 2
+    family: [c7]
     preinstall: |
       #!/bin/bash
       echo "preinstall ko"
