@@ -1,4 +1,4 @@
-VERSION=v2.3.0
+VERSION=v2.3.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
@@ -50,8 +50,7 @@ promote: check tag stage
 	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd agent && make build
-	cd server && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run . 2>&1 | tee tmp/dev.log
+	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 install-dev:
@@ -79,15 +78,26 @@ delete-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name runs-on-test
 	AWS_PROFILE=runs-on-admin aws cloudformation wait stack-delete-complete --stack-name runs-on-test
 
-# Install with the VERSION template (permanent install)
+# Permanent installation for runs-on org
 install-stage:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name runs-on-stage \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 
 logs-stage:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-shyBfRT8HRRB/83aa99d2d11c4180b373c4d4b0cf3fb6/application -i 2 -w -s 120m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-dwI4BlNistCa/e3c487b9eb32400cae0c5abc5a66bf9c/application -i 2 -w -s 120m --timestamp
+
+# Permanent installation for runs-on-demo org, in different region
+install-prod:
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-prod \
+		--region=eu-west-1 \
+		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+prod@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
+		--capabilities CAPABILITY_IAM \
+		--disable-rollback

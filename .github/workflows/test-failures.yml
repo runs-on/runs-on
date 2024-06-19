@@ -1,0 +1,23 @@
+name: Test / Failure cases
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "env"
+        required: true
+        default: "prod"
+
+permissions:
+  contents: read
+
+jobs:
+  test-preinstall-ko:
+    runs-on: runs-on,runner=preinstall-ko,env=${{ inputs.env || 'prod' }}
+    steps:
+      - run: echo Should never run
+
+  test-runner-unknown:
+    runs-on: runs-on,runner=unknown,env=${{ inputs.env || 'prod' }}
+    steps:
+      - run: echo Should never run

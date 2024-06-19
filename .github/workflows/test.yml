@@ -7,6 +7,10 @@ on:
         description: "env"
         required: true
         default: "prod"
+  push:
+    branches:
+      - main
+      - feature/v*
 
 permissions:
   contents: read
@@ -42,12 +46,34 @@ jobs:
       - uses: actions/checkout@v4
       - run: echo Hello world
 
+  test-preinstall-ok:
+    runs-on: runs-on,runner=preinstall-ok,env=${{ inputs.env || 'prod' }}
+    steps:
+      - run: echo Hello world
+
+  test-ssd-mount:
+    runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'prod' }}
+    steps:
+      - name: Show disk setup
+        run: |
+          sudo lsblk -l
+          sudo df -ah
+      - name: Check SSD mount
+        run: sudo df -ah | grep /home/runner/_work | grep /dev/md0
+      - name: Ensure checkout can be done
+        uses: actions/checkout@v4
+
+  test-metal:
+    runs-on: runs-on,family=c7g.metal,image=ubuntu22-full-arm64,env=${{ inputs.env || 'prod' }}
+    steps:
+      - run: echo Hello world
+
   test-linux:
     strategy:
       fail-fast: false
       matrix:
         runner:
-          - runs-on
+          - runs-on,runner=2cpu-linux-x64
           - runs-on,runner=4cpu-linux-x64
           - runs-on,runner=gofast,image=custom
           - runs-on,runner=gofast,cpu=1,hdd=41
