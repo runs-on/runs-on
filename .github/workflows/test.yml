@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - runs-on
+          - runs-on,runner=2cpu-linux-x64
           - runs-on,runner=4cpu-linux-x64
           - runs-on,runner=gofast,image=custom
           - runs-on,runner=gofast,cpu=1,hdd=41
