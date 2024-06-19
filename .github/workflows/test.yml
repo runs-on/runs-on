@@ -52,6 +52,15 @@ jobs:
     steps:
       - run: echo Hello world
 
+  test-ssd-mount:
+    runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'prod' }}
+    steps:
+      - name: Disk usage
+        run: |
+          sudo lsblk -l
+          sudo df -ah
+      - uses: actions/checkout@v4
+
   test-linux:
     strategy:
       fail-fast: false
