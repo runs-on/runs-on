@@ -43,12 +43,12 @@ jobs:
       - run: echo Hello world
 
   test-preinstall-ok:
-    runs-on: runs-on,runner=preinstall-ok
+    runs-on: runs-on,runner=preinstall-ok,env=${{ inputs.env || 'prod' }}
     steps:
       - run: echo Hello world
 
   test-preinstall-ko:
-    runs-on: runs-on,runner=preinstall-ko
+    runs-on: runs-on,runner=preinstall-ko,env=${{ inputs.env || 'prod' }}
     steps:
       - run: echo Hello world
 
