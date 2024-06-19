@@ -42,6 +42,16 @@ jobs:
       - uses: actions/checkout@v4
       - run: echo Hello world
 
+  test-preinstall-ok:
+    runs-on: runs-on,runner=preinstall-ok
+    steps:
+      - run: echo Hello world
+
+  test-preinstall-ko:
+    runs-on: runs-on,runner=preinstall-ko
+    steps:
+      - run: echo Hello world
+
   test-linux:
     strategy:
       fail-fast: false
