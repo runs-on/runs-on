@@ -140,7 +140,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.3.1-dev"
+      Tag: "v2.3.2-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -457,6 +457,7 @@ Resources:
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
               b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
@@ -490,6 +491,7 @@ Resources:
                 echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
               b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
@@ -560,10 +562,19 @@ Resources:
         - Key: "runs-on/purpose"
           Value: "cache"
 
+  EC2InstanceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
+        # !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"], ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]]
         !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy], []]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -584,6 +595,21 @@ Resources:
                 Condition:
                   StringEquals:
                     "aws:ARN": "${ec2:SourceInstanceARN}"
+        - PolicyName: SendLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:PutLogEvents"
+                  - "logs:PutRetentionPolicy"
+                  - "logs:DescribeLogStreams"
+                  - "logs:DescribeLogGroups"
+                  - "logs:CreateLogStream"
+                  - "logs:CreateLogGroup"
+                Resource: 
+                - !Sub "${EC2InstanceLogGroup.Arn}"
+                - !Sub "${EC2InstanceLogGroup.Arn}:*"
         - PolicyName: SendMetrics
           PolicyDocument:
             Version: "2012-10-17"
