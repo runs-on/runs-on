@@ -30,6 +30,7 @@ Metadata:
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
           - RunnerLargeVolumeThroughput
+          - ECInstanceDetailedMonitoring
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
@@ -137,6 +138,14 @@ Parameters:
     Default: ""
     Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances."
 
+  ECInstanceDetailedMonitoring:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
+
 Mappings:
   App:
     Image:
@@ -148,6 +157,7 @@ Conditions:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   HasPrivateSubnet: !Equals ["true", !Ref Private]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
+  ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
 
 Resources:
   VPC:
@@ -449,6 +459,11 @@ Resources:
               Iops: 3000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         UserData:
           Fn::Base64: !Sub
             - |
@@ -483,6 +498,11 @@ Resources:
               Iops: 4000
               DeleteOnTermination: true
         InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         UserData:
           Fn::Base64: !Sub
             - |
