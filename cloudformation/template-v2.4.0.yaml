@@ -469,7 +469,7 @@ Resources:
             - |
               #!/bin/bash -e
               _the_end() {
-                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
@@ -508,7 +508,7 @@ Resources:
             - |
               #!/bin/bash -e
               _the_end() {
-                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
@@ -548,19 +548,19 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
-              $User = "RunsOn"
-              $Password = ConvertTo-SecureString "P4ssw0rd@1234" -AsPlainText -Force
-              New-LocalUser $User -Password $Password
-              Add-LocalGroupMember -Group "Remote Desktop Users" -Member $User
-              Add-LocalGroupMember -Group "Administrators" -Member $User
-
-              $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-              $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-              Write-Host "Downloading bootstrap.ps1 to $b"
-              Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-              Write-Host "Running $b"
-              powershell -File $b
+              try {
+                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
+                Write-Host "Downloading bootstrap.ps1 to $b"
+                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
+                Write-Host "Running $b"
+                powershell -File $b
+              } finally {
+                Write-Output "user-data: Going to shut down in a few seconds..."
+                Start-Sleep -Seconds 45
+                Stop-Computer -Force
+              }
               </powershell>
             - AppVersion: !FindInMap [App, Image, Tag]
 
@@ -595,17 +595,19 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
-              function _the_end {
-                Write-Output "Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 20
+              try {
+                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
+                Write-Host "Downloading bootstrap.ps1 to $b"
+                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
+                Write-Host "Running $b"
+                powershell -File $b
+              } finally {
+                Write-Output "user-data: Going to shut down in a few seconds..."
+                Start-Sleep -Seconds 45
                 Stop-Computer -Force
               }
-              trap { _the_end }
-              $RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-              $RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-              $b = New-TemporaryFile
-              Invoke-WebRequest -Uri "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-              & $b
               </powershell>
             - AppVersion: !FindInMap [App, Image, Tag]
 
