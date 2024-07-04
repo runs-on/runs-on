@@ -1,4 +1,4 @@
-VERSION=v2.3.2
+VERSION=v2.4.0
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 SHELL:=/bin/bash
@@ -60,7 +60,7 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
 		--capabilities CAPABILITY_IAM
 
 # Install with the VERSION template (temporary install)
