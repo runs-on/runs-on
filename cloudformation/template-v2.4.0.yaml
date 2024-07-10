@@ -909,6 +909,7 @@ Resources:
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
+                  - cloudtrail:LookupEvents
                 Resource: "*"
               - Effect: Allow
                 Action:
