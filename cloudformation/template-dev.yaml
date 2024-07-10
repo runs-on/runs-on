@@ -13,6 +13,7 @@ Metadata:
       - Label:
           default: "Security settings [optional]"
         Parameters:
+          - ServerPassword
           - Private
           - DefaultAdmins
           - SSHCidrRange
@@ -145,6 +146,11 @@ Parameters:
       - "true"
       - "false"
     Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
+
+  ServerPassword:
+    Type: String
+    Default: ""
+    Description: Password for the RunsOn server (/metrics endpoint). If blank, the endpoint(s) will be disabled.
 
 Mappings:
   App:
@@ -867,6 +873,8 @@ Resources:
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
+              - Name: RUNS_ON_SERVER_PASSWORD
+                Value: !Ref ServerPassword
           ImageIdentifier: !Sub
             - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
@@ -1127,3 +1135,6 @@ Outputs:
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
+  RunsOnServerPassword:
+    Description: Password for the RunsOn server
+    Value: !Ref ServerPassword
