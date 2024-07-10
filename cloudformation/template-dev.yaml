@@ -906,7 +906,6 @@ Resources:
                   - ec2:DescribeInstances
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
-                  - iam:CreateServiceLinkedRole
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
