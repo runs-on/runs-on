@@ -1,6 +1,6 @@
 # RunsOn: 10x cheaper GitHub Action runners.
 
-**Remove 90% of your CI spend**. **Faster** builds. **Fully on-premise**, in your AWS account.
+**Remove 90% of your CI spend**. **Faster** builds. In your AWS account.
 
 RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any size, at the cheapest price available.
 
