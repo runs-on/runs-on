@@ -64,10 +64,7 @@ Access to the following code is public:
 - CloudFormation template
 - Public compatible AMIs for AWS
 
-With a Sponsorship license, you also get access to the source code of these components:
-
-- RunsOn server
-- RunsOn agent
+With a Sponsorship license, you get full access to the entire source code of RunsOn: server + agent, and can even modify it for internal use.
 
 ## Author
 
