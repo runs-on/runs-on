@@ -35,6 +35,7 @@ Metadata:
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
+          - AppRegistry
     ParameterLabels:
       GithubOrganization:
         default: "Your GitHub organization or personal name."
@@ -83,7 +84,7 @@ Parameters:
     Type: Number
     Default: 2
     MinValue: 1
-    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase if you have requested a higher limit from AWS."
+    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase this if you have requested a higher limit from AWS (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html)."
 
   AppAlarmDailyMinutes:
     Type: Number
@@ -99,6 +100,11 @@ Parameters:
     Type: Number
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
+
+  AppRegistry:
+    Type: String
+    Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
+    Description: "Docker image (public) registry for the RunsOn service."
 
   RunnerDefaultDiskSize:
     Type: Number
@@ -876,7 +882,7 @@ Resources:
               - Name: RUNS_ON_SERVER_PASSWORD
                 Value: !Ref ServerPassword
           ImageIdentifier: !Sub
-            - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
+            - "${AppRegistry}:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
           ImageRepositoryType: ECR_PUBLIC
 
