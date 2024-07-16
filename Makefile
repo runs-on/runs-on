@@ -1,11 +1,14 @@
 VERSION=v2.4.0
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
+REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/bash
 
-.PHONY: bump check tag login dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
-
+# Override any of these variables in .env.local
+# For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
+
+.PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
 
 pull:
 	git submodule update --remote
@@ -30,18 +33,22 @@ tag:
 	git tag -m "$(VERSION)" "$(VERSION)" ;
 
 login:
-	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/c5h5o9k1
+	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
+
+build-push: login
+	docker build --pull -t $(REGISTRY):$(VERSION) .
+	docker push $(REGISTRY):$(VERSION)
+	@echo ""
+	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
 # generates a dev release
 dev: login
-	docker build --pull -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV) .
-	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION_DEV)
+	docker build --pull -t $(REGISTRY):$(VERSION_DEV) .
+	docker push $(REGISTRY):$(VERSION_DEV)
 	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
 # generates a stage release
-stage: login
-	docker build --pull -t public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION) .
-	docker push public.ecr.aws/c5h5o9k1/runs-on/runs-on:$(VERSION)
+stage: build-push
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 
 # promotes the stage release as latest production version
