@@ -13,6 +13,7 @@ Metadata:
       - Label:
           default: "Security settings [optional]"
         Parameters:
+          - ServerPassword
           - Private
           - DefaultAdmins
           - SSHCidrRange
@@ -34,6 +35,7 @@ Metadata:
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
+          - AppRegistry
     ParameterLabels:
       GithubOrganization:
         default: "Your GitHub organization or personal name."
@@ -82,7 +84,7 @@ Parameters:
     Type: Number
     Default: 2
     MinValue: 1
-    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase if you have requested a higher limit from AWS."
+    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase this if you have requested a higher limit from AWS (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html)."
 
   AppAlarmDailyMinutes:
     Type: Number
@@ -98,6 +100,11 @@ Parameters:
     Type: Number
     Default: "512"
     Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
+
+  AppRegistry:
+    Type: String
+    Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
+    Description: "Docker image (public) registry for the RunsOn service."
 
   RunnerDefaultDiskSize:
     Type: Number
@@ -146,10 +153,15 @@ Parameters:
       - "false"
     Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
 
+  ServerPassword:
+    Type: String
+    Default: ""
+    Description: Password for the RunsOn server (/metrics endpoint). If blank, the endpoint(s) will be disabled.
+
 Mappings:
   App:
     Image:
-      Tag: "v2.3.2-dev"
+      Tag: "v2.4.0-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -469,7 +481,7 @@ Resources:
             - |
               #!/bin/bash -e
               _the_end() {
-                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
@@ -508,11 +520,107 @@ Resources:
             - |
               #!/bin/bash -e
               _the_end() {
-                echo "Going to shut down in a few seconds..." && sleep 20s && shutdown -h now
+                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
               export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
               b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
+            - AppVersion: !FindInMap [App, Image, Tag]
+
+  EC2FleetLaunchTemplateWindowsDefault:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        EbsOptimized: "true"
+        # Can't set CreditSpecification here, because standard instances would raise e.g.:
+        #   InstanceCreditSpecification.NotSupported - The c7a.large instance type does not support T2 Unlimited.
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+          InstanceMetadataTags: enabled
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RunnerDefaultDiskSize
+              VolumeType: gp3
+              Throughput: !Ref RunnerDefaultVolumeThroughput
+              Iops: 3000
+              DeleteOnTermination: true
+        InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              <powershell>
+              try {
+                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
+                Write-Host "Downloading bootstrap.ps1 to $b"
+                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
+                Write-Host "Running $b"
+                powershell -File $b
+              } finally {
+                Write-Output "user-data: Going to shut down in a few seconds..."
+                Start-Sleep -Seconds 45
+                Stop-Computer -Force
+              }
+              </powershell>
+            - AppVersion: !FindInMap [App, Image, Tag]
+
+  EC2FleetLaunchTemplateWindowsLarge:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        EbsOptimized: "true"
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+          InstanceMetadataTags: enabled
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RunnerLargeDiskSize
+              VolumeType: gp3
+              Throughput: !Ref RunnerLargeVolumeThroughput
+              Iops: 4000
+              DeleteOnTermination: true
+        InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              <powershell>
+              try {
+                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
+                Write-Host "Downloading bootstrap.ps1 to $b"
+                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
+                Write-Host "Running $b"
+                powershell -File $b
+              } finally {
+                Write-Output "user-data: Going to shut down in a few seconds..."
+                Start-Sleep -Seconds 45
+                Stop-Computer -Force
+              }
+              </powershell>
             - AppVersion: !FindInMap [App, Image, Tag]
 
   SecurityGroup:
@@ -759,6 +867,10 @@ Resources:
                 Value: !Ref EC2FleetLaunchTemplateLinuxDefault
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
                 Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
+                Value: !Ref EC2FleetLaunchTemplateWindowsDefault
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_LARGE
+                Value: !Ref EC2FleetLaunchTemplateWindowsLarge
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
@@ -767,8 +879,10 @@ Resources:
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
+              - Name: RUNS_ON_SERVER_PASSWORD
+                Value: !Ref ServerPassword
           ImageIdentifier: !Sub
-            - "public.ecr.aws/c5h5o9k1/runs-on/runs-on:${AppVersion}"
+            - "${AppRegistry}:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
           ImageRepositoryType: ECR_PUBLIC
 
@@ -798,10 +912,10 @@ Resources:
                   - ec2:DescribeInstances
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
-                  - iam:CreateServiceLinkedRole
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
+                  - cloudtrail:LookupEvents
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -1006,6 +1120,12 @@ Outputs:
   RunsOnLaunchTemplateLinuxLarge:
     Description: Large Linux launch template for the RunsOn service
     Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+  RunsOnLaunchTemplateWindowsDefault:
+    Description: Default Windows launch template for the RunsOn service
+    Value: !Ref EC2FleetLaunchTemplateWindowsDefault
+  RunsOnLaunchTemplateWindowsLarge:
+    Description: Large Windows launch template for the RunsOn service
+    Value: !Ref EC2FleetLaunchTemplateWindowsLarge
   RunsOnAppVersion:
     Description: Version of the RunsOn service
     Value: !FindInMap [App, Image, Tag]
@@ -1021,3 +1141,6 @@ Outputs:
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
+  RunsOnServerPassword:
+    Description: Password for the RunsOn server
+    Value: !Ref ServerPassword
