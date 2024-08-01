@@ -70,6 +70,13 @@ install-dev:
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) \
 		--capabilities CAPABILITY_IAM
 
+show-dev:
+	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+		--stack-name runs-on \
+		--region=us-east-1 \
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
+		--output text) && echo "https://$${URL}"
+
 # Install with the VERSION template (temporary install)
 install-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
@@ -80,6 +87,13 @@ install-test:
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
+
+show-test:
+	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+		--stack-name runs-on-test \
+		--region=us-east-1 \
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
+		--output text) && echo "https://$${URL}"
 
 delete-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name runs-on-test
@@ -94,6 +108,13 @@ install-stage:
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) ServerPassword=$(SERVER_PASSWORD) \
 		--capabilities CAPABILITY_IAM
+
+show-stage:
+	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+		--stack-name runs-on-stage \
+		--region=us-east-1 \
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
+		--output text) && echo "https://$${URL}"
 
 logs-stage:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-dwI4BlNistCa/e3c487b9eb32400cae0c5abc5a66bf9c/application -i 2 -w -s 120m --timestamp
