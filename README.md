@@ -12,7 +12,7 @@ RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any si
 - ✅ **Full workflow compatibility** with official GitHub runners. Use the [compatible public AMIs for AWS](https://github.com/runs-on/runner-images-for-aws), or [bring your own images](https://runs-on.com/features/byoi/).
 - ✅ **Low maintenance**. A single [CloudFormation template](./cloudformation/template.yaml) with all the resources, 1-click install, 1-click upgrades. Costs $1.5/month.
 
-## Secondary features
+## Advanced features
 
 - **Ephemeral VM** for each job.
 - [Spot pricing](https://runs-on.com/features/spot-instances/), with **automatic fallback** to on-demand.
@@ -25,13 +25,13 @@ RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any si
 
 ## Installation
 
-RunsOn is available in 7 AWS regions. Use the [installation guide](https://runs-on.com/guides/install/) to setup the CloudFormation stack and your private GitHub App in 10 minutes.
+RunsOn is available in 10 AWS regions. Use the [installation guide](https://runs-on.com/guides/install/) to setup the CloudFormation stack and your private GitHub App in 10 minutes.
 
 ## Usage
 
 ```diff
 - runs-on: ubuntu-latest
-+ runs-on: runs-on,runner=2cpu-linux-x64
++ runs-on: [runs-on,runner=2cpu-linux-x64]
 ```
 
 ## Screenshots
