@@ -1,0 +1,82 @@
+# This template allows you to create a VPC Peering connection between one of your existing VPC and RunsOn's VPC.
+# It can be reused multiple times to create multiple VPC Peering connections.
+#
+# Note that you will still need to add a corresponding route back to the RunsOn VPC, in the destination VPC's route table(s) to complete the peering setup.
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "VPC Peering Connection for RunsOn (https://runs-on.com)"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "VPC Peering Connection configuration [required]"
+        Parameters:
+          - RunsOnStackName
+          - DestinationVpcId
+          - DestinationVpcCidr
+
+Parameters:
+  RunsOnStackName:
+    Type: String
+    Description: "Name of the CloudFormation stack for RunsOn."
+    Default: "runs-on"
+
+  DestinationVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: "ID of the destination VPC to peer with."
+
+  DestinationVpcCidr:
+    Type: String
+    Description: "CIDR block of the destination VPC."
+    Default: "10.0.0.0/16"
+
+Resources:
+  VPCPeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      VpcId: 
+        Fn::ImportValue: !Sub "${RunsOnStackName}-VPCId"
+      PeerVpcId: !Ref DestinationVpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${RunsOnStackName}-VPCPeering
+        - Key: stack
+          Value: !Ref AWS::StackName
+
+  PublicRouteTablePeeringRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: 
+        Fn::ImportValue: !Sub "${RunsOnStackName}-PublicRouteTableId"
+      DestinationCidrBlock: !Ref DestinationVpcCidr
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+  PrivateRouteTable1PeeringRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: 
+        Fn::ImportValue: !Sub "${RunsOnStackName}-PrivateRouteTable1Id"
+      DestinationCidrBlock: !Ref DestinationVpcCidr
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+  PrivateRouteTable2PeeringRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: 
+        Fn::ImportValue: !Sub "${RunsOnStackName}-PrivateRouteTable2Id"
+      DestinationCidrBlock: !Ref DestinationVpcCidr
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+  PrivateRouteTable3PeeringRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: 
+        Fn::ImportValue: !Sub "${RunsOnStackName}-PrivateRouteTable3Id"
+      DestinationCidrBlock: !Ref DestinationVpcCidr
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+Outputs:
+  VPCPeeringConnectionId:
+    Description: VPC Peering Connection ID
+    Value: !Ref VPCPeeringConnection

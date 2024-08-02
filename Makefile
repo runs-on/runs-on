@@ -1,4 +1,4 @@
-VERSION=v2.4.0
+VERSION=v2.5.0
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -69,6 +69,15 @@ install-dev:
 		--template-file ./cloudformation/template-dev.yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) \
 		--capabilities CAPABILITY_IAM
+
+install-dev-peering:
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-disable-rollback \
+		--no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-dev-peering \
+		--region=us-east-1 \
+		--template-file ./cloudformation/vpc-peering.yaml \
+		--parameter-overrides RunsOnStackName=runs-on DestinationVpcId=vpc-02c66d4adb655aa2f
 
 show-dev:
 	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
