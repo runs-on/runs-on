@@ -11,13 +11,14 @@ Metadata:
           - LicenseKey
           - EmailAddress
       - Label:
-          default: "Security settings [optional]"
+          default: "Security and Network settings [optional]"
         Parameters:
-          - ServerPassword
+          - VpcCidrBlock
           - Private
-          - DefaultAdmins
           - SSHCidrRange
           - EC2InstanceCustomPolicy
+          - ServerPassword
+          - DefaultAdmins
       - Label:
           default: "Alert settings [optional]"
         Parameters:
@@ -53,7 +54,7 @@ Parameters:
 
   EmailAddress:
     Type: String
-    Description: Email address for cost and alert reports.
+    Description: Email address for cost and alert reports. You must confirm the subscription by clicking the link in the email that you will receive after creating the stack.
     MinLength: 1
 
   AlertTopicSubscriptionHttpsEndpoint:
@@ -61,10 +62,15 @@ Parameters:
     Description: HTTPS endpoint for cost and alert reports.
     Default: ""
 
+  VpcCidrBlock:
+    Type: String
+    Description: CIDR block for the VPC. Updating this value after creation will require deleting the stack and recreating it.
+    Default: 10.1.0.0/16
+
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for SSH access (mainly useful when Private=false). By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: CIDR range for SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
     MinLength: 1
 
   Private:
@@ -73,7 +79,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable (true) or disable (false) private subnets. Note that enabling will create 1 managed NAT gateway, with the corresponding costs."
+    Description: "Enable (true) or disable (false) private networking. If enabled, you will be able to launch runners in private subnets, and they will get a static egress IP. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/features/static-ips/."
 
   DefaultAdmins:
     Type: String
@@ -161,7 +167,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.4.0-dev"
+      Tag: "v2.5.0-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -175,12 +181,14 @@ Resources:
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.1.0.0/16
+      CidrBlock: !Ref VpcCidrBlock
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
 
   PrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
@@ -189,6 +197,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet1RouteTable
 
   PrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
@@ -197,6 +207,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet2RouteTable
 
   PrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
@@ -205,6 +217,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet3RouteTable
 
   PrivateSubnet1Route:
     Condition: HasPrivateSubnet
@@ -271,6 +285,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet2
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
@@ -283,6 +299,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet3
 
   PrivateSubnetGateway1:
     Condition: HasPrivateSubnet
@@ -294,6 +312,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
 
   ElasticIP1:
     Condition: HasPrivateSubnet
@@ -303,6 +323,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP1
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -317,6 +339,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet1
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -331,6 +355,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet2
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
@@ -345,6 +371,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet3
 
   S3VpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -365,6 +393,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-InternetGateway
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -379,6 +409,8 @@ Resources:
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicRouteTable
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -662,7 +694,6 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
-        # !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"], ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]]
         !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy], []]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -1023,6 +1054,37 @@ Outputs:
   RunsOnRegion:
     Description: AWS region
     Value: !Ref AWS::Region
+  RunsOnVPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCId"
+  RunsOnPublicRouteTableId:
+    Description: Public Route Table ID
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicRouteTableId"
+  RunsOnPrivateRouteTable1Id:
+    Description: Private Route Table 1 ID
+    Value: !Ref PrivateSubnet1RouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateRouteTable1Id"
+  RunsOnPrivateRouteTable2Id:
+    Description: Private Route Table 2 ID
+    Value: !Ref PrivateSubnet2RouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateRouteTable2Id"
+  RunsOnPrivateRouteTable3Id:
+    Description: Private Route Table 3 ID
+    Value: !Ref PrivateSubnet3RouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
+  RunsOnEgressStaticIP:
+    Description: Static IP for egress traffic (if configured)
+    Value: !If
+      - HasPrivateSubnet
+      - !Ref ElasticIP1
+      - "-"
   RunsOnPublicSubnet1:
     Description: Public subnet 1
     Value: !Ref PublicSubnet1

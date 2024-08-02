@@ -20,4 +20,3 @@ ENV RUNS_ON_ENV="prod"
 ENV RUNS_ON_AGENT_FOLDER="/app/dist"
 
 CMD ["/app/dist/server"]
-
