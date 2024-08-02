@@ -73,7 +73,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable (true) or disable (false) private subnets. Note that enabling will create 3 managed NAT gateways, with the corresponding costs."
+    Description: "Enable (true) or disable (false) private subnets. Note that enabling will create 1 managed NAT gateway, with the corresponding costs."
 
   DefaultAdmins:
     Type: String
@@ -220,7 +220,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet2RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref PrivateSubnetGateway2
+      NatGatewayId: !Ref PrivateSubnetGateway1
 
   PrivateSubnet3Route:
     Condition: HasPrivateSubnet
@@ -228,7 +228,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref PrivateSubnetGateway3
+      NatGatewayId: !Ref PrivateSubnetGateway1
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -295,47 +295,7 @@ Resources:
         - Key: "stack"
           Value: !Ref AWS::StackName
 
-  PrivateSubnetGateway2:
-    Condition: HasPrivateSubnet
-    DependsOn: ElasticIP2
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt [ElasticIP2, AllocationId]
-      SubnetId: !Ref PublicSubnet2
-      Tags:
-        - Key: "stack"
-          Value: !Ref AWS::StackName
-
-  PrivateSubnetGateway3:
-    Condition: HasPrivateSubnet
-    DependsOn: ElasticIP3
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt [ElasticIP3, AllocationId]
-      SubnetId: !Ref PublicSubnet3
-      Tags:
-        - Key: "stack"
-          Value: !Ref AWS::StackName
-
   ElasticIP1:
-    Condition: HasPrivateSubnet
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: "stack"
-          Value: !Ref AWS::StackName
-
-  ElasticIP2:
-    Condition: HasPrivateSubnet
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: "stack"
-          Value: !Ref AWS::StackName
-
-  ElasticIP3:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::EIP
     Properties:
