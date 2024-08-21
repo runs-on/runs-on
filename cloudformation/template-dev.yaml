@@ -28,6 +28,7 @@ Metadata:
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
+          - Environment
           - RunnerDefaultDiskSize
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
@@ -56,6 +57,11 @@ Parameters:
     Type: String
     Description: Email address for cost and alert reports. You must confirm the subscription by clicking the link in the email that you will receive after creating the stack.
     MinLength: 1
+
+  Environment:
+    Type: String
+    Default: "production"
+    Description: "Environment for the RunsOn service. You can create multiple RunsOn installations and set this parameter to different values. And then target a single installation by setting the `env=ENV_NAME` label in the `runs-on:` definition in your GitHub Actions workflow. If no label is set, the `production` environment is targeted. Most users only need the default `production` environment."
 
   AlertTopicSubscriptionHttpsEndpoint:
     Type: String
@@ -814,6 +820,8 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_ENV
+                Value: !Ref Environment
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_ORG

@@ -16,7 +16,6 @@ WORKDIR /app
 # Copy the binary to the production image from the builder stage.
 COPY --from=build /app/dist /app/dist
 
-ENV RUNS_ON_ENV="prod"
 ENV RUNS_ON_AGENT_FOLDER="/app/dist"
 
 CMD ["/app/dist/server"]
