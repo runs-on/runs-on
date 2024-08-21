@@ -6,7 +6,7 @@ on:
       env:
         description: "env"
         required: true
-        default: "prod"
+        default: "production"
   push:
     branches:
       - main
@@ -22,7 +22,7 @@ jobs:
         - runs-on
         - runner=2cpu-linux-x64
         - tag=env-test-protected
-        - env=${{ inputs.env || 'prod' }}
+        - env=${{ inputs.env || 'production' }}
     environment:
       name: test
       url: https://protected.example.com
@@ -37,7 +37,7 @@ jobs:
         - runs-on
         - runner=2cpu-linux-x64
         - tag=env-test-no-protection
-        - env=${{ inputs.env || 'prod' }}
+        - env=${{ inputs.env || 'production' }}
     environment:
       name: test-no-protection
       url: https://not-protected.example.com
@@ -47,12 +47,12 @@ jobs:
       - run: echo Hello world
 
   test-preinstall-ok:
-    runs-on: runs-on,runner=preinstall-ok,env=${{ inputs.env || 'prod' }}
+    runs-on: runs-on,runner=preinstall-ok,env=${{ inputs.env || 'production' }}
     steps:
       - run: echo Hello world
 
   test-ssd-mount:
-    runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'prod' }}
+    runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'production' }}
     steps:
       - name: Show disk setup
         run: |
@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@v4
 
   test-metal:
-    runs-on: runs-on,family=c7g.metal,image=ubuntu22-full-arm64,env=${{ inputs.env || 'prod' }}
+    runs-on: runs-on,family=c7g.metal,image=ubuntu22-full-arm64,env=${{ inputs.env || 'production' }}
     steps:
       - run: echo Hello world
 
@@ -83,7 +83,7 @@ jobs:
     runs-on:
       labels:
         - ${{ matrix.runner }}
-        - env=${{ inputs.env || 'prod' }}
+        - env=${{ inputs.env || 'production' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
