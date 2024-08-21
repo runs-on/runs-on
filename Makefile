@@ -86,7 +86,7 @@ show-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name runs-on \
 		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService'].[OutputKey,OutputValue]"
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIP'].[OutputKey,OutputValue]"
 
 # Install with the VERSION template (temporary install)
 install-test:
