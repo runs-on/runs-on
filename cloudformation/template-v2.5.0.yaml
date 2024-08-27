@@ -29,6 +29,7 @@ Metadata:
           default: "Advanced app configuration [optional]"
         Parameters:
           - Environment
+          - RunnerCustomTags
           - RunnerDefaultDiskSize
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
@@ -143,6 +144,11 @@ Parameters:
     MinValue: 125
     MaxValue: 1000
     Description: Volume throughput in MiB/s for large runners (helps with faster boot times, but costs more).
+
+  RunnerCustomTags:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: "Optional custom tags for the runner instances (e.g. 'key1=value1,key2=value2'). Tag keys can only use letters (a-z, A-Z), numbers (0-9), and the following characters: + - = . , _ : @ (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions)"
 
   CostReportsEnabled:
     Type: String
@@ -830,6 +836,8 @@ Resources:
                 Value: !FindInMap [App, Image, Tag]
               - Name: RUNS_ON_LICENSE_KEY
                 Value: !Ref LicenseKey
+              - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
+                Value: !Join [",", !Ref RunnerCustomTags]
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
@@ -1067,6 +1075,11 @@ Outputs:
     Value: !Ref VPC
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
+  RunsOnVpcCidrBlock:
+    Description: VPC CIDR block
+    Value: !Ref VpcCidrBlock
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicRouteTableId:
     Description: Public Route Table ID
     Value: !Ref PublicRouteTable
@@ -1120,6 +1133,9 @@ Outputs:
   RunsOnRunnerLargeDiskSize:
     Description: Large disk size for runners
     Value: !Ref RunnerLargeDiskSize
+  RunsOnRunnerCustomTags:
+    Description: Custom tags for runners
+    Value: !Join [",", !Ref RunnerCustomTags]
   RunsOnInstanceProfileArn:
     Description: Runner instance profile ARN
     Value: !GetAtt EC2InstanceProfile.Arn
