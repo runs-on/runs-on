@@ -77,6 +77,6 @@ Resources:
       VpcPeeringConnectionId: !Ref VPCPeeringConnection
 
 Outputs:
-  VPCPeeringConnectionId:
+  RunsOnVpcPeeringConnectionId:
     Description: VPC Peering Connection ID
     Value: !Ref VPCPeeringConnection
