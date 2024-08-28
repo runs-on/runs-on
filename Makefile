@@ -1,4 +1,4 @@
-VERSION=v2.4.0
+VERSION=v2.5.0
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -50,6 +50,7 @@ dev: login
 # generates a stage release
 stage: build-push
 	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
+	aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 
 # promotes the stage release as latest production version
 promote: check tag stage
@@ -67,15 +68,26 @@ install-dev:
 		--stack-name runs-on \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) Environment=dev RunnerCustomTags="my/tag=my/value3" \
 		--capabilities CAPABILITY_IAM
 
+install-dev-peering:
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-disable-rollback \
+		--no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-dev-peering \
+		--region=us-east-1 \
+		--template-file ./cloudformation/vpc-peering.yaml \
+		--parameter-overrides RunsOnStackName=runs-on DestinationVpcId=vpc-02c66d4adb655aa2f
+
+logs-dev:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 120m --timestamp
+
 show-dev:
-	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name runs-on \
 		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
-		--output text) && echo "https://$${URL}"
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIP'].[OutputKey,OutputValue]"
 
 # Install with the VERSION template (temporary install)
 install-test:
