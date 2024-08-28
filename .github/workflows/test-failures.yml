@@ -6,18 +6,36 @@ on:
       env:
         description: "env"
         required: true
-        default: "prod"
+        default: "production"
 
 permissions:
   contents: read
 
 jobs:
   test-preinstall-ko:
-    runs-on: runs-on,runner=preinstall-ko,env=${{ inputs.env || 'prod' }}
+    runs-on: runs-on,runner=preinstall-ko,env=${{ inputs.env || 'production' }}
     steps:
-      - run: echo Should never run
+      - run: |
+          echo "Should never run. Preinstall failed"
+          exit 1
 
   test-runner-unknown:
-    runs-on: runs-on,runner=unknown,env=${{ inputs.env || 'prod' }}
+    runs-on: runs-on,runner=unknown,env=${{ inputs.env || 'production' }}
     steps:
-      - run: echo Should never run
+      - run: |
+          echo "Should never run. Runner not found"
+          exit 1
+
+  test-env-unsupported:
+    runs-on: runs-on,runner=2cpu-linux-x64,env=unknown
+    steps:
+      - run: |
+          echo "Should never run. Env not supported"
+          exit 1
+
+  test-private-not-supported:
+    runs-on: runs-on,runner=2cpu-linux-x64,private=true,env=production
+    steps:
+      - run: |
+          echo "Should never run. Private runners are not supported on this env"
+          exit 1
