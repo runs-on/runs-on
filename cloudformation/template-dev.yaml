@@ -62,6 +62,7 @@ Parameters:
   Environment:
     Type: String
     Default: "production"
+    MinLength: 1
     Description: "Environment for the RunsOn service: you can create multiple RunsOn installations and set this parameter to different values. And then target a single installation by setting the `env=ENV_NAME` label in the `runs-on:` definition in your GitHub Actions workflow. If no `env` label is set in job definitions, the `production` environment is targeted, so make sure to keep the default value if you only have one RunsOn installation."
 
   AlertTopicSubscriptionHttpsEndpoint:
