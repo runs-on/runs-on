@@ -1,4 +1,4 @@
-VERSION=v2.5.0
+VERSION=v2.5.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -20,8 +20,8 @@ show:
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
+	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
+	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
