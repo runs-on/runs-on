@@ -885,6 +885,8 @@ Resources:
                 Value: !Ref RunnerLargeDiskSize
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
+              - Name: RUNS_ON_QUEUE_HOUSEKEEPING
+                Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -977,7 +979,9 @@ Resources:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
-                Resource: !GetAtt RunsOnQueue.Arn
+                Resource:
+                  - !GetAtt RunsOnQueue.Arn
+                  - !GetAtt RunsOnQueueHousekeeping.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1028,6 +1032,16 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
         maxReceiveCount: 5
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueHousekeeping:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
@@ -1185,6 +1199,9 @@ Outputs:
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueueHousekeeping:
+    Description: SQS queue for the RunsOn service, used for non-critical housekeeping tasks
+    Value: !Ref RunsOnQueueHousekeeping
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
