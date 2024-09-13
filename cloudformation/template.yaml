@@ -1173,7 +1173,7 @@ Outputs:
     Description: S3 bucket for storing configuration
     Value: !Ref S3Bucket
   RunsOnBucketCache:
-    Description: S3 bucket for storing cache artefacts
+    Description: S3 bucket for storing cache artifacts
     Value: !Ref S3BucketCache
   RunsOnTopicArn:
     Description: SNS Topic where email alerts and reports are sent
