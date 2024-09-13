@@ -10,7 +10,7 @@ on:
   push:
     branches:
       - main
-      - feature/v*
+      
 
 permissions:
   contents: read

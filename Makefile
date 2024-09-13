@@ -1,4 +1,4 @@
-VERSION=v2.5.0
+VERSION=v2.5.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -20,8 +20,8 @@ show:
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
-	sed -i 's|Tag: "v.*|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
+	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
+	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
@@ -33,7 +33,7 @@ tag:
 	git tag -m "$(VERSION)" "$(VERSION)" ;
 
 login:
-	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
+	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
 
 build-push: login
 	docker build --pull -t $(REGISTRY):$(VERSION) .
@@ -45,17 +45,17 @@ build-push: login
 dev: login
 	docker build --pull -t $(REGISTRY):$(VERSION_DEV) .
 	docker push $(REGISTRY):$(VERSION_DEV)
-	aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
 # generates a stage release
 stage: build-push
-	aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
-	aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 
 # promotes the stage release as latest production version
 promote: check tag stage
 	diff cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
-	aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
 	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run cmd/server/main.go 2>&1 | tee tmp/dev.log

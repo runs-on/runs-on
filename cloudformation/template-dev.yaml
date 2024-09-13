@@ -85,9 +85,10 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues:
+      - "always"
       - "true"
       - "false"
-    Description: "Enable (true) or disable (false) private networking. If enabled, you will be able to launch runners in private subnets, and they will get a static egress IP. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/features/static-ips/."
+    Description: "Enable ('true' or 'always') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
   DefaultAdmins:
     Type: String
@@ -180,13 +181,13 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.5.0-dev"
+      Tag: "v2.5.1-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Equals ["true", !Ref Private]
+  HasPrivateSubnet: !Or [!Equals [!Ref Private, "true"], !Equals [!Ref Private, "always"]]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
 
@@ -869,6 +870,11 @@ Resources:
                 Value: !Ref PrivateSubnet3
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
+              - Name: RUNS_ON_EGRESS_STATIC_IP
+                Value: !If
+                  - HasPrivateSubnet
+                  - !Ref ElasticIP1
+                  - ""
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
@@ -885,6 +891,8 @@ Resources:
                 Value: !Ref RunnerLargeDiskSize
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
+              - Name: RUNS_ON_QUEUE_HOUSEKEEPING
+                Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -977,7 +985,9 @@ Resources:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
-                Resource: !GetAtt RunsOnQueue.Arn
+                Resource:
+                  - !GetAtt RunsOnQueue.Arn
+                  - !GetAtt RunsOnQueueHousekeeping.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1028,6 +1038,16 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
         maxReceiveCount: 5
+      Tags:
+        - Key: "stack"
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueHousekeeping:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
       Tags:
         - Key: "stack"
           Value: !Ref AWS::StackName
@@ -1101,12 +1121,12 @@ Outputs:
     Value: !Ref PrivateSubnet3RouteTable
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
-  RunsOnEgressStaticIP:
+  RunsOnEgressStaticIp:
     Description: Static IP for egress traffic (if configured)
     Value: !If
       - HasPrivateSubnet
       - !Ref ElasticIP1
-      - "-"
+      - ""
   RunsOnPublicSubnet1:
     Description: Public subnet 1
     Value: !Ref PublicSubnet1
@@ -1185,6 +1205,9 @@ Outputs:
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueueHousekeeping:
+    Description: SQS queue for the RunsOn service, used for non-critical housekeeping tasks
+    Value: !Ref RunsOnQueueHousekeeping
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
