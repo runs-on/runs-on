@@ -85,9 +85,10 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues:
+      - "always"
       - "true"
       - "false"
-    Description: "Enable (true) or disable (false) private networking. If enabled, you will be able to launch runners in private subnets, and they will get a static egress IP. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/features/static-ips/."
+    Description: "Enable ('true' or 'always') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
   DefaultAdmins:
     Type: String
