@@ -187,7 +187,7 @@ Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Equals ["true", !Ref Private]
+  HasPrivateSubnet: !Or [!Equals [!Ref Private, "true"], !Equals [!Ref Private, "always"]]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
 
@@ -1116,7 +1116,7 @@ Outputs:
     Value: !Ref PrivateSubnet3RouteTable
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
-  RunsOnEgressStaticIP:
+  RunsOnEgressStaticIp:
     Description: Static IP for egress traffic (if configured)
     Value: !If
       - HasPrivateSubnet
