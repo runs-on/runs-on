@@ -870,6 +870,11 @@ Resources:
                 Value: !Ref PrivateSubnet3
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
+              - Name: RUNS_ON_EGRESS_STATIC_IP
+                Value: !If
+                  - HasPrivateSubnet
+                  - !Ref ElasticIP1
+                  - ""
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
