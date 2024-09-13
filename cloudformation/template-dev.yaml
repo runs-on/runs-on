@@ -1126,7 +1126,7 @@ Outputs:
     Value: !If
       - HasPrivateSubnet
       - !Ref ElasticIP1
-      - "-"
+      - ""
   RunsOnPublicSubnet1:
     Description: Public subnet 1
     Value: !Ref PublicSubnet1
