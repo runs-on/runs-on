@@ -63,7 +63,7 @@ Parameters:
     Type: String
     Default: "production"
     MinLength: 1
-    Description: "Environment for the RunsOn service: you can create multiple RunsOn installations and set this parameter to different values. And then target a single installation by setting the `env=ENV_NAME` label in the `runs-on:` definition in your GitHub Actions workflow. If no `env` label is set in job definitions, the `production` environment is targeted, so make sure to keep the default value if you only have one RunsOn installation."
+    Description: "Environment for the RunsOn service: you can create multiple RunsOn installations and set this parameter to different values. And then target a single installation by setting the `env=ENV_NAME` label in the `runs-on:` definition in your GitHub Actions workflow. If no `env` label is set in job definitions, the `production` environment is targeted, so make sure to keep this default value if you only have one RunsOn installation."
 
   AlertTopicSubscriptionHttpsEndpoint:
     Type: String
@@ -93,7 +93,7 @@ Parameters:
   DefaultAdmins:
     Type: String
     Default: ""
-    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled). If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
 
   AppEc2QueueSize:
     Type: Number
@@ -476,10 +476,6 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
-          - ResourceType: spot-instances-request
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
         SecurityGroupIds:
@@ -534,10 +530,6 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
-          - ResourceType: spot-instances-request
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
         SecurityGroupIds:
@@ -587,10 +579,6 @@ Resources:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
           - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: spot-instances-request
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
@@ -653,10 +641,6 @@ Resources:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
           - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: spot-instances-request
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
