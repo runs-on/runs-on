@@ -1020,7 +1020,7 @@ Resources:
                 Resource: "arn:aws:ec2:*:*:instance/*"
                 Condition:
                   StringEquals:
-                    "aws:ResourceTag/stack": !Ref AWS::StackName
+                    "aws:ResourceTag/provider": "runs-on.com"
               - Effect: Allow
                 Action:
                   - s3:GetObject
