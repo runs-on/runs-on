@@ -3,5 +3,5 @@
     "AWS_REGION": "us-east-1",
     "AWS_PROFILE": "runs-on-dev"
   },
-  "go.testFlags": ["-v"]
+  "go.testFlags": ["-v", "-timeout", "2m"]
 }

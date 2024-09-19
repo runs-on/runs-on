@@ -1,4 +1,4 @@
-VERSION=v2.5.1
+VERSION=v2.5.2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -58,7 +58,7 @@ promote: check tag stage
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 install-dev:
@@ -132,12 +132,14 @@ logs-stage:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-dwI4BlNistCa/e3c487b9eb32400cae0c5abc5a66bf9c/application -i 2 -w -s 120m --timestamp
 
 # Permanent installation for runs-on-demo org, in different region
-install-prod:
+install-demo:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on-prod \
-		--region=eu-west-1 \
+		--stack-name runs-on-demo \
+		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+prod@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
-		--capabilities CAPABILITY_IAM \
-		--disable-rollback
+		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
+		--capabilities CAPABILITY_IAM
+
+logs-demo:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-YkeiWRtxMBYa/05e398b31c2949cc96c23a061871d318/application -i 2 -w -s 120m --timestamp
