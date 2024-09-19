@@ -58,7 +58,7 @@ promote: check tag stage
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 install-dev:
