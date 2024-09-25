@@ -63,17 +63,21 @@ Learn more about all the supported [job labels](https://runs-on.com/configuratio
 
 ## License
 
-- Free to use if you are a non-profit or for personal use.
-- For commercial organizations, you can evaluate for free for 15 days, after which you must [buy a license](https://runs-on.com/pricing/): 300€/year for a standard license, 1500€/year for a sponsorship license.
+The code for the main repository (the current one, with the CloudFormation templates to deploy the AWS resources) is MIT licensed.
 
-RunsOn has an insane ROI for commercial organizations. The monthly license cost is usually recouped within a few days.
+However the code in the `server/` submodule is proprietary and requires a license to use it:
+
+- A non-profit (free) license is available if you are using RunsOn in a non-profit organization (this must apply to any parent organization as well), or if you are using it for personal use.
+- For commercial organizations, you can evaluate for free for 15 days with a Demo license, after which you must buy a commercial license: 300€/year for the standard license, 1500€/year for the sponsorship license.
+
+RunsOn has an insane ROI for commercial organizations. The monthly license cost is usually recouped within a few days. To learn more about licenses, visit the dedicated [pricing](https://runs-on.com/pricing/) page.
 
 Access to the following code is public:
 
 - CloudFormation template
 - Public compatible AMIs for AWS
 
-With a Sponsorship license, you get full access to the entire source code of RunsOn: server + agent, and can even modify it for internal use.
+With a Sponsorship license, you get full access to the entire source code of RunsOn: server + agent (contained in the `server/` submodule), and can even modify it for internal use.
 
 ## Author
 
