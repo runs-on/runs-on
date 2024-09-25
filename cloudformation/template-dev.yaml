@@ -178,7 +178,6 @@ Parameters:
     Default: ""
     Description: Password for the RunsOn server (/metrics endpoint). If blank, the endpoint(s) will be disabled.
 
-  # Not publicly exposed for now
   CostAllocationTag:
     Type: String
     Default: "stack"
@@ -195,7 +194,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.5.3-dev"
+      Tag: "v2.5.4-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
