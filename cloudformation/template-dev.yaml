@@ -184,10 +184,18 @@ Parameters:
     Default: "stack"
     Description: "Cost allocation tag to use for all the deployed resources."
 
+  HousekeepingEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable the housekeeping service.
+
 Mappings:
   App:
     Image:
-      Tag: "v2.5.2-dev"
+      Tag: "v2.5.3-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -953,6 +961,10 @@ Resources:
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_QUEUE_HOUSEKEEPING
                 Value: !Ref RunsOnQueueHousekeeping
+              - Name: RUNS_ON_QUEUE_TERMINATION
+                Value: !Ref RunsOnQueueTermination
+              - Name: RUNS_ON_HOUSEKEEPING_ENABLED
+                Value: !Ref HousekeepingEnabled
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1048,6 +1060,7 @@ Resources:
                 Resource:
                   - !GetAtt RunsOnQueue.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
+                  - !GetAtt RunsOnQueueTermination.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1107,7 +1120,17 @@ Resources:
     Properties:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 20
-      VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
+      VisibilityTimeout: 120
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueTermination:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 120
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1268,6 +1291,12 @@ Outputs:
   RunsOnQueueHousekeeping:
     Description: SQS queue for the RunsOn service, used for non-critical housekeeping tasks
     Value: !Ref RunsOnQueueHousekeeping
+  RunsOnQueueTermination:
+    Description: SQS queue for the RunsOn service, used for runner termination tasks
+    Value: !Ref RunsOnQueueTermination
+  RunsOnHousekeepingEnabled:
+    Description: Enable or disable the housekeeping service
+    Value: !Ref HousekeepingEnabled
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
