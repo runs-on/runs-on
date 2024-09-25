@@ -2,7 +2,7 @@
 
 **Remove 90% of your CI spend**. **Faster** builds. **Fully self-hosted**, in your AWS account.
 
-RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any size, at the cheapest price available.
+RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any size, at the cheapest price available. Think of it as your best alternative to the Actions Runner Controller (ARC) for Kubernetes, the Philips terraform module, or any of the third party providers that require deep access to your code and secrets.
 
 - ✅ **Faster**. Raw [CPU performance is up 30%](https://runs-on.com/benchmarks/github-actions-runners/) compared to official runners.
 - ✅ **Cheaper**. Between [7x to 15x cheaper](https://runs-on.com/pricing/) than official runners.
