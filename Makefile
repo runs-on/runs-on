@@ -60,12 +60,14 @@ promote: check tag stage
 run-dev:
 	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
+STACK_DEV_NAME=runs-on
+
 # Install with the dev template
 install-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-disable-rollback \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on \
+		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) Environment=dev RunnerCustomTags="my/tag=my/value3" \
@@ -85,37 +87,42 @@ logs-dev:
 
 show-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
-		--stack-name runs-on \
+		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIP'].[OutputKey,OutputValue]"
+
+STACK_TEST_NAME=runs-on-test
 
 # Install with the VERSION template (temporary install)
 install-test:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--disable-rollback \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on-test \
+		--stack-name $(STACK_TEST_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
+	@make show-test
 
 show-test:
 	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
-		--stack-name runs-on-test \
+		--stack-name $(STACK_TEST_NAME) \
 		--region=us-east-1 \
 		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
 		--output text) && echo "https://$${URL}"
 
 delete-test:
-	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name runs-on-test
-	AWS_PROFILE=runs-on-admin aws cloudformation wait stack-delete-complete --stack-name runs-on-test
+	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name $(STACK_TEST_NAME)
+	AWS_PROFILE=runs-on-admin aws cloudformation wait stack-delete-complete --stack-name $(STACK_TEST_NAME)
+
+STACK_STAGE_NAME=runs-on-stage
 
 # Permanent installation for runs-on org
 install-stage:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on-stage \
+		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) ServerPassword=$(SERVER_PASSWORD) \
@@ -123,7 +130,7 @@ install-stage:
 
 show-stage:
 	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
-		--stack-name runs-on-stage \
+		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
 		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
 		--output text) && echo "https://$${URL}"
@@ -131,11 +138,13 @@ show-stage:
 logs-stage:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-dwI4BlNistCa/e3c487b9eb32400cae0c5abc5a66bf9c/application -i 2 -w -s 120m --timestamp
 
+STACK_DEMO_NAME=runs-on-demo
+
 # Permanent installation for runs-on-demo org, in different region
 install-demo:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name runs-on-demo \
+		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
