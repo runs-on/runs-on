@@ -194,7 +194,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.5.4-dev"
+      Tag: "v2.5.5-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -216,6 +216,45 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-VPC
+
+  # EC2.6 - VPC flow logging should be enabled in all VPCs
+  VPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      ResourceType: VPC
+      ResourceId: !Ref VPC
+      TrafficType: ALL
+      DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref VPCFlowLogGroup
+
+  VPCFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  VPCFlowLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: vpc-flow-logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: allow-flow-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt VPCFlowLogGroup.Arn
 
   PrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
@@ -359,8 +398,6 @@ Resources:
       VpcId:
         Ref: VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
-      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
-      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
       CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
       Tags:
@@ -375,8 +412,6 @@ Resources:
       VpcId:
         Ref: VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
-      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
-      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
       CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
       Tags:
@@ -391,8 +426,6 @@ Resources:
       VpcId:
         Ref: VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
-      # Dynamically generate a CIDR block with non-overlapping IP ranges for each possible AZ in the region
-      # https://docs.aws.amazon.com/fr_fr/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-cidr.html
       CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
       Tags:
@@ -413,6 +446,22 @@ Resources:
         - !Ref PrivateSubnet1RouteTable
         - !Ref PrivateSubnet2RouteTable
         - !Ref PrivateSubnet3RouteTable
+
+  # EC2.10 - Amazon EC2 should be configured to use VPC endpoints that are created for the Amazon EC2 service
+  # Incurs additional cost
+  EC2VpcEndpoint:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref SecurityGroup
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -465,7 +514,6 @@ Resources:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
 
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-launchtemplate.html
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -488,8 +536,6 @@ Resources:
         SecurityGroupIds:
           - !Ref SecurityGroup
         EbsOptimized: "true"
-        # Can't set CreditSpecification here, because standard instances would raise e.g.:
-        #   InstanceCreditSpecification.NotSupported - The c7a.large instance type does not support T2 Unlimited.
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
@@ -502,6 +548,7 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
+              Encrypted: true  # Ensure EBS volumes are encrypted
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -554,6 +601,7 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
+              Encrypted: true  # Ensure EBS volumes are encrypted
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -594,8 +642,6 @@ Resources:
         SecurityGroupIds:
           - !Ref SecurityGroup
         EbsOptimized: "true"
-        # Can't set CreditSpecification here, because standard instances would raise e.g.:
-        #   InstanceCreditSpecification.NotSupported - The c7a.large instance type does not support T2 Unlimited.
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
@@ -608,6 +654,7 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
+              Encrypted: true  # Ensure EBS volumes are encrypted
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -668,6 +715,7 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
+              Encrypted: true  # Ensure EBS volumes are encrypted
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -714,11 +762,20 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAgentBinaries
+            Prefix: agents/v1*
+            Status: Enabled
+            ExpirationInDays: 30
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
+      LoggingConfiguration:
+        DestinationBucketName: !Ref S3BucketLogging
+        LogFilePrefix: s3-config-access-logs/
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -740,6 +797,16 @@ Resources:
             Condition:
               StringEquals:
                 aws:SourceVpce: !Ref S3VpcEndpoint
+          - Sid: DenyUnencryptedConnections
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !Sub "arn:aws:s3:::${S3Bucket}"
+              - !Sub "arn:aws:s3:::${S3Bucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
 
   S3BucketCache:
     Type: AWS::S3::Bucket
@@ -755,11 +822,68 @@ Resources:
             Prefix: cache/
             Status: Enabled
             ExpirationInDays: 10
+      LoggingConfiguration:
+        DestinationBucketName: !Ref S3BucketLogging
+        LogFilePrefix: s3-cache-access-logs/
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
         - Key: "runs-on/purpose"
           Value: "cache"
+
+  S3BucketCachePolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketCache
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyUnencryptedConnections
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !Sub "arn:aws:s3:::${S3BucketCache}"
+              - !Sub "arn:aws:s3:::${S3BucketCache}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  S3BucketLogging:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: "runs-on/purpose"
+          Value: "s3-access-logs"
+
+  S3BucketLoggingPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketLogging
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyUnencryptedConnections
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !Sub "arn:aws:s3:::${S3BucketLogging}"
+              - !Sub "arn:aws:s3:::${S3BucketLogging}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup

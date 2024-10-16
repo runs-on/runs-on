@@ -1,4 +1,4 @@
-VERSION=v2.5.4
+VERSION=v2.5.5
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -147,7 +147,7 @@ install-demo:
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) \
+		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
 		--capabilities CAPABILITY_IAM
 
 logs-demo:
