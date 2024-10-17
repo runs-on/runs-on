@@ -70,7 +70,7 @@ install-dev:
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--s3-bucket runs-on-dev \
+		--s3-bucket runs-on-tmp \
 		--parameter-overrides \
 			GithubOrganization=runs-on \
 			EmailAddress=ops+dev@runs-on.com \
@@ -116,7 +116,7 @@ install-test:
 		--stack-name $(STACK_TEST_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-dev \
+		--s3-bucket runs-on-tmp \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 	@make show-test
@@ -141,6 +141,7 @@ install-stage:
 		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--s3-bucket runs-on-tmp \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) ServerPassword=$(SERVER_PASSWORD) \
 		--capabilities CAPABILITY_IAM
 
@@ -163,7 +164,7 @@ install-demo:
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-dev \
+		--s3-bucket runs-on-tmp \
 		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
 		--capabilities CAPABILITY_IAM
 
