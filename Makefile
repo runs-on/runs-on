@@ -1,4 +1,4 @@
-VERSION=v2.5.5
+VERSION=v2.5.6
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -70,7 +70,19 @@ install-dev:
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-dev.yaml \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+dev@runs-on.com Private=$(PRIVATE) EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy DefaultAdmins="crohr,github" RunnerLargeDiskSize=120 LicenseKey=$(LICENSE_KEY) AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) ServerPassword=$(SERVER_PASSWORD) Environment=dev RunnerCustomTags="my/tag=my/value3" \
+		--s3-bucket runs-on-dev \
+		--parameter-overrides \
+			GithubOrganization=runs-on \
+			EmailAddress=ops+dev@runs-on.com \
+			Private=$(PRIVATE) \
+			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
+			DefaultAdmins="crohr,github" \
+			RunnerLargeDiskSize=120 \
+			LicenseKey=$(LICENSE_KEY) \
+			AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
+			ServerPassword=$(SERVER_PASSWORD) \
+			Environment=dev RunnerCustomTags="my/tag=my/value3" \
+			NatGatewayElasticIPCount=2 \
 		--capabilities CAPABILITY_IAM
 
 install-dev-peering:
@@ -101,6 +113,7 @@ install-test:
 		--stack-name $(STACK_TEST_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--s3-bucket runs-on-dev \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) \
 		--capabilities CAPABILITY_IAM
 	@make show-test
@@ -147,6 +160,7 @@ install-demo:
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--s3-bucket runs-on-dev \
 		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
 		--capabilities CAPABILITY_IAM
 
