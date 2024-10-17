@@ -15,6 +15,7 @@ Metadata:
         Parameters:
           - VpcCidrBlock
           - Private
+          - NatGatewayElasticIPCount
           - SSHCidrRange
           - EC2InstanceCustomPolicy
           - ServerPassword
@@ -89,6 +90,13 @@ Parameters:
       - "true"
       - "false"
     Description: "Enable ('true' or 'always') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
+
+  NatGatewayElasticIPCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 8
+    Description: "Number of Elastic IPv4s to attach to the NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 IPs, but can request a quota increase from AWS."
 
   DefaultAdmins:
     Type: String
@@ -203,6 +211,14 @@ Conditions:
   HasPrivateSubnet: !Or [!Equals [!Ref Private, "true"], !Equals [!Ref Private, "always"]]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
+  CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
+  CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
+  CreateElasticIP3: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP2, !Not [!Equals [!Ref NatGatewayElasticIPCount, 2]]]
+  CreateElasticIP4: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP3, !Not [!Equals [!Ref NatGatewayElasticIPCount, 3]]]
+  CreateElasticIP5: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP4, !Not [!Equals [!Ref NatGatewayElasticIPCount, 4]]]
+  CreateElasticIP6: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP5, !Not [!Equals [!Ref NatGatewayElasticIPCount, 5]]]
+  CreateElasticIP7: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP6, !Not [!Equals [!Ref NatGatewayElasticIPCount, 6]]]
+  CreateElasticIP8: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP7, !Not [!Equals [!Ref NatGatewayElasticIPCount, 7]]]
 
 Resources:
   VPC:
@@ -292,6 +308,7 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet3RouteTable
+
   PrivateSubnet1Route:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::Route
@@ -438,10 +455,17 @@ Resources:
 
   PrivateSubnetGateway1:
     Condition: HasPrivateSubnet
-    DependsOn: ElasticIP1
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt [ElasticIP1, AllocationId]
+      AllocationId: !GetAtt ElasticIP1.AllocationId
+      SecondaryAllocationIds: 
+        - !If [CreateElasticIP2, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4, !GetAtt ElasticIP4.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5, !GetAtt ElasticIP5.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6, !GetAtt ElasticIP6.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7, !GetAtt ElasticIP7.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8, !GetAtt ElasticIP8.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: !Ref CostAllocationTag
@@ -450,7 +474,7 @@ Resources:
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
 
   ElasticIP1:
-    Condition: HasPrivateSubnet
+    Condition: CreateElasticIP1
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -459,6 +483,83 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP1
+
+  ElasticIP2:
+    Condition: CreateElasticIP2
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP2
+
+  ElasticIP3:
+    Condition: CreateElasticIP3
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP3
+
+  ElasticIP4:
+    Condition: CreateElasticIP4
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP4
+
+  ElasticIP5:
+    Condition: CreateElasticIP5
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP5
+
+  ElasticIP6:
+    Condition: CreateElasticIP6
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP6
+
+  ElasticIP7:
+    Condition: CreateElasticIP7
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP7
+
+  ElasticIP8:
+    Condition: CreateElasticIP8
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP8
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -1452,11 +1553,24 @@ Outputs:
     Value: !Ref PrivateSubnet3RouteTable
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
-  RunsOnEgressStaticIp:
-    Description: Static IP for egress traffic (if configured)
+  RunsOnEgressStaticIps:
+    Description: Static IPs for egress traffic (if configured)
     Value: !If
       - HasPrivateSubnet
-      - !Ref ElasticIP1
+      - !Join
+        - ","
+        - !Split
+          - ","
+          - !Join
+            - ","
+            - - !If [CreateElasticIP1, !Ref ElasticIP1, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP2, !Ref ElasticIP2, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP3, !Ref ElasticIP3, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP4, !Ref ElasticIP4, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP5, !Ref ElasticIP5, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP6, !Ref ElasticIP6, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP7, !Ref ElasticIP7, !Ref "AWS::NoValue"]
+              - !If [CreateElasticIP8, !Ref ElasticIP8, !Ref "AWS::NoValue"]
       - ""
   RunsOnPublicSubnet1:
     Description: Public subnet 1
