@@ -1,4 +1,9 @@
 images:
+  dlami-x64:
+    platform: "linux"
+    arch: "x64"
+    owner: "898082745236" # AWS
+    name: "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*"
   custom:
     # make sure to enclose owner in quotes, otherwise yaml will interpret it as a number
     owner: "099720109477"
@@ -29,3 +34,6 @@ runners:
     cpu: 4
     family: [c7a, c7i]
     image: ubuntu22-full-x64
+  gpu-nvidia:
+    family: ["g4dn.xlarge"]
+    image: dlami-x64
