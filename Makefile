@@ -95,7 +95,10 @@ install-dev-peering:
 		--parameter-overrides RunsOnStackName=runs-on DestinationVpcId=vpc-02c66d4adb655aa2f
 
 logs-dev:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 120m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 10m --timestamp
+
+logs-dev-instances:
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 runs-on-EC2InstanceLogGroup-x74jb9bPgttZ -i 2 -w -s 10m --timestamp
 
 show-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
