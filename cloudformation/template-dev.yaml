@@ -194,7 +194,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.5.5-dev"
+      Tag: "v2.5.6-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -211,11 +211,18 @@ Resources:
       CidrBlock: !Ref VpcCidrBlock
       EnableDnsSupport: true
       EnableDnsHostnames: true
+      InstanceTenancy: default
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-VPC
+
+  VPCIPv6CidrBlock:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AmazonProvidedIpv6CidrBlock: true
 
   # EC2.6 - VPC flow logging should be enabled in all VPCs
   VPCFlowLog:
@@ -285,7 +292,6 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet3RouteTable
-
   PrivateSubnet1Route:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::Route
@@ -293,6 +299,14 @@ Resources:
       RouteTableId: !Ref PrivateSubnet1RouteTable
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref PrivateSubnetGateway1
+
+  PrivateSubnet1RouteIPv6:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+      DestinationIpv6CidrBlock: ::/0
+      EgressOnlyInternetGatewayId: !Ref EgressOnlyInternetGateway
 
   PrivateSubnet2Route:
     Condition: HasPrivateSubnet
@@ -302,6 +316,14 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref PrivateSubnetGateway1
 
+  PrivateSubnet2RouteIPv6:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet2RouteTable
+      DestinationIpv6CidrBlock: ::/0
+      EgressOnlyInternetGatewayId: !Ref EgressOnlyInternetGateway
+
   PrivateSubnet3Route:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::Route
@@ -309,6 +331,19 @@ Resources:
       RouteTableId: !Ref PrivateSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref PrivateSubnetGateway1
+
+  PrivateSubnet3RouteIPv6:
+    Condition: HasPrivateSubnet
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnet3RouteTable
+      DestinationIpv6CidrBlock: ::/0
+      EgressOnlyInternetGatewayId: !Ref EgressOnlyInternetGateway
+
+  EgressOnlyInternetGateway:
+    Type: AWS::EC2::EgressOnlyInternetGateway
+    Properties:
+      VpcId: !Ref VPC
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -331,11 +366,22 @@ Resources:
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 0
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -343,11 +389,22 @@ Resources:
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 1
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -357,11 +414,22 @@ Resources:
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
       CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 2
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -395,11 +463,22 @@ Resources:
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 3
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -409,11 +488,22 @@ Resources:
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 4
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -423,11 +513,22 @@ Resources:
   PublicSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
       CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: true
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Select: 
+          - 5
+          - Fn::Cidr: 
+            - Fn::Select: 
+              - 0
+              - Fn::GetAtt: 
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -496,6 +597,14 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  PublicRouteIPv6:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationIpv6CidrBlock: ::/0
+      GatewayId: !Ref InternetGateway
+
   SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -533,8 +642,6 @@ Resources:
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
-        SecurityGroupIds:
-          - !Ref SecurityGroup
         EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
@@ -555,6 +662,12 @@ Resources:
             - ECInstanceDetailedMonitoringEnabled
             - Enabled: true
             - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            Groups:
+              - !Ref SecurityGroup
+            Ipv6AddressCount: 1
         UserData:
           Fn::Base64: !Sub
             - |
@@ -586,8 +699,6 @@ Resources:
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
-        SecurityGroupIds:
-          - !Ref SecurityGroup
         EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
@@ -608,6 +719,12 @@ Resources:
             - ECInstanceDetailedMonitoringEnabled
             - Enabled: true
             - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            Groups:
+              - !Ref SecurityGroup
+            Ipv6AddressCount: 1
         UserData:
           Fn::Base64: !Sub
             - |
@@ -639,8 +756,6 @@ Resources:
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
-        SecurityGroupIds:
-          - !Ref SecurityGroup
         EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
@@ -661,6 +776,12 @@ Resources:
             - ECInstanceDetailedMonitoringEnabled
             - Enabled: true
             - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            Groups:
+              - !Ref SecurityGroup
+            Ipv6AddressCount: 1
         UserData:
           Fn::Base64: !Sub
             - |
@@ -700,8 +821,6 @@ Resources:
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
-        SecurityGroupIds:
-          - !Ref SecurityGroup
         EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
@@ -722,6 +841,12 @@ Resources:
             - ECInstanceDetailedMonitoringEnabled
             - Enabled: true
             - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            Groups:
+              - !Ref SecurityGroup
+            Ipv6AddressCount: 1
         UserData:
           Fn::Base64: !Sub
             - |
