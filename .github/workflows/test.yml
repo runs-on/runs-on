@@ -68,6 +68,42 @@ jobs:
     steps:
       - run: echo Hello world
 
+  test-gpu:
+    runs-on:
+      - runs-on=${ github.run_id }
+      - runner=gpu-nvidia
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Display environment details
+        run: npx envinfo
+      - name: Display block storage
+        run: sudo lsblk -l
+      - name: Display NVIDIA SMI details
+        run: |
+          nvidia-smi
+          nvidia-smi -L
+          nvidia-smi -q -d Memory
+      - name: Ensure Docker is available
+        run: docker run hello-world
+      - name: Execute your machine learning script
+        run: echo "Running ML script..."
+
+  test-windows:
+    runs-on: runs-on=${{github.run_id}}/family=m7i/image=windows22-base-x64/env=${{ inputs.env || 'production' }}/private=false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check disk usage for windows
+        run: |
+          dir .
+          echo $env:USERNAME
+          echo $env:RUNS_ON_RUNNER_NAME
+          fsutil fsinfo drives
+          fsutil fsinfo statistics
+          Get-WmiObject -Class Win32_LogicalDisk -ComputerName LOCALHOST | ? {$_. DriveType -eq 3} | select DeviceID, {[int]($_.Size /1GB)}, {[int]($_.FreeSpace /1GB)}
+
   test-linux:
     strategy:
       fail-fast: false
