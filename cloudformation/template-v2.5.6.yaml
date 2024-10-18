@@ -457,7 +457,10 @@ Resources:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt ElasticIP1.AllocationId
+      AllocationId: !If 
+        - CreateElasticIP1
+        - !GetAtt ElasticIP1.AllocationId
+        - !Ref AWS::NoValue
       SecondaryAllocationIds: 
         - !If [CreateElasticIP2, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
         - !If [CreateElasticIP3, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
@@ -986,6 +989,7 @@ Resources:
 
   S3Bucket:
     Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
       LifecycleConfiguration:
@@ -1036,6 +1040,7 @@ Resources:
 
   S3BucketCache:
     Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
       LifecycleConfiguration:
@@ -1077,6 +1082,7 @@ Resources:
 
   S3BucketLogging:
     Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
       OwnershipControls:
@@ -1287,9 +1293,10 @@ Resources:
                 Value: !Ref PrivateSubnet3
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
+              # FIXME to pass all static IPs
               - Name: RUNS_ON_EGRESS_STATIC_IP
                 Value: !If
-                  - HasPrivateSubnet
+                  - CreateElasticIP1
                   - !Ref ElasticIP1
                   - ""
               - Name: RUNS_ON_DEFAULT_ADMINS
