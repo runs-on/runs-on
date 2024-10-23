@@ -20,6 +20,7 @@ Metadata:
           - EC2InstanceCustomPolicy
           - ServerPassword
           - DefaultAdmins
+          - EncryptEbs
       - Label:
           default: "Alert settings [optional]"
         Parameters:
@@ -130,6 +131,14 @@ Parameters:
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
     Description: "Docker image (public) registry for the RunsOn service."
 
+  EncryptEbs:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Encrypt the EBS volumes of the runner instances. Encryption will slow the boot time of runner instances by ~10s."
+
   RunnerDefaultDiskSize:
     Type: Number
     Default: 40
@@ -202,6 +211,7 @@ Conditions:
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
@@ -753,8 +763,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true
-              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -811,8 +821,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true
-              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -869,8 +879,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true
-              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -935,8 +945,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true
-              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
