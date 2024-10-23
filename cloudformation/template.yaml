@@ -86,10 +86,11 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues:
+      - "only"
       - "always"
       - "true"
       - "false"
-    Description: "Enable ('true' or 'always') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
+    Description: "Enable ('true', 'always', 'only') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. If 'only', then jobs can only launch in private subnets. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
   NatGatewayElasticIPCount:
     Type: Number
@@ -200,7 +201,8 @@ Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Or [!Equals [!Ref Private, "true"], !Equals [!Ref Private, "always"]]
+  HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
@@ -562,7 +564,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
@@ -587,7 +589,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
@@ -612,7 +614,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
       CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
