@@ -759,7 +759,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: true
+              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -816,7 +817,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: true
+              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -873,7 +875,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: true
+              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -938,7 +941,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: true
+              KmsKeyId: alias/aws/ebs  # Specify default ebs kms key to override custom kms key, if set
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
