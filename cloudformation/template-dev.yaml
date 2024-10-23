@@ -191,14 +191,6 @@ Parameters:
     Default: "stack"
     Description: "Cost allocation tag to use for all the deployed resources."
 
-  HousekeepingEnabled:
-    Type: String
-    Default: "true"
-    AllowedValues:
-      - "true"
-      - "false"
-    Description: Enable or disable the housekeeping service.
-
 Mappings:
   App:
     Image:
@@ -1323,8 +1315,6 @@ Resources:
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
                 Value: !Ref RunsOnQueueTermination
-              - Name: RUNS_ON_HOUSEKEEPING_ENABLED
-                Value: !Ref HousekeepingEnabled
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1667,9 +1657,6 @@ Outputs:
   RunsOnQueueTermination:
     Description: SQS queue for the RunsOn service, used for runner termination tasks
     Value: !Ref RunsOnQueueTermination
-  RunsOnHousekeepingEnabled:
-    Description: Enable or disable the housekeeping service
-    Value: !Ref HousekeepingEnabled
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
