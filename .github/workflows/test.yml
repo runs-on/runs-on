@@ -116,6 +116,7 @@ jobs:
           - runs-on,runner=1cpu-linux-arm64,image=ubuntu22-base-arm64
           - runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64
           - runs-on,runner=2cpu-linux-arm64,ssh=false
+          - runs-on=${{ github.run_id }}/runner=2cpu-linux-arm64,disk=large
     runs-on:
       labels:
         - ${{ matrix.runner }}
