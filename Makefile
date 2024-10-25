@@ -1,4 +1,4 @@
-VERSION=v2.5.6
+VERSION=v2.5.7
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -81,7 +81,8 @@ install-dev:
 			LicenseKey=$(LICENSE_KEY) \
 			AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
 			ServerPassword=$(SERVER_PASSWORD) \
-			Environment=dev RunnerCustomTags="my/tag=my/value3" \
+			Environment=dev \
+			RunnerCustomTags="my/tag=my/value3" \
 			NatGatewayElasticIPCount=2 \
 		--capabilities CAPABILITY_IAM
 
@@ -104,7 +105,7 @@ show-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIP'].[OutputKey,OutputValue]"
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps'].[OutputKey,OutputValue]"
 
 STACK_TEST_NAME=runs-on-test
 

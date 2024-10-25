@@ -20,6 +20,7 @@ Metadata:
           - EC2InstanceCustomPolicy
           - ServerPassword
           - DefaultAdmins
+          - EncryptEbs
       - Label:
           default: "Alert settings [optional]"
         Parameters:
@@ -86,10 +87,11 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues:
+      - "only"
       - "always"
       - "true"
       - "false"
-    Description: "Enable ('true' or 'always') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
+    Description: "Enable ('true', 'always', 'only') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. If 'only', then jobs can only launch in private subnets. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
   NatGatewayElasticIPCount:
     Type: Number
@@ -128,6 +130,14 @@ Parameters:
     Type: String
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
     Description: "Docker image (public) registry for the RunsOn service."
+
+  EncryptEbs:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Encrypt the EBS volumes of the runner instances. Encryption will slow the boot time of runner instances by ~10s."
 
   RunnerDefaultDiskSize:
     Type: Number
@@ -191,24 +201,18 @@ Parameters:
     Default: "stack"
     Description: "Cost allocation tag to use for all the deployed resources."
 
-  HousekeepingEnabled:
-    Type: String
-    Default: "true"
-    AllowedValues:
-      - "true"
-      - "false"
-    Description: Enable or disable the housekeeping service.
-
 Mappings:
   App:
     Image:
-      Tag: "v2.5.6-dev"
+      Tag: "v2.5.7-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Or [!Equals [!Ref Private, "true"], !Equals [!Ref Private, "always"]]
+  HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
+  IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
@@ -570,7 +574,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
       CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
@@ -595,7 +599,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
       CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
@@ -620,7 +624,7 @@ Resources:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
       CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock: 
         Fn::Select: 
@@ -759,7 +763,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -816,7 +821,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -873,7 +879,8 @@ Resources:
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -938,7 +945,8 @@ Resources:
               Throughput: !Ref RunnerLargeVolumeThroughput
               Iops: 4000
               DeleteOnTermination: true
-              Encrypted: true  # Ensure EBS volumes are encrypted
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1293,12 +1301,6 @@ Resources:
                 Value: !Ref PrivateSubnet3
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
-              # FIXME to pass all static IPs
-              - Name: RUNS_ON_EGRESS_STATIC_IP
-                Value: !If
-                  - CreateElasticIP1
-                  - !Ref ElasticIP1
-                  - ""
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
@@ -1319,8 +1321,6 @@ Resources:
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
                 Value: !Ref RunsOnQueueTermination
-              - Name: RUNS_ON_HOUSEKEEPING_ENABLED
-                Value: !Ref HousekeepingEnabled
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1663,9 +1663,6 @@ Outputs:
   RunsOnQueueTermination:
     Description: SQS queue for the RunsOn service, used for runner termination tasks
     Value: !Ref RunsOnQueueTermination
-  RunsOnHousekeepingEnabled:
-    Description: Enable or disable the housekeeping service
-    Value: !Ref HousekeepingEnabled
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
