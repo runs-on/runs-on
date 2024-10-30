@@ -53,7 +53,7 @@ stage: build-push
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 
 # promotes the stage release as latest production version
-promote: check tag stage
+promote:
 	diff cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
