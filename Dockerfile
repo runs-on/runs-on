@@ -1,4 +1,4 @@
-FROM golang:1.22 as build
+FROM golang:1.22 AS build
 ENV GOCACHE=/root/.gocache
 ENV CGO_ENABLED=0
 
