@@ -1,8 +1,10 @@
 # Automatic retries on spot interruptions
 
+Job failures due to spot interruptions are a nuisance. This ADR describes a system that automatically retries the job on a new instance when a spot interruption is detected.
+
 ## How it works
 
-- when we receive the `workflow_job` webhook and it's `in_progress`, extract `runner_name` from the payload and add the `workflow-job-id` tag to the instance.
+- when we receive the `workflow_job` webhook and it's `in_progress`, extract `runner_name` from the payload and add the `runs-on-workflow-job-id` tag to the instance.
 
 ```
 "runner_id": 41033,
@@ -11,9 +13,9 @@
 "runner_group_name": "Default"
 ```
 
-- when a spot interruption is detected, add tag on instance `workflow-job-interrupted=true` (from agent?)
-- when the workflow_job is completed and the conclusion is not success, check whether the instance has the `workflow-job-interrupted=true` tag
-- if yes, and `workflow-job-id` tag is present, and retry is not set to false, then retry the workflow_job (up to specified number of retries or max 2).
+- when a spot interruption is detected, add tag on instance `runs-on-workflow-job-interrupted=true` (from agent).
+- when the workflow_job is completed and the conclusion is not success, check whether the instance has the `runs-on-workflow-job-interrupted=true` tag.
+- if yes, and `runs-on-workflow-job-id` tag is present, and retry is not set to false, then retry the workflow_job (up to specified number of retries or max 2).
 
 ## How to configure
 
