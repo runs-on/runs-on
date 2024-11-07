@@ -204,7 +204,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.5.9-dev"
+      Tag: "v2.6.0-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -1321,6 +1321,8 @@ Resources:
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
                 Value: !Ref RunsOnQueueTermination
+              - Name: RUNS_ON_QUEUE_EVENTS
+                Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1417,6 +1419,7 @@ Resources:
                   - !GetAtt RunsOnQueue.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
+                  - !GetAtt RunsOnQueueEvents.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1490,6 +1493,48 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+
+  RunsOnQueueEvents:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 7200
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 120
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  SpotInstanceEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Rule to capture EC2 Spot Instance interruption notices"
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Spot Instance Interruption Warning
+          - EC2 Instance State-change Notification
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt RunsOnQueueEvents.Arn
+          Id: InstanceEvents
+          
+  SpotInstanceEventRulePermission:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref RunsOnQueueEvents
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt RunsOnQueueEvents.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt SpotInstanceEventRule.Arn
 
   AlertTopic:
     Type: AWS::SNS::Topic
@@ -1663,6 +1708,9 @@ Outputs:
   RunsOnQueueTermination:
     Description: SQS queue for the RunsOn service, used for runner termination tasks
     Value: !Ref RunsOnQueueTermination
+  RunsOnQueueEvents:
+    Description: SQS queue for the RunsOn service, used for events from other AWS services
+    Value: !Ref RunsOnQueueEvents
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
