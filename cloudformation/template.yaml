@@ -25,6 +25,7 @@ Metadata:
           default: "Alert settings [optional]"
         Parameters:
           - AppAlarmDailyMinutes
+          - AppAlarmTreatMissingData
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
       - Label:
@@ -115,6 +116,16 @@ Parameters:
     Type: Number
     Default: "4000"
     Description: "Trigger an alarm if the cumulative number of minutes consumed during a day is over that number."
+
+  AppAlarmTreatMissingData:
+    Type: String
+    Default: "missing"
+    Description: "How to treat missing alarm data (say, if there are no minutes used over the weekend). Values correspond to https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-alarm.html#cfn-cloudwatch-alarms-treatmissingdata."
+    AllowedValues:
+      - "breaching"
+      - "notBreaching"
+      - "ignore"
+      - "missing"
 
   AppCPU:
     Type: Number
@@ -1429,6 +1440,7 @@ Resources:
       EvaluationPeriods: 1
       Threshold: !Ref AppAlarmDailyMinutes
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: !Ref AppAlarmTreatMissingData
       AlarmActions:
         - !Ref AlertTopic
       OKActions:
