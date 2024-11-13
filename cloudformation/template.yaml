@@ -1429,6 +1429,7 @@ Resources:
       EvaluationPeriods: 1
       Threshold: !Ref AppAlarmDailyMinutes
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: "notBreaching"
       AlarmActions:
         - !Ref AlertTopic
       OKActions:
