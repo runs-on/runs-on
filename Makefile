@@ -101,6 +101,10 @@ logs-dev:
 logs-dev-instances:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 runs-on-EC2InstanceLogGroup-x74jb9bPgttZ -i 2 -w -s 10m --timestamp
 
+# make trigger-spot-interruption INSTANCE_ID1 INSTANCE_ID2
+trigger-spot-interruption:
+	AWS_PROFILE=runs-on-admin ./scripts/trigger-spot-interruption.sh $(filter-out $@,$(MAKECMDGOALS))
+
 show-dev:
 	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name $(STACK_DEV_NAME) \
