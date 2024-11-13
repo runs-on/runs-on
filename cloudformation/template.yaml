@@ -1321,6 +1321,8 @@ Resources:
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
                 Value: !Ref RunsOnQueueTermination
+              - Name: RUNS_ON_QUEUE_EVENTS
+                Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1417,6 +1419,7 @@ Resources:
                   - !GetAtt RunsOnQueue.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
+                  - !GetAtt RunsOnQueueEvents.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1515,7 +1518,7 @@ Resources:
       State: ENABLED
       Targets:
         - Arn: !GetAtt RunsOnQueueEvents.Arn
-          Id: SpotInstanceEvents
+          Id: InstanceEvents
           
   SpotInstanceEventRulePermission:
     Type: AWS::SQS::QueuePolicy
@@ -1706,6 +1709,9 @@ Outputs:
   RunsOnQueueTermination:
     Description: SQS queue for the RunsOn service, used for runner termination tasks
     Value: !Ref RunsOnQueueTermination
+  RunsOnQueueEvents:
+    Description: SQS queue for the RunsOn service, used for events from other AWS services
+    Value: !Ref RunsOnQueueEvents
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled
