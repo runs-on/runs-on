@@ -17,6 +17,7 @@ Metadata:
           - Private
           - NatGatewayElasticIPCount
           - NatGatewayAvailability
+          - AllowInboundSSH
           - SSHCidrRange
           - EC2InstanceCustomPolicy
           - ServerPassword
@@ -77,6 +78,14 @@ Parameters:
     Type: String
     Description: CIDR block for the VPC. Updating this value after creation will require deleting the stack and recreating it.
     Default: 10.1.0.0/16
+
+  AllowInboundSSH:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Allow inbound SSH access to runners?
 
   SSHCidrRange:
     Type: String
@@ -221,6 +230,7 @@ Conditions:
   HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
+  AllowInboundSSH: !Equals [!Ref AllowInboundSSH, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
@@ -1233,11 +1243,14 @@ Resources:
       VpcId:
         Ref: VPC
       SecurityGroupIngress:
-        - CidrIp:
-            Fn::Sub: "${SSHCidrRange}"
-          FromPort: 22
-          ToPort: 22
-          IpProtocol: tcp
+        - !If
+          - AllowInboundSSH
+          - CidrIp:
+              Fn::Sub: "${SSHCidrRange}"
+            FromPort: 22
+            ToPort: 22
+            IpProtocol: tcp
+          - !Ref "AWS::NoValue"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
