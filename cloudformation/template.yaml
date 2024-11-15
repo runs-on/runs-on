@@ -16,6 +16,7 @@ Metadata:
           - VpcCidrBlock
           - Private
           - NatGatewayElasticIPCount
+          - NatGatewayAvailability
           - SSHCidrRange
           - EC2InstanceCustomPolicy
           - ServerPassword
@@ -99,6 +100,13 @@ Parameters:
     MinValue: 1
     MaxValue: 8
     Description: "Number of Elastic IPv4s to attach to the NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 IPs, but can request a quota increase from AWS."
+
+  NatGatewayAvailability:
+    Type: String
+    Default: SingleAZ
+    AllowedValues:
+    - SingleAZ
+    - MultiAZ
 
   DefaultAdmins:
     Type: String
@@ -211,6 +219,7 @@ Conditions:
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
@@ -223,6 +232,22 @@ Conditions:
   CreateElasticIP6: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP5, !Not [!Equals [!Ref NatGatewayElasticIPCount, 5]]]
   CreateElasticIP7: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP6, !Not [!Equals [!Ref NatGatewayElasticIPCount, 6]]]
   CreateElasticIP8: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP7, !Not [!Equals [!Ref NatGatewayElasticIPCount, 7]]]
+  CreateElasticIP1B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
+  CreateElasticIP2B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
+  CreateElasticIP3B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
+  CreateElasticIP4B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
+  CreateElasticIP5B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
+  CreateElasticIP6B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
+  CreateElasticIP7B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
+  CreateElasticIP8B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  CreateElasticIP1C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
+  CreateElasticIP2C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
+  CreateElasticIP3C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
+  CreateElasticIP4C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
+  CreateElasticIP5C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
+  CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
+  CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
+  CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
 
 Resources:
   VPC:
@@ -335,7 +360,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet2RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref PrivateSubnetGateway1
+      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway2, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet2RouteIPv6:
     Condition: HasPrivateSubnet
@@ -351,7 +376,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref PrivateSubnetGateway1
+      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway3, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet3RouteIPv6:
     Condition: HasPrivateSubnet
@@ -392,13 +417,13 @@ Resources:
       CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 0
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -415,13 +440,13 @@ Resources:
       CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 1
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -440,13 +465,13 @@ Resources:
       CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 2
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -461,11 +486,11 @@ Resources:
     Condition: HasPrivateSubnet
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !If 
+      AllocationId: !If
         - CreateElasticIP1
         - !GetAtt ElasticIP1.AllocationId
         - !Ref AWS::NoValue
-      SecondaryAllocationIds: 
+      SecondaryAllocationIds:
         - !If [CreateElasticIP2, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
         - !If [CreateElasticIP3, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
         - !If [CreateElasticIP4, !GetAtt ElasticIP4.AllocationId, !Ref "AWS::NoValue"]
@@ -479,6 +504,52 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
+
+  PrivateSubnetGateway2:
+    Condition: PrivateSubnetIsMultiAZ
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !If
+        - CreateElasticIP1B
+        - !GetAtt ElasticIP1B.AllocationId
+        - !Ref AWS::NoValue
+      SecondaryAllocationIds:
+        - !If [CreateElasticIP2B, !GetAtt ElasticIP2B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3B, !GetAtt ElasticIP3B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4B, !GetAtt ElasticIP4B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5B, !GetAtt ElasticIP5B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6B, !GetAtt ElasticIP6B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7B, !GetAtt ElasticIP7B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8B, !GetAtt ElasticIP8B.AllocationId, !Ref "AWS::NoValue"]
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnetGateway2
+
+  PrivateSubnetGateway3:
+    Condition: PrivateSubnetIsMultiAZ
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !If
+        - CreateElasticIP1C
+        - !GetAtt ElasticIP1C.AllocationId
+        - !Ref AWS::NoValue
+      SecondaryAllocationIds:
+        - !If [CreateElasticIP2C, !GetAtt ElasticIP2C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3C, !GetAtt ElasticIP3C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4C, !GetAtt ElasticIP4C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5C, !GetAtt ElasticIP5C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6C, !GetAtt ElasticIP6C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7C, !GetAtt ElasticIP7C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8C, !GetAtt ElasticIP8C.AllocationId, !Ref "AWS::NoValue"]
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnetGateway3
 
   ElasticIP1:
     Condition: CreateElasticIP1
@@ -568,6 +639,182 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP8
 
+  ElasticIP1B:
+    Condition: CreateElasticIP1B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP1B
+
+  ElasticIP2B:
+    Condition: CreateElasticIP2B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP2B
+
+  ElasticIP3B:
+    Condition: CreateElasticIP3B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP3B
+
+  ElasticIP4B:
+    Condition: CreateElasticIP4B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP4B
+
+  ElasticIP5B:
+    Condition: CreateElasticIP5B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP5B
+
+  ElasticIP6B:
+    Condition: CreateElasticIP6B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP6B
+
+  ElasticIP7B:
+    Condition: CreateElasticIP7B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP7B
+
+  ElasticIP8B:
+    Condition: CreateElasticIP8B
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP8B
+
+  ElasticIP1C:
+    Condition: CreateElasticIP1C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP1C
+
+  ElasticIP2C:
+    Condition: CreateElasticIP2C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP2C
+
+  ElasticIP3C:
+    Condition: CreateElasticIP3C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP3C
+
+  ElasticIP4C:
+    Condition: CreateElasticIP4C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP4C
+
+  ElasticIP5C:
+    Condition: CreateElasticIP5C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP5C
+
+  ElasticIP6C:
+    Condition: CreateElasticIP6C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP6C
+
+  ElasticIP7C:
+    Condition: CreateElasticIP7C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP7C
+
+  ElasticIP8C:
+    Condition: CreateElasticIP8C
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ElasticIP8C
+
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -576,13 +823,13 @@ Resources:
       CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 3
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -601,13 +848,13 @@ Resources:
       CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 4
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -626,13 +873,13 @@ Resources:
       CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
-      Ipv6CidrBlock: 
-        Fn::Select: 
+      Ipv6CidrBlock:
+        Fn::Select:
           - 5
-          - Fn::Cidr: 
-            - Fn::Select: 
+          - Fn::Cidr:
+            - Fn::Select:
               - 0
-              - Fn::GetAtt: 
+              - Fn::GetAtt:
                 - VPC
                 - Ipv6CidrBlocks
             - 256
@@ -1039,7 +1286,7 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
-            Resource: 
+            Resource:
               - !Sub "arn:aws:s3:::${S3Bucket}"
               - !Sub "arn:aws:s3:::${S3Bucket}/*"
             Condition:
@@ -1081,7 +1328,7 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
-            Resource: 
+            Resource:
               - !Sub "arn:aws:s3:::${S3BucketCache}"
               - !Sub "arn:aws:s3:::${S3BucketCache}/*"
             Condition:
@@ -1118,7 +1365,7 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
-            Resource: 
+            Resource:
               - !Sub "arn:aws:s3:::${S3BucketLogging}"
               - !Sub "arn:aws:s3:::${S3BucketLogging}/*"
             Condition:
@@ -1169,7 +1416,7 @@ Resources:
                   - "logs:DescribeLogGroups"
                   - "logs:CreateLogStream"
                   - "logs:CreateLogGroup"
-                Resource: 
+                Resource:
                 - !Sub "${EC2InstanceLogGroup.Arn}"
                 - !Sub "${EC2InstanceLogGroup.Arn}:*"
         - PolicyName: SendMetrics
