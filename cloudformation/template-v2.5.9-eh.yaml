@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com
+Description: CloudFormation stack for https://runs-on.com (modified)
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -17,22 +17,21 @@ Metadata:
           - VpcCidrSubnetBits
           - Private
           - NatGatewayElasticIPCount
-          - NatGatewayAvailability
           - SSHCidrRange
           - EC2InstanceCustomPolicy
-          - DefaultPermissionBoundaryArn
           - ServerPassword
           - DefaultAdmins
           - EncryptEbs
+          - DefaultPermissionBoundaryArn
+          - NatGatewayMode
+          - VpcFlowLogFormat
+          - AdditionalVpcFlowLogS3BucketArn
       - Label:
-          default: "Alert and monitoring settings [optional]"
+          default: "Alert settings [optional]"
         Parameters:
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
-          - ECInstanceDetailedMonitoring
-          - VpcFlowLogFormat
-          - VpcFlowLogS3BucketArn
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -42,6 +41,7 @@ Metadata:
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
           - RunnerLargeVolumeThroughput
+          - ECInstanceDetailedMonitoring
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
@@ -84,7 +84,7 @@ Parameters:
 
   VpcCidrSubnetBits:
     Type: Number
-    Description: Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it.
+    Description: Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16, and this value to 12, you will have 4 bits ~ 16 subnets in the VPC. Runs-on requires at least 16 subnets. Updating this value after creation will require deleting the stack and recreating it.
     Default: 12
     MinValue: 9
     MaxValue: 16
@@ -105,34 +105,30 @@ Parameters:
       - "false"
     Description: "Enable ('true', 'always', 'only') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. If 'only', then jobs can only launch in private subnets. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
+  NatGatewayMode:
+    Type: String
+    Default: "single"
+    AllowedValues:
+      - "per_az"
+      - "single"
+    Description: "NAT Gateway mode. If 'per_az', a NAT Gateway will be created in each Availability Zone. If 'single', a single NAT Gateway will be created in the first Availability Zone."
+
   NatGatewayElasticIPCount:
     Type: Number
     Default: 1
     MinValue: 1
-    MaxValue: 8
-    Description: "Number of Elastic IPv4s to attach to _each_ NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 EIPs per NAT gateway, but can request a quota increase from AWS."
-
-  NatGatewayAvailability:
-    Type: String
-    Default: SingleAZ
-    AllowedValues:
-    - SingleAZ
-    - MultiAZ
+    MaxValue: 9
+    Description: "Number of Elastic IPv4s to attach to the NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 9. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 IPs, but can request a quota increase from AWS. If NatGatewayMode is set to 'per_az', requires minimum 3 Elastic IPs."
 
   VpcFlowLogFormat:
     Type: String
     Default: ""
     Description: "VPC Flow Log format. If blank, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
 
-  VpcFlowLogS3BucketArn:
+  AdditionalVpcFlowLogS3BucketArn:
     Type: String
     Default: ""
-    Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
-
-  DefaultPermissionBoundaryArn:
-    Type: String
-    Default: ""
-    Description: "ARN of an IAM policy that will be assigned as permission boundary to roles created by the stack. If blank, the roles will not have a permission boundary."
+    Description: "Additional S3 bucket to send VPC FlowLogs to for archiving purpose. If blank, the logs will only be sent to the default CloudWatch Logs group."
 
   DefaultAdmins:
     Type: String
@@ -172,6 +168,12 @@ Parameters:
       - "true"
       - "false"
     Description: "Encrypt the EBS volumes of the runner instances. Encryption will slow the boot time of runner instances by ~10s."
+
+  DefaultPermissionBoundaryArn:
+    Type: String
+    Default: ""
+    Description: "IAM policy ARN will be assigned as permission boundary to roles created by the stack. If blank, the roles will not have a permission boundary."
+
 
   RunnerDefaultDiskSize:
     Type: Number
@@ -238,14 +240,13 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.6.0"
+      Tag: "v2.5.9"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
-  PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
@@ -258,25 +259,18 @@ Conditions:
   CreateElasticIP6: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP5, !Not [!Equals [!Ref NatGatewayElasticIPCount, 5]]]
   CreateElasticIP7: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP6, !Not [!Equals [!Ref NatGatewayElasticIPCount, 6]]]
   CreateElasticIP8: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP7, !Not [!Equals [!Ref NatGatewayElasticIPCount, 7]]]
-  CreateElasticIP1B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
-  CreateElasticIP2B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
-  CreateElasticIP3B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
-  CreateElasticIP4B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
-  CreateElasticIP5B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
-  CreateElasticIP6B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
-  CreateElasticIP7B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
-  CreateElasticIP8B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateElasticIP1C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
-  CreateElasticIP2C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
-  CreateElasticIP3C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
-  CreateElasticIP4C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
-  CreateElasticIP5C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
-  CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
-  CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
-  CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  CreateElasticIP9: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP8, !Not [!Equals [!Ref NatGatewayElasticIPCount, 8]]]
+  ShouldAssignElasticIP2ToGateway1: !And [!Condition CreateElasticIP2, !Not [!Condition PerAzNatGateway]]
+  ShouldAssignElasticIP3ToGateway1: !And [!Condition CreateElasticIP3, !Not [!Condition PerAzNatGateway]]
+  ShouldAssignElasticIP5ToGateway1: !And [!Condition CreateElasticIP5, !Not [!Condition PerAzNatGateway]]
+  ShouldAssignElasticIP6ToGateway1: !And [!Condition CreateElasticIP6, !Not [!Condition PerAzNatGateway]]
+  ShouldAssignElasticIP8ToGateway1: !And [!Condition CreateElasticIP8, !Not [!Condition PerAzNatGateway]]
+  ShouldAssignElasticIP9ToGateway1: !And [!Condition CreateElasticIP9, !Not [!Condition PerAzNatGateway]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
-  HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
+  PerAzNatGateway: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayMode, "per_az"]]
+  VpcFlowLogFormatProvided: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
+  AdditionalVpcFlowLogS3BucketArnProvided: !Not [!Equals [!Ref AdditionalVpcFlowLogS3BucketArn, ""]]
+
 
 Resources:
   VPC:
@@ -308,7 +302,7 @@ Resources:
       DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
       LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref VPCFlowLogGroup
-      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
+      LogFormat: !If [VpcFlowLogFormatProvided, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
 
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
@@ -316,15 +310,15 @@ Resources:
       RetentionInDays: 7
 
   VPCFlowLogS3:
-    Condition: HasVpcFlowLogS3BucketArn
+    Condition: AdditionalVpcFlowLogS3BucketArnProvided
     Type: AWS::EC2::FlowLog
     Properties:
       ResourceType: VPC
       ResourceId: !Ref VPC
       TrafficType: ALL
       LogDestinationType: s3
-      LogDestination: !Ref VpcFlowLogS3BucketArn
-      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
+      LogDestination: !Ref AdditionalVpcFlowLogS3BucketArn
+      LogFormat: !If [VpcFlowLogFormatProvided, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
 
   VPCFlowLogRole:
     Type: AWS::IAM::Role
@@ -402,7 +396,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet2RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway2, !Ref PrivateSubnetGateway1]
+      NatGatewayId: !If [PerAzNatGateway, !Ref PrivateSubnetGateway2, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet2RouteIPv6:
     Condition: HasPrivateSubnet
@@ -418,7 +412,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway3, !Ref PrivateSubnetGateway1]
+      NatGatewayId: !If [PerAzNatGateway, !Ref PrivateSubnetGateway3, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet3RouteIPv6:
     Condition: HasPrivateSubnet
@@ -535,13 +529,14 @@ Resources:
         - !GetAtt ElasticIP1.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [CreateElasticIP2, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP3, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP2ToGateway1, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP3ToGateway1, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
         - !If [CreateElasticIP4, !GetAtt ElasticIP4.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP5, !GetAtt ElasticIP5.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP6, !GetAtt ElasticIP6.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP5ToGateway1, !GetAtt ElasticIP5.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP6ToGateway1, !GetAtt ElasticIP6.AllocationId, !Ref "AWS::NoValue"]
         - !If [CreateElasticIP7, !GetAtt ElasticIP7.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP8, !GetAtt ElasticIP8.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP8ToGateway1, !GetAtt ElasticIP8.AllocationId, !Ref "AWS::NoValue"]
+        - !If [ShouldAssignElasticIP9ToGateway1, !GetAtt ElasticIP9.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: !Ref CostAllocationTag
@@ -550,21 +545,16 @@ Resources:
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
 
   PrivateSubnetGateway2:
-    Condition: PrivateSubnetIsMultiAZ
+    Condition: PerAzNatGateway
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !If
-        - CreateElasticIP1B
-        - !GetAtt ElasticIP1B.AllocationId
+        - CreateElasticIP2
+        - !GetAtt ElasticIP2.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [CreateElasticIP2B, !GetAtt ElasticIP2B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP3B, !GetAtt ElasticIP3B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP4B, !GetAtt ElasticIP4B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP5B, !GetAtt ElasticIP5B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP6B, !GetAtt ElasticIP6B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP7B, !GetAtt ElasticIP7B.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP8B, !GetAtt ElasticIP8B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5, !GetAtt ElasticIP5.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8, !GetAtt ElasticIP8.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet2
       Tags:
         - Key: !Ref CostAllocationTag
@@ -573,21 +563,16 @@ Resources:
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway2
 
   PrivateSubnetGateway3:
-    Condition: PrivateSubnetIsMultiAZ
+    Condition: PerAzNatGateway
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !If
-        - CreateElasticIP1C
-        - !GetAtt ElasticIP1C.AllocationId
+        - CreateElasticIP3
+        - !GetAtt ElasticIP3.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [CreateElasticIP2C, !GetAtt ElasticIP2C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP3C, !GetAtt ElasticIP3C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP4C, !GetAtt ElasticIP4C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP5C, !GetAtt ElasticIP5C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP6C, !GetAtt ElasticIP6C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP7C, !GetAtt ElasticIP7C.AllocationId, !Ref "AWS::NoValue"]
-        - !If [CreateElasticIP8C, !GetAtt ElasticIP8C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6, !GetAtt ElasticIP6.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP9, !GetAtt ElasticIP9.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet3
       Tags:
         - Key: !Ref CostAllocationTag
@@ -683,8 +668,8 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP8
 
-  ElasticIP1B:
-    Condition: CreateElasticIP1B
+  ElasticIP9:
+    Condition: CreateElasticIP9
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -692,172 +677,7 @@ Resources:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
         - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP1B
-
-  ElasticIP2B:
-    Condition: CreateElasticIP2B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP2B
-
-  ElasticIP3B:
-    Condition: CreateElasticIP3B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP3B
-
-  ElasticIP4B:
-    Condition: CreateElasticIP4B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP4B
-
-  ElasticIP5B:
-    Condition: CreateElasticIP5B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP5B
-
-  ElasticIP6B:
-    Condition: CreateElasticIP6B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP6B
-
-  ElasticIP7B:
-    Condition: CreateElasticIP7B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP7B
-
-  ElasticIP8B:
-    Condition: CreateElasticIP8B
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP8B
-
-  ElasticIP1C:
-    Condition: CreateElasticIP1C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP1C
-
-  ElasticIP2C:
-    Condition: CreateElasticIP2C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP2C
-
-  ElasticIP3C:
-    Condition: CreateElasticIP3C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP3C
-
-  ElasticIP4C:
-    Condition: CreateElasticIP4C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP4C
-
-  ElasticIP5C:
-    Condition: CreateElasticIP5C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP5C
-
-  ElasticIP6C:
-    Condition: CreateElasticIP6C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP6C
-
-  ElasticIP7C:
-    Condition: CreateElasticIP7C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP7C
-
-  ElasticIP8C:
-    Condition: CreateElasticIP8C
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-ElasticIP8C
+          Value: !Sub ${AWS::StackName}-ElasticIP9
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -1613,8 +1433,6 @@ Resources:
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
                 Value: !Ref RunsOnQueueTermination
-              - Name: RUNS_ON_QUEUE_EVENTS
-                Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -1712,7 +1530,6 @@ Resources:
                   - !GetAtt RunsOnQueue.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
-                  - !GetAtt RunsOnQueueEvents.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1725,7 +1542,6 @@ Resources:
       EvaluationPeriods: 1
       Threshold: !Ref AppAlarmDailyMinutes
       ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: "notBreaching"
       AlarmActions:
         - !Ref AlertTopic
       OKActions:
@@ -1787,48 +1603,6 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
-
-  RunsOnQueueEvents:
-    Type: AWS::SQS::Queue
-    Properties:
-      MessageRetentionPeriod: 7200
-      ReceiveMessageWaitTimeSeconds: 20
-      VisibilityTimeout: 120
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-
-  SpotInstanceEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: "Rule to capture EC2 Spot Instance interruption notices"
-      EventPattern:
-        source:
-          - aws.ec2
-        detail-type:
-          - EC2 Spot Instance Interruption Warning
-          - EC2 Instance State-change Notification
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt RunsOnQueueEvents.Arn
-          Id: InstanceEvents
-          
-  SpotInstanceEventRulePermission:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref RunsOnQueueEvents
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sqs:SendMessage
-            Resource: !GetAtt RunsOnQueueEvents.Arn
-            Condition:
-              ArnEquals:
-                aws:SourceArn: !GetAtt SpotInstanceEventRule.Arn
 
   AlertTopic:
     Type: AWS::SNS::Topic
@@ -2002,9 +1776,6 @@ Outputs:
   RunsOnQueueTermination:
     Description: SQS queue for the RunsOn service, used for runner termination tasks
     Value: !Ref RunsOnQueueTermination
-  RunsOnQueueEvents:
-    Description: SQS queue for the RunsOn service, used for events from other AWS services
-    Value: !Ref RunsOnQueueEvents
   RunsOnCostReportsEnabled:
     Description: Enable or disable cost reports sent by email
     Value: !Ref CostReportsEnabled

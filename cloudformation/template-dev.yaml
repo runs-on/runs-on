@@ -14,20 +14,25 @@ Metadata:
           default: "Security and Network settings [optional]"
         Parameters:
           - VpcCidrBlock
+          - VpcCidrSubnetBits
           - Private
           - NatGatewayElasticIPCount
           - NatGatewayAvailability
           - SSHCidrRange
           - EC2InstanceCustomPolicy
+          - DefaultPermissionBoundaryArn
           - ServerPassword
           - DefaultAdmins
           - EncryptEbs
       - Label:
-          default: "Alert settings [optional]"
+          default: "Alert and monitoring settings [optional]"
         Parameters:
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
+          - ECInstanceDetailedMonitoring
+          - VpcFlowLogFormat
+          - VpcFlowLogS3BucketArn
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -37,7 +42,6 @@ Metadata:
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
           - RunnerLargeVolumeThroughput
-          - ECInstanceDetailedMonitoring
           - AppEc2QueueSize
           - AppCPU
           - AppMemory
@@ -78,6 +82,13 @@ Parameters:
     Description: CIDR block for the VPC. Updating this value after creation will require deleting the stack and recreating it.
     Default: 10.1.0.0/16
 
+  VpcCidrSubnetBits:
+    Type: Number
+    Description: Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it.
+    Default: 12
+    MinValue: 9
+    MaxValue: 16
+
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
@@ -99,7 +110,7 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 8
-    Description: "Number of Elastic IPv4s to attach to the NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 IPs, but can request a quota increase from AWS."
+    Description: "Number of Elastic IPv4s to attach to _each_ NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 EIPs per NAT gateway, but can request a quota increase from AWS."
 
   NatGatewayAvailability:
     Type: String
@@ -107,6 +118,21 @@ Parameters:
     AllowedValues:
     - SingleAZ
     - MultiAZ
+
+  VpcFlowLogFormat:
+    Type: String
+    Default: ""
+    Description: "VPC Flow Log format. If blank, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
+
+  VpcFlowLogS3BucketArn:
+    Type: String
+    Default: ""
+    Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
+
+  DefaultPermissionBoundaryArn:
+    Type: String
+    Default: ""
+    Description: "ARN of an IAM policy that will be assigned as permission boundary to roles created by the stack. If blank, the roles will not have a permission boundary."
 
   DefaultAdmins:
     Type: String
@@ -248,6 +274,9 @@ Conditions:
   CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
   CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
   CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
+  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
+  HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
 
 Resources:
   VPC:
@@ -279,15 +308,28 @@ Resources:
       DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
       LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref VPCFlowLogGroup
+      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
 
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 7
 
+  VPCFlowLogS3:
+    Condition: HasVpcFlowLogS3BucketArn
+    Type: AWS::EC2::FlowLog
+    Properties:
+      ResourceType: VPC
+      ResourceId: !Ref VPC
+      TrafficType: ALL
+      LogDestinationType: s3
+      LogDestination: !Ref VpcFlowLogS3BucketArn
+      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
+
   VPCFlowLogRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -414,7 +456,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
-      CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -431,13 +473,15 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet1
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
-      CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -462,7 +506,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
-      CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -820,7 +864,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
-      CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -845,7 +889,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
-      CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -870,7 +914,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
-      CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
@@ -1383,6 +1427,7 @@ Resources:
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
         !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy], []]
       AssumeRolePolicyDocument:
@@ -1582,6 +1627,7 @@ Resources:
   RunsOnServiceRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
