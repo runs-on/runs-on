@@ -83,7 +83,8 @@ install-dev:
 			ServerPassword=$(SERVER_PASSWORD) \
 			Environment=dev \
 			RunnerCustomTags="my/tag=my/value3" \
-			NatGatewayElasticIPCount=2 \
+			NatGatewayElasticIPCount=1 \
+			NatGatewayAvailability=SingleAZ \
 		--capabilities CAPABILITY_IAM
 
 install-dev-peering:
