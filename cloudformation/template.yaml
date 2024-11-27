@@ -34,6 +34,7 @@ Metadata:
           - ECInstanceDetailedMonitoring
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
+          - VpcFlowLogRetentionInDays
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -146,6 +147,12 @@ Parameters:
     Type: String
     Default: ""
     Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
+
+  VpcFlowLogRetentionInDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    Description: "Retention period in days for VPC Flow Logs."
 
   DefaultPermissionBoundaryArn:
     Type: String
@@ -333,7 +340,7 @@ Resources:
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: 7
+      RetentionInDays: !Ref VpcFlowLogRetentionInDays
 
   VPCFlowLogS3:
     Condition: HasVpcFlowLogS3BucketArn
