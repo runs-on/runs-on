@@ -18,6 +18,7 @@ Metadata:
           - Private
           - NatGatewayElasticIPCount
           - NatGatewayAvailability
+          - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
           - DefaultPermissionBoundaryArn
@@ -33,6 +34,7 @@ Metadata:
           - ECInstanceDetailedMonitoring
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
+          - VpcFlowLogRetentionInDays
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -46,6 +48,7 @@ Metadata:
           - AppCPU
           - AppMemory
           - AppRegistry
+          - CostAllocationTag
     ParameterLabels:
       GithubOrganization:
         default: "Your GitHub organization or personal name."
@@ -89,10 +92,26 @@ Parameters:
     MinValue: 9
     MaxValue: 16
 
+  Ipv6Enabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues.
+
+  SSHAllowed:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Allow inbound SSH connections from the specified CIDR range to the runners.
+
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: CIDR range for inbound SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
     MinLength: 1
 
   Private:
@@ -129,6 +148,12 @@ Parameters:
     Default: ""
     Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
 
+  VpcFlowLogRetentionInDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    Description: "Retention period in days for VPC Flow Logs."
+
   DefaultPermissionBoundaryArn:
     Type: String
     Default: ""
@@ -137,7 +162,7 @@ Parameters:
   DefaultAdmins:
     Type: String
     Default: ""
-    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances.
 
   AppEc2QueueSize:
     Type: Number
@@ -233,12 +258,12 @@ Parameters:
   CostAllocationTag:
     Type: String
     Default: "stack"
-    Description: "Cost allocation tag to use for all the deployed resources."
+    Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
 
 Mappings:
   App:
     Image:
-      Tag: "v2.6.0-dev"
+      Tag: "v2.6.1-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -277,6 +302,8 @@ Conditions:
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
   HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
+  HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
+  HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
 
 Resources:
   VPC:
@@ -313,7 +340,7 @@ Resources:
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: 7
+      RetentionInDays: !Ref VpcFlowLogRetentionInDays
 
   VPCFlowLogS3:
     Condition: HasVpcFlowLogS3BucketArn
@@ -1067,7 +1094,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1125,7 +1152,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1183,7 +1210,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1249,7 +1276,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1277,11 +1304,14 @@ Resources:
       VpcId:
         Ref: VPC
       SecurityGroupIngress:
-        - CidrIp:
-            Fn::Sub: "${SSHCidrRange}"
-          FromPort: 22
-          ToPort: 22
-          IpProtocol: tcp
+        - !If
+          - HasSSHAllowed
+          - CidrIp:
+              Fn::Sub: "${SSHCidrRange}"
+            FromPort: 22
+            ToPort: 22
+            IpProtocol: tcp
+          - !Ref AWS::NoValue
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1291,12 +1321,16 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       LifecycleConfiguration:
         Rules:
           - Id: ExpireAgentBinaries
             Prefix: agents/v1*
             Status: Enabled
             ExpirationInDays: 30
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
@@ -1342,16 +1376,22 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       LifecycleConfiguration:
         Rules:
           - Id: ExpireRunnerConfig
             Prefix: runners/
             Status: Enabled
             ExpirationInDays: 1
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
             ExpirationInDays: 10
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 10
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-cache-access-logs/
@@ -1384,6 +1424,8 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
@@ -1392,6 +1434,8 @@ Resources:
           - Id: DeleteOldLogs
             Status: Enabled
             ExpirationInDays: 30
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
