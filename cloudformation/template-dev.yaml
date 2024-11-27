@@ -18,6 +18,7 @@ Metadata:
           - Private
           - NatGatewayElasticIPCount
           - NatGatewayAvailability
+          - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
           - DefaultPermissionBoundaryArn
@@ -46,6 +47,7 @@ Metadata:
           - AppCPU
           - AppMemory
           - AppRegistry
+          - CostAllocationTag
     ParameterLabels:
       GithubOrganization:
         default: "Your GitHub organization or personal name."
@@ -89,10 +91,26 @@ Parameters:
     MinValue: 9
     MaxValue: 16
 
+  Ipv6Enabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues.
+
+  SSHAllowed:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Allow inbound SSH connections from the specified CIDR range to the runners.
+
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: CIDR range for inbound SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
     MinLength: 1
 
   Private:
@@ -137,7 +155,7 @@ Parameters:
   DefaultAdmins:
     Type: String
     Default: ""
-    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with push permission will be able to SSH into the runner instances.
+    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances.
 
   AppEc2QueueSize:
     Type: Number
@@ -233,7 +251,7 @@ Parameters:
   CostAllocationTag:
     Type: String
     Default: "stack"
-    Description: "Cost allocation tag to use for all the deployed resources."
+    Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
 
 Mappings:
   App:
@@ -277,6 +295,8 @@ Conditions:
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
   HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
+  HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
+  HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
 
 Resources:
   VPC:
@@ -1067,7 +1087,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1125,7 +1145,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1183,7 +1203,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1249,7 +1269,7 @@ Resources:
             DeviceIndex: "0"
             Groups:
               - !Ref SecurityGroup
-            Ipv6AddressCount: 1
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
@@ -1277,11 +1297,14 @@ Resources:
       VpcId:
         Ref: VPC
       SecurityGroupIngress:
-        - CidrIp:
-            Fn::Sub: "${SSHCidrRange}"
-          FromPort: 22
-          ToPort: 22
-          IpProtocol: tcp
+        - !If
+          - HasSSHAllowed
+          - CidrIp:
+              Fn::Sub: "${SSHCidrRange}"
+            FromPort: 22
+            ToPort: 22
+            IpProtocol: tcp
+          - !Ref AWS::NoValue
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
