@@ -2058,3 +2058,6 @@ Outputs:
   RunsOnCostAllocationTag:
     Description: Cost allocation tag for the RunsOn service
     Value: !Ref CostAllocationTag
+  RunsOnServiceArn:
+    Description: ARN of the App Runner service
+    Value: !Ref RunsOnService
