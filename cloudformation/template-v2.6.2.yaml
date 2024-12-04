@@ -1473,7 +1473,7 @@ Resources:
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
-        !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy], []]
+        !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"], ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

@@ -10,6 +10,15 @@ include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
 
+ssm-install:
+	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+	unzip sessionmanager-bundle.zip
+	sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+	rm -rf sessionmanager-bundle.zip sessionmanager-bundle
+
+ssm-connect-%:
+	AWS_PROFILE=runs-on-admin aws ssm start-session --target $* --reason "testing"
+
 pull:
 	git submodule update --init --recursive
 
