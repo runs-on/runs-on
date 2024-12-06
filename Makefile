@@ -1,4 +1,4 @@
-VERSION=v2.6.1
+VERSION=v2.6.2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -9,6 +9,15 @@ SHELL:=/bin/bash
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
+
+ssm-install:
+	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
+	unzip sessionmanager-bundle.zip
+	sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+	rm -rf sessionmanager-bundle.zip sessionmanager-bundle
+
+ssm-connect-%:
+	AWS_PROFILE=runs-on-admin aws ssm start-session --target $* --reason "testing"
 
 pull:
 	git submodule update --init --recursive
@@ -36,15 +45,19 @@ login:
 	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
 
 build-push: login
-	docker build --pull -t $(REGISTRY):$(VERSION) .
-	docker push $(REGISTRY):$(VERSION)
+	docker buildx build --push \
+		--platform linux/amd64 \
+		-t $(REGISTRY):$(VERSION) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
 # generates a dev release
 dev: login
-	docker build --pull -t $(REGISTRY):$(VERSION_DEV) .
-	docker push $(REGISTRY):$(VERSION_DEV)
+	docker buildx build --push \
+		--platform linux/amd64 \
+		-t $(REGISTRY):$(VERSION_DEV) .
+	@echo ""
+	@echo "Pushed to $(REGISTRY):$(VERSION_DEV)"
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
 # generates a stage release
