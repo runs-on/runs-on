@@ -45,15 +45,19 @@ login:
 	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
 
 build-push: login
-	docker build --pull -t $(REGISTRY):$(VERSION) .
-	docker push $(REGISTRY):$(VERSION)
+	docker buildx build --push \
+		--platform linux/amd64 \
+		-t $(REGISTRY):$(VERSION) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
 # generates a dev release
 dev: login
-	docker build --pull -t $(REGISTRY):$(VERSION_DEV) .
-	docker push $(REGISTRY):$(VERSION_DEV)
+	docker buildx build --push \
+		--platform linux/amd64 \
+		-t $(REGISTRY):$(VERSION_DEV) .
+	@echo ""
+	@echo "Pushed to $(REGISTRY):$(VERSION_DEV)"
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 
 # generates a stage release
