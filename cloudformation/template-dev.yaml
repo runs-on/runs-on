@@ -227,7 +227,7 @@ Parameters:
   RunnerCustomTags:
     Type: CommaDelimitedList
     Default: ""
-    Description: "Optional custom tags for the runner instances (e.g. 'key1=value1,key2=value2'). Tag keys can only use letters (a-z, A-Z), numbers (0-9), and the following characters: + - = . , _ : @ (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions)"
+    Description: "Optional custom tags for the runner instances (e.g. 'key1=value1,key2=value2'). Tag keys cannot start with `runs-on`, and can only use letters (a-z, A-Z), numbers (0-9), and the following characters: + - = . , _ : @ (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions)"
 
   CostReportsEnabled:
     Type: String
