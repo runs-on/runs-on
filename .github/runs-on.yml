@@ -37,3 +37,8 @@ runners:
   gpu-nvidia:
     family: ["g4dn.xlarge"]
     image: dlami-x64
+  s3-cache:
+    image: ubuntu24-full-x64
+    extras: s3-cache
+    cpu: 2
+    family: [m7a]

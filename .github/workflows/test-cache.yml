@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - runs-on=${{github.run_id}}-docker/runner=2cpu-linux-x64/family=m7a/env=${{ inputs.env || 'production' }}/extras=s3-cache
+          - runs-on=${{github.run_id}}-docker/runner=s3-cache/env=${{ inputs.env || 'production' }}
           - ubuntu-latest
     runs-on: ${{ matrix.runner }}
     steps:
@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - runs-on=${{github.run_id}}-cache-toolkit/runner=2cpu-linux-x64/family=m7a/env=${{ inputs.env || 'production' }}/extras=s3-cache
+          - runs-on=${{github.run_id}}-cache/runner=s3-cache/env=${{ inputs.env || 'production' }}
           - ubuntu-latest
         blocks:
           - 4096 # 4GB
