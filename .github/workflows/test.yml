@@ -70,7 +70,7 @@ jobs:
 
   test-gpu:
     runs-on:
-      - runs-on=${ github.run_id }
+      - runs-on=${{ github.run_id }}
       - runner=gpu-nvidia
     steps:
       - uses: actions/setup-node@v4
