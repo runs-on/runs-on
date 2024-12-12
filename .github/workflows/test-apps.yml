@@ -1,0 +1,24 @@
+name: Test / Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "env"
+        required: true
+        default: "production"
+
+jobs:
+  ruby:
+    runs-on: runs-on=${{ github.run_id }},runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: GoogleCloudPlatform/ruby-docs-samples
+
+      - name: Setup Ruby
+        working-directory: appengine/standard-rails-hello-world
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2.2
+          bundler-cache: true
