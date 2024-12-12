@@ -17,8 +17,8 @@ jobs:
           repository: GoogleCloudPlatform/ruby-docs-samples
 
       - name: Setup Ruby
-        working-directory: appengine/standard-rails-hello-world
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.2.2
           bundler-cache: true
+          working-directory: appengine/standard-rails-hello-world
