@@ -1723,6 +1723,15 @@ Resources:
                 Resource: !GetAtt EC2InstanceRole.Arn
               - Effect: Allow
                 Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:DeleteParameter
+                  - ssm:DeleteParameters
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/*"
+              - Effect: Allow
+                Action:
                   - ec2:TerminateInstances
                 Resource: "arn:aws:ec2:*:*:instance/*"
                 Condition:
