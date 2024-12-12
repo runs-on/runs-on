@@ -32,6 +32,7 @@ Metadata:
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
           - ECInstanceDetailedMonitoring
+          - Ec2LogRetentionInDays
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
           - VpcFlowLogRetentionInDays
@@ -249,6 +250,12 @@ Parameters:
       - "true"
       - "false"
     Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
+
+  Ec2LogRetentionInDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    Description: "Retention period in days for EC2 instance logs."
 
   ServerPassword:
     Type: String
@@ -1463,7 +1470,7 @@ Resources:
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      RetentionInDays: 7
+      RetentionInDays: !Ref Ec2LogRetentionInDays
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
