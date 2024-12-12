@@ -10,15 +10,26 @@ on:
 
 jobs:
   ruby:
-    runs-on: runs-on=${{ github.run_id }},runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    runs-on: runs-on=${{ github.run_id }}-ruby,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
     steps:
       - uses: actions/checkout@v4
         with:
           repository: GoogleCloudPlatform/ruby-docs-samples
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.2.2
           bundler-cache: true
           working-directory: appengine/standard-rails-hello-world
+
+  node:
+    runs-on: runs-on=${{ github.run_id }}-node,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: GoogleCloudPlatform/nodejs-docs-samples
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          working-directory: appengine/hello-world/standard
