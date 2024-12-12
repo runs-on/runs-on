@@ -26,10 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: GoogleCloudPlatform/nodejs-docs-samples
+          repository: actions/toolkit
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-          working-directory: appengine/hello-world/standard
+          working-directory: packages/cache
