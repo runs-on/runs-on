@@ -62,7 +62,8 @@ Parameters:
 
   LicenseKey:
     Type: String
-    Description: "License key. Get one at https://runs-on.com/pricing."
+    Description: |
+      License key for RunsOn, either as a string or SSM parameter ARN (with the format `arn:aws:ssm:REGION:ACCOUNT:parameter/STACK_NAME/license-key`). Get one at https://runs-on.com/pricing.
     MinLength: 1
 
   EmailAddress:
