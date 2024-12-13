@@ -25,6 +25,7 @@ jobs:
           ruby-version: 3.2.2
           bundler-cache: true
           working-directory: appengine/standard-rails-hello-world
+          cache-version: 1
 
   node:
     if: contains(inputs.apps, 'node')
