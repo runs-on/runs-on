@@ -19,12 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: GoogleCloudPlatform/ruby-docs-samples
+          repository: runs-on/test-apps
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.2.2
+          ruby-version: 3.1
           bundler-cache: true
-          working-directory: appengine/standard-rails-hello-world
+          working-directory: ruby/blog
           cache-version: 1
 
   node:
@@ -33,14 +33,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: actions/toolkit
+          repository: runs-on/test-apps
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            **/package-lock.json
+          cache-dependency-path: node/nextjs-blog/package-lock.json
 
       - run: npm install
+        working-directory: node/nextjs-blog
