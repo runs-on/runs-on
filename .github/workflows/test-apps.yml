@@ -15,7 +15,13 @@ on:
 jobs:
   ruby:
     if: contains(inputs.apps, 'ruby')
-    runs-on: runs-on=${{ github.run_id }}-ruby,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - runs-on=${{ github.run_id }}-ruby,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +35,13 @@ jobs:
 
   node:
     if: contains(inputs.apps, 'node')
-    runs-on: runs-on=${{ github.run_id }}-node,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - runs-on=${{ github.run_id }}-node,runner=2cpu-linux-x64,env=${{ inputs.env || 'production' }},extras=s3-cache
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
         with:
