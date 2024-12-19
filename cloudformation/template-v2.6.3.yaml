@@ -179,13 +179,27 @@ Parameters:
 
   AppCPU:
     Type: Number
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
     Default: "256"
-    Description: CPU units for RunsOn service (256 or higher). If you have many workflows, you may need to increase this (512, 1024, etc.).
+    Description: CPU units for RunsOn service (256 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppMemory:
     Type: Number
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+      - 6144
+      - 8192
     Default: "512"
-    Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
+    Description: Memory in MB for RunsOn service (512 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppRegistry:
     Type: String
