@@ -179,13 +179,27 @@ Parameters:
 
   AppCPU:
     Type: Number
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
     Default: "256"
-    Description: CPU units for RunsOn service (256 or higher). If you have many workflows, you may need to increase this (512, 1024, etc.).
+    Description: CPU units for RunsOn service (256 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppMemory:
     Type: Number
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+      - 6144
+      - 8192
     Default: "512"
-    Description: Memory in MB for RunsOn service (512 or higher). If you have many workflows, you may need to increase this (1024, 2048, etc.).
+    Description: Memory in MB for RunsOn service (512 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppRegistry:
     Type: String
@@ -271,7 +285,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.6.2-dev"
+      Tag: "v2.6.3-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -1339,6 +1353,12 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+          - Id: ExpireDbEntries
+            Prefix: runs-on/db/
+            Status: Enabled
+            ExpirationInDays: 30
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
@@ -2078,3 +2098,6 @@ Outputs:
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
+  RunsOnEC2InstanceLogGroupArn:
+    Description: Log group ARN for the EC2 instances
+    Value: !Ref EC2InstanceLogGroup

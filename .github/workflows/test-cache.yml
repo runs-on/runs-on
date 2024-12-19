@@ -39,6 +39,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+  artifact-toolkit:
+    runs-on: runs-on=${{github.run_id}}-artifact/runner=s3-cache/env=${{ inputs.env || 'production' }}
+    steps:
+      - uses: runs-on/action@v1
+      - run: mkdir -p path/to/artifact
+      - run: echo hello > path/to/artifact/world.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-artifact
+          path: path/to/artifact/world.txt
+      - run: rm path/to/artifact/world.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: my-artifact
+          path: path/to/artifact/world.txt
+
   cache-toolkit:
     strategy:
       fail-fast: false
