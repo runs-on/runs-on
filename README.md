@@ -20,6 +20,7 @@ RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any si
 - **SSH access** into the runners. Can be [restricted to a specific CIDR range](https://runs-on.com/networking/ssh/).
 - **Static IPs** for your runners, if you [enabled private networking](https://runs-on.com/networking/static-ips/).
 - Automatic [**cost and alert reporting**](https://runs-on.com/features/cost-and-alert-report/).
+- NEW ✨ [Magic Caching](https://runs-on.com/caching/magic-cache/)
 
 ## Installation
 
@@ -36,9 +37,8 @@ Before:
 After:
 ```yaml
   runs-on:
-    - runs-on
+    - runs-on=${{ github.run_id }}
     - runner=2cpu-linux-x64
-    - run-id=${{ github.run_id }}
 ```
 
 Learn more about all the supported [job labels](https://runs-on.com/configuration/job-labels) for dynamic runner configuration.
