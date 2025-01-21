@@ -285,7 +285,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.6.3-dev"
+      Tag: "v2.6.4-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -502,6 +502,7 @@ Resources:
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
@@ -527,6 +528,7 @@ Resources:
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
@@ -552,6 +554,7 @@ Resources:
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
@@ -910,6 +913,7 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
@@ -935,6 +939,7 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
@@ -960,6 +965,7 @@ Resources:
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
+    DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
@@ -1735,7 +1741,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:CreateFleet
-                  - ec2:DeleteFleet
+                  - ec2:DeleteFleets
                 Resource: "*"
               - Effect: Allow
                 Action:
