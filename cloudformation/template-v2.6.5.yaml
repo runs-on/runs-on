@@ -1466,7 +1466,7 @@ Resources:
     DeletionPolicy: RetainExceptOnCreate
     Properties:
       VersioningConfiguration:
-        Status: Enabled
+        Status: Suspended
       LifecycleConfiguration:
         Rules:
           - Id: ExpireRunnerConfig
