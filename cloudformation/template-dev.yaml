@@ -11,13 +11,20 @@ Metadata:
           - LicenseKey
           - EmailAddress
       - Label:
-          default: "Security and Network settings [optional]"
+          default: "VPC configuration [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
+          - VpcEndpoints
           - Private
-          - NatGatewayElasticIPCount
           - NatGatewayAvailability
+          - NatGatewayElasticIPCount
+          - VpcFlowLogFormat
+          - VpcFlowLogS3BucketArn
+          - VpcFlowLogRetentionInDays
+      - Label:
+          default: "Security settings [optional]"
+        Parameters:
           - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
@@ -33,9 +40,6 @@ Metadata:
           - AlertTopicSubscriptionHttpsEndpoint
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
-          - VpcFlowLogFormat
-          - VpcFlowLogS3BucketArn
-          - VpcFlowLogRetentionInDays
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -50,9 +54,6 @@ Metadata:
           - AppMemory
           - AppRegistry
           - CostAllocationTag
-    ParameterLabels:
-      GithubOrganization:
-        default: "Your GitHub organization or personal name."
 
 Parameters:
   GithubOrganization:
@@ -75,7 +76,7 @@ Parameters:
     Type: String
     Default: "production"
     MinLength: 1
-    Description: "Environment for the RunsOn service: you can create multiple RunsOn installations and set this parameter to different values. And then target a single installation by setting the `env=ENV_NAME` label in the `runs-on:` definition in your GitHub Actions workflow. If no `env` label is set in job definitions, the `production` environment is targeted, so make sure to keep this default value if you only have one RunsOn installation."
+    Description: "Make RunsOn only listen to jobs with an `env` job label matching this value. Only change this if you know what you are doing. See https://runs-on.com/configuration/environments/ for more details."
 
   AlertTopicSubscriptionHttpsEndpoint:
     Type: String
@@ -126,12 +127,22 @@ Parameters:
       - "false"
     Description: "Enable ('true', 'always', 'only') or disable ('false') private networking. If 'true', your jobs can opt-in to launch in private subnets with the `private=true` label, and they will get a static egress IP. If 'always', all jobs will run in private subnets, and they will all get a static egress IP, unless you manually opt-out in your job definition with the `private=false` label. If 'only', then jobs can only launch in private subnets. Note that enabling it will create 1 managed NAT gateway, with the corresponding costs. More details at https://runs-on.com/networking/static-ips/."
 
+  VpcEndpoints:
+    Type: String
+    Default: "none"
+    AllowedValues:
+      - "EC2"
+      - "ECR"
+      - "EC2+ECR"
+      - "none"
+    Description: "Enable or disable VPC endpoints among: EC2 (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/interface-vpc-endpoints.html), ECR (API + Docker - https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html). Each endpoint incurs ~$21.6/month ($7.2/month per AZ x3)."
+
   NatGatewayElasticIPCount:
     Type: Number
     Default: 1
     MinValue: 1
     MaxValue: 8
-    Description: "Number of Elastic IPv4s to attach to _each_ NAT Gateway (if Private mode is enabled). Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 EIPs per NAT gateway, but can request a quota increase from AWS."
+    Description: "Number of Elastic IPv4s to attach to _each_ NAT Gateway. Only applies if Private mode is enabled. Defaults to 1. Maximum of 8. Increasing this number is useful if you launch a large number of runners and are rate-limited by some external services due to the limited number of NAT Gateway IP addresses. Incurs ~$3.6/month additional cost for each Elastic IP. Note that by default you are limited to 2 EIPs per NAT gateway, but can request a quota increase from AWS."
 
   NatGatewayAvailability:
     Type: String
@@ -139,6 +150,7 @@ Parameters:
     AllowedValues:
     - SingleAZ
     - MultiAZ
+    Description: "Create either a single NAT Gateway (SingleAZ) for all 3 availability zones, or a NAT Gateway per Availability Zone (MultiAZ). Only applies if Private mode is enabled. Each gateway incurs ~$32.4/month, plus bandwidth costs."
 
   VpcFlowLogFormat:
     Type: String
@@ -275,7 +287,7 @@ Parameters:
   ServerPassword:
     Type: String
     Default: ""
-    Description: Password for the RunsOn server (/metrics endpoint). If blank, the endpoint(s) will be disabled.
+    Description: Password for the /metrics Prometheus endpoint (https://runs-on.com/monitoring/metrics/#prometheus-metrics). If blank, the endpoint will be disabled.
 
   CostAllocationTag:
     Type: String
@@ -321,6 +333,9 @@ Conditions:
   CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
   CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
   CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  CreateInterfaceEndpointEc2: !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
+  CreateInterfaceEndpointEcrApi: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
+  CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
   HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
@@ -1005,16 +1020,56 @@ Resources:
   # EC2.10 - Amazon EC2 should be configured to use VPC endpoints that are created for the Amazon EC2 service
   # Incurs additional cost
   EC2VpcEndpoint:
-    Condition: HasPrivateSubnet
+    Condition: CreateInterfaceEndpointEc2
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref VPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
       VpcEndpointType: Interface
+      PrivateDnsEnabled: true
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+
+  ECRApiVpcEndpoint:
+    Condition: CreateInterfaceEndpointEcrApi
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.api"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+
+  ECRDockerVpcEndpoint:
+    Condition: CreateInterfaceEndpointEcrDocker
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.dkr"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
       SecurityGroupIds:
         - !Ref SecurityGroup
 
