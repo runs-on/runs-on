@@ -71,7 +71,8 @@ promote:
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 STACK_DEV_NAME=runs-on
 
@@ -184,7 +185,7 @@ install-demo:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on-demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
+		--parameter-overrides GithubOrganization=runs-on-demo Environment=demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
 		--capabilities CAPABILITY_IAM
 
 logs-demo:
