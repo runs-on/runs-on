@@ -50,6 +50,26 @@ jobs:
     runs-on: runs-on,runner=preinstall-ok,env=${{ inputs.env || 'production' }}
     steps:
       - run: echo Hello world
+      - name: Ensure custom tags are present
+        run: |
+          TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+          # Get list of tag keys
+          curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance > tag_keys.txt
+          echo "---" >> tags.txt
+          # Get values for each key
+          while read key; do
+            value=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/$key)
+            echo "$key=$value" >> tags.txt
+          done < tag_keys.txt
+          echo "---" >> tags.txt
+          cat tags.txt
+          sleep 1
+          set -x
+          # runner tags
+          grep "tag-custom-key1" tags.txt | grep "tag-custom-value1"
+          # tag without values are only present as keys
+          grep "tag-custom-key2-no-value" tag_keys.txt
+          grep -q -v "tag-custom-key2-no-value" tags.txt
 
   test-ssd-mount:
     runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'production' }}
@@ -69,9 +89,15 @@ jobs:
       - run: echo Hello world
 
   test-gpu:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - runs-on=${{ github.run_id }},runner=gpu-nvidia
+          - runs-on=${{ github.run_id }},family=g4dn.xlarge,image=ubuntu22-gpu-x64
+          - runs-on=${{ github.run_id }},family=g4dn.xlarge,image=ubuntu24-gpu-x64
     runs-on:
-      - runs-on=${{ github.run_id }}
-      - runner=gpu-nvidia
+      - ${{ matrix.runner }}
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -85,8 +111,8 @@ jobs:
           nvidia-smi
           nvidia-smi -L
           nvidia-smi -q -d Memory
-      - name: Ensure Docker is available
-        run: docker run hello-world
+      - name: Ensure Docker is available with GPU support
+        run: docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
       - name: Execute your machine learning script
         run: echo "Running ML script..."
 
