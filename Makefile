@@ -101,6 +101,7 @@ install-dev:
 			NatGatewayElasticIPCount=1 \
 			Ipv6Enabled=true \
 			NatGatewayAvailability=SingleAZ \
+			IntegrationStepSecurityApiKey=$(INTEGRATION_STEP_SECURITY_API_KEY) \
 		--capabilities CAPABILITY_IAM
 
 install-dev-peering:
