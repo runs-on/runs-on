@@ -19,6 +19,7 @@ Metadata:
           - Private
           - NatGatewayAvailability
           - NatGatewayElasticIPCount
+          - Ipv6Enabled
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
           - VpcFlowLogRetentionInDays
