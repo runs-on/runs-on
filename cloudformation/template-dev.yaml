@@ -42,6 +42,10 @@ Metadata:
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
       - Label:
+          default: "Integrations [optional]"
+        Parameters:
+          - IntegrationStepSecurityApiKey
+      - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
           - Environment
@@ -294,6 +298,11 @@ Parameters:
     Type: String
     Default: "stack"
     Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
+
+  IntegrationStepSecurityApiKey:
+    Type: String
+    Default: ""
+    Description: "API key for Step Security (https://stepsecurity.io/)."
 
 Mappings:
   App:
@@ -1763,6 +1772,8 @@ Resources:
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
                 Value: !Ref ServerPassword
+              - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
+                Value: !Ref IntegrationStepSecurityApiKey
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
