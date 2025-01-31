@@ -22,6 +22,9 @@ runners:
     preinstall: |
       #!/bin/bash
       echo "preinstall ok"
+    tags:
+      - "tag-custom-key1:tag-custom-value1"
+      - "tag-custom-key2-no-value"
   preinstall-ko:
     image: ubuntu22-full-x64
     cpu: 2
