@@ -99,6 +99,7 @@ install-dev:
 			RunnerCustomTags="my/tag=my/value3" \
 			VpcEndpoints=EC2+ECR \
 			NatGatewayElasticIPCount=1 \
+			Ipv6Enabled=true \
 			NatGatewayAvailability=SingleAZ \
 		--capabilities CAPABILITY_IAM
 
