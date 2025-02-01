@@ -298,7 +298,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.6.5"
+      Tag: "v2.6.6"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -1018,6 +1018,25 @@ Resources:
         - !Ref PrivateSubnet2RouteTable
         - !Ref PrivateSubnet3RouteTable
 
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VPC Endpoints (EC2 and ECR)
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCidrBlock
+          Description: "Allow HTTPS from VPC CIDR for EC2 and ECR endpoints"
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: "Allow all outbound traffic"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
   # EC2.10 - Amazon EC2 should be configured to use VPC endpoints that are created for the Amazon EC2 service
   # Incurs additional cost
   EC2VpcEndpoint:
@@ -1032,11 +1051,8 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-        - !Ref PublicSubnet3
       SecurityGroupIds:
-        - !Ref SecurityGroup
+        - !Ref VPCEndpointSecurityGroup
 
   ECRApiVpcEndpoint:
     Condition: CreateInterfaceEndpointEcrApi
@@ -1050,11 +1066,8 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-        - !Ref PublicSubnet3
       SecurityGroupIds:
-        - !Ref SecurityGroup
+        - !Ref VPCEndpointSecurityGroup
 
   ECRDockerVpcEndpoint:
     Condition: CreateInterfaceEndpointEcrDocker
@@ -1068,11 +1081,8 @@ Resources:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-        - !Ref PublicSubnet3
       SecurityGroupIds:
-        - !Ref SecurityGroup
+        - !Ref VPCEndpointSecurityGroup
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway

@@ -1,4 +1,4 @@
-VERSION=v2.6.5
+VERSION=v2.6.6
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -97,6 +97,7 @@ install-dev:
 			ServerPassword=$(SERVER_PASSWORD) \
 			Environment=dev \
 			RunnerCustomTags="my/tag=my/value3" \
+			VpcEndpoints=EC2+ECR \
 			NatGatewayElasticIPCount=1 \
 			NatGatewayAvailability=SingleAZ \
 		--capabilities CAPABILITY_IAM
