@@ -41,6 +41,8 @@ Metadata:
           - AlertTopicSubscriptionHttpsEndpoint
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
+          - SqsQueueOldestMessageAlarmEnabled
+          - SqsQueueOldestMessageThresholdSeconds
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
@@ -285,6 +287,19 @@ Parameters:
     MinValue: 1
     Description: "Retention period in days for EC2 instance logs."
 
+  SqsQueueOldestMessageAlarmEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable Cloudwatch alarms for SQS message age for all SQS queues.
+
+  SqsQueueOldestMessageThresholdSeconds:
+    Type: Number
+    Default: 3600
+    Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds.
+
   ServerPassword:
     Type: String
     Default: ""
@@ -337,6 +352,7 @@ Conditions:
   CreateInterfaceEndpointEc2: !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateInterfaceEndpointEcrApi: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
+  CreateSqsQueueOldestMessageAlarms: !Equals [!Ref SqsQueueOldestMessageAlarmEnabled, "true"]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
   HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
@@ -1950,6 +1966,111 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+
+  RunsOnQueueDeadLetterOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueueDeadLetter oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueDeadLetter.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueueOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueue oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueue.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueueHousekeepingOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueueHousekeeping oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueHousekeeping.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueueTerminationOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueueTermination oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueTermination.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueueEventsOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueueEvents oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueEvents.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
 
   SpotInstanceEventRule:
     Type: AWS::Events::Rule
