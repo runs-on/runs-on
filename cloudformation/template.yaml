@@ -41,7 +41,6 @@ Metadata:
           - AlertTopicSubscriptionHttpsEndpoint
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
-          - SqsQueueOldestMessageAlarmEnabled
           - SqsQueueOldestMessageThresholdSeconds
       - Label:
           default: "Advanced app configuration [optional]"
@@ -287,18 +286,10 @@ Parameters:
     MinValue: 1
     Description: "Retention period in days for EC2 instance logs."
 
-  SqsQueueOldestMessageAlarmEnabled:
-    Type: String
-    Default: "false"
-    AllowedValues:
-      - "true"
-      - "false"
-    Description: Enable or disable Cloudwatch alarms for SQS message age for all SQS queues.
-
   SqsQueueOldestMessageThresholdSeconds:
     Type: Number
-    Default: 3600
-    Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds.
+    Default: 0
+    Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds. Leave as 0 to disable SQS alarms.
 
   ServerPassword:
     Type: String
@@ -352,7 +343,7 @@ Conditions:
   CreateInterfaceEndpointEc2: !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateInterfaceEndpointEcrApi: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
-  CreateSqsQueueOldestMessageAlarms: !Equals [!Ref SqsQueueOldestMessageAlarmEnabled, "true"]
+  CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
   HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
