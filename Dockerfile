@@ -1,6 +1,14 @@
 FROM golang:1.22 AS build
 ENV GOCACHE=/root/.gocache
 ENV CGO_ENABLED=0
+ENV UPX_VERSION=4.2.4
+
+RUN apt-get update && apt-get install -y xz-utils
+
+# https://upx.github.io/
+RUN curl -L https://github.com/upx/upx/releases/download/v${UPX_VERSION}/upx-${UPX_VERSION}-amd64_linux.tar.xz -o upx-${UPX_VERSION}-amd64_linux.tar.xz && \
+    tar -xf upx-${UPX_VERSION}-amd64_linux.tar.xz && \
+    mv upx-${UPX_VERSION}-amd64_linux/upx /usr/local/bin/upx
 
 WORKDIR /app
 COPY server/go.* ./
