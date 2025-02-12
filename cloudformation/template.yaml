@@ -58,6 +58,7 @@ Metadata:
           - AppCPU
           - AppMemory
           - AppRegistry
+          - SpotCircuitBreaker
           - CostAllocationTag
 
 Parameters:
@@ -222,6 +223,12 @@ Parameters:
     Type: String
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
     Description: "Docker image (public) registry for the RunsOn service."
+
+  SpotCircuitBreaker:
+    Type: String
+    Default: "2/30/60"
+    AllowedPattern: "^(false|[0-9]+/[0-9]+/[0-9]+)$"
+    Description: "Enable (`COUNT/INTERVAL_MINUTES/TIMEOUT_MINUTES`) or disable (`false`) the spot instance circuit breaker. If enabled, the circuit breaker will prevent the stack from launching new spot instances during TIMEOUT_MINUTES if there was at least COUNT spot interruptions during the last INTERVAL_MINUTES."
 
   EncryptEbs:
     Type: String
@@ -1772,6 +1779,8 @@ Resources:
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
                 Value: !Ref ServerPassword
+              - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
+                Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
                 Value: !Ref IntegrationStepSecurityApiKey
           ImageIdentifier: !Sub
