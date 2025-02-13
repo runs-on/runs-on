@@ -324,6 +324,7 @@ Mappings:
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
+  CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
@@ -1679,6 +1680,7 @@ Resources:
         - !Ref EC2InstanceRole
 
   SchedulerCostReport:
+    Condition: CostReportsEnabled
     Type: AWS::Scheduler::Schedule
     Properties:
       ScheduleExpression: "cron(5 0 * * ? *)"
@@ -1691,6 +1693,21 @@ Resources:
         RetryPolicy:
           MaximumRetryAttempts: 0
         Input: '{"detail-type":"RunsOn Cost Report"}'
+
+  SchedulerCostAllocationTag:
+    Condition: CostReportsEnabled
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: "cron(10 0 * * ? *)"
+      ScheduleExpressionTimezone: "UTC"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt RunsOnQueueEvents.Arn
+        RoleArn: !GetAtt SchedulerInvokeRole.Arn
+        RetryPolicy:
+          MaximumRetryAttempts: 0
+        Input: '{"detail-type":"RunsOn Cost Allocation Tag"}'
 
   SchedulerInvokeRole:
     Type: AWS::IAM::Role
