@@ -103,6 +103,7 @@ install-dev:
 			Ipv6Enabled=true \
 			NatGatewayAvailability=SingleAZ \
 			IntegrationStepSecurityApiKey=$(INTEGRATION_STEP_SECURITY_API_KEY) \
+			SqsQueueOldestMessageThresholdSeconds=120 \
 		--capabilities CAPABILITY_IAM
 
 install-dev-peering:
