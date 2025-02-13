@@ -1678,6 +1678,39 @@ Resources:
       Roles:
         - !Ref EC2InstanceRole
 
+  SchedulerCostReport:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: "cron(5 0 * * ? *)"
+      ScheduleExpressionTimezone: "UTC"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt RunsOnQueueEvents.Arn
+        RoleArn: !GetAtt SchedulerInvokeRole.Arn
+        RetryPolicy:
+          MaximumRetryAttempts: 0
+        Input: '{"detail-type":"RunsOn Cost Report"}'
+
+  SchedulerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "AllowSQSSendMessage"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt RunsOnQueueEvents.Arn
+
   RunsOnServiceAutoScalingConfiguration:
     Type: AWS::AppRunner::AutoScalingConfiguration
     Properties:
