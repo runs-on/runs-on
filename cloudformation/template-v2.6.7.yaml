@@ -227,9 +227,9 @@ Parameters:
 
   SpotCircuitBreaker:
     Type: String
-    Default: "2/30/60"
+    Default: "2/15/30"
     AllowedPattern: "^(false|[0-9]+/[0-9]+/[0-9]+)$"
-    Description: "Enable (`COUNT/INTERVAL_MINUTES/TIMEOUT_MINUTES`) or disable (`false`) the spot instance circuit breaker. If enabled, the circuit breaker will prevent the stack from launching new spot instances during TIMEOUT_MINUTES if there was at least COUNT spot interruptions during the last INTERVAL_MINUTES."
+    Description: "Enable (`COUNT/WINDOW_MINUTES/RECOVERY_MINUTES`) or disable (`false`) the spot instance circuit breaker. If enabled, the circuit breaker will prevent the stack from launching new spot instances during RECOVERY_MINUTES if there was at least COUNT spot interruptions during the last WINDOW_MINUTES. For instance 2/15/30 will prevent the stack from launching new spot instances during 30 minutes if there was at least 2 spot interruptions during the last 15 minutes."
 
   EncryptEbs:
     Type: String
