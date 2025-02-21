@@ -8,7 +8,7 @@ SHELL:=/bin/bash
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
-.PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage
+.PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage trigger-spot-interruption
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -71,7 +71,7 @@ promote:
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd server && make agent && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+	cd server && make agent && rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
@@ -102,6 +102,7 @@ install-dev:
 			NatGatewayElasticIPCount=1 \
 			Ipv6Enabled=true \
 			NatGatewayAvailability=SingleAZ \
+			SpotCircuitBreaker=2/10/5 \
 			IntegrationStepSecurityApiKey=$(INTEGRATION_STEP_SECURITY_API_KEY) \
 			SqsQueueOldestMessageThresholdSeconds=120 \
 		--capabilities CAPABILITY_IAM
@@ -167,7 +168,13 @@ install-stage:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+stage@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) ServerPassword=$(SERVER_PASSWORD) \
+		--parameter-overrides \
+			GithubOrganization=runs-on \
+			EmailAddress=ops+stage@runs-on.com \
+			Private=false \
+			LicenseKey=$(LICENSE_KEY) \
+			ServerPassword=$(SERVER_PASSWORD) \
+			RunnerLargeDiskSize=120 \
 		--capabilities CAPABILITY_IAM
 
 show-stage:
