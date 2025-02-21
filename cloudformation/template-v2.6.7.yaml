@@ -189,7 +189,7 @@ Parameters:
     Type: Number
     Default: 2
     MinValue: 1
-    Description: "Rate limit for launching instances, per second. New AWS accounts come with a default of 2 RunInstances call/s, so only increase this if you have requested a higher limit from AWS (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html)."
+    Description: "Number of queued jobs that can be processed concurrently by RunsOn. Each job takes about 2-3s to process. Increasing this value should be done with caution, as it will increase the number of EC2 instances that will be launched at once, eating into your AWS and GitHub rate limits. New AWS accounts come with a rate-limit of 2 RunInstances call/s, although you can request a higher limit from AWS (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html)."
 
   AppAlarmDailyMinutes:
     Type: Number
