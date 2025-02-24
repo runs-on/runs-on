@@ -1597,7 +1597,7 @@ Resources:
               ArnLike:
                 aws:Sourcearn:
                   - !Sub "arn:aws:s3:::${S3BucketCache}"
-                  - !Sub "arn:aws:s3:::${S3Bucket}/*"
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
