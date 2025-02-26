@@ -4,3 +4,4 @@
 *.bak
 /.trash
 tmp/
+.DS_Store
