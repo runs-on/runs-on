@@ -321,6 +321,124 @@ Mappings:
   App:
     Image:
       Tag: "v2.6.7"
+  # See https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-operations-s3-buckets.html
+  SSMRegionalBuckets:
+    us-east-2:
+      PatchManager: "aws-patch-manager-us-east-2-552881074"
+      PatchManagerMacOS: "aws-patchmanager-macos-us-east-2-552881074"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-us-east-2"
+    us-east-1:
+      PatchManager: "aws-patch-manager-us-east-1-1970c647d"
+      PatchManagerMacOS: "aws-patchmanager-macos-us-east-1-1970c647d"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-us-east-1"
+    us-west-1:
+      PatchManager: "aws-patch-manager-us-west-1-8badb4304"
+      PatchManagerMacOS: "aws-patchmanager-macos-us-west-1-8badb4304"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-us-west-1"
+    us-west-2:
+      PatchManager: "aws-patch-manager-us-west-2-34d7f99f8"
+      PatchManagerMacOS: "aws-patchmanager-macos-us-west-2-34d7f99f8"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-us-west-2"
+    af-south-1:
+      PatchManager: "aws-patch-manager-af-south-1-bdd5f65a9"
+      PatchManagerMacOS: "aws-patchmanager-macos-af-south-1-bdd5f65a9"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-af-south-1-tbxdb5b9"
+    ap-east-1:
+      PatchManager: "aws-patch-manager-ap-east-1-632356271"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-east-1-632356271"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-east-1"
+    ap-south-2:
+      PatchManager: "aws-patch-manager-ap-south-2-32f4b4128"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-south-2-32f4b4128"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-south-2-50209442"
+    ap-southeast-3:
+      PatchManager: "aws-patch-manager-ap-southeast-3-aa48fc462"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-southeast-3-aa48fc462"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-southeast-3-be0a3174"
+    ap-southeast-4:
+      PatchManager: "aws-patch-manager-ap-southeast-4-01e2c40d3"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-southeast-4-01e2c40d3"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-southeast-4-dc6f76ce"
+    ap-south-1:
+      PatchManager: "aws-patch-manager-ap-south-1-cb7c62ff9"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-south-1-cb7c62ff9"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-south-1"
+    ap-northeast-3:
+      PatchManager: "aws-patch-manager-ap-northeast-3-67373598a"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-northeast-3-67373598a"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-northeast-3"
+    ap-northeast-2:
+      PatchManager: "aws-patch-manager-ap-northeast-2-10467995c"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-northeast-2-10467995c"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-northeast-2"
+    ap-southeast-1:
+      PatchManager: "aws-patch-manager-ap-southeast-1-7fdfd9ef7"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-southeast-1-7fdfd9ef7"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-southeast-1"
+    ap-southeast-2:
+      PatchManager: "aws-patch-manager-ap-southeast-2-17283a275"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-southeast-2-17283a275"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-southeast-2"
+    ap-northeast-1:
+      PatchManager: "aws-patch-manager-ap-northeast-1-4849fa78f"
+      PatchManagerMacOS: "aws-patchmanager-macos-ap-northeast-1-4849fa78f"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ap-northeast-1"
+    ca-central-1:
+      PatchManager: "aws-patch-manager-ca-central-1-3148e69e3"
+      PatchManagerMacOS: "aws-patchmanager-macos-ca-central-1-3148e69e3"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ca-central-1"
+    ca-west-1:
+      PatchManager: "aws-patch-manager-ca-west-1-9e3a4b2f9"
+      PatchManagerMacOS: "aws-patchmanager-macos-ca-west-1-9e3a4b2f9"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-ca-west-1"
+    eu-central-1:
+      PatchManager: "aws-patch-manager-eu-central-1-9163fdaaf"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-central-1-9163fdaaf"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-central-1"
+    eu-west-1:
+      PatchManager: "aws-patch-manager-eu-west-1-5522fb710"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-west-1-5522fb710"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-west-1"
+    eu-west-2:
+      PatchManager: "aws-patch-manager-eu-west-2-902a2bc74"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-west-2-902a2bc74"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-west-2"
+    eu-south-1:
+      PatchManager: "aws-patch-manager-eu-south-1-c52f3f594"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-south-1-c52f3f594"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-south-1"
+    eu-west-3:
+      PatchManager: "aws-patch-manager-eu-west-3-29bf85721"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-west-3-29bf85721"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-west-3"
+    eu-south-2:
+      PatchManager: "aws-patch-manager-eu-south-2-a4cf248b1"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-south-2-a4cf248b1"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-south-2-df2c9d70"
+    eu-north-1:
+      PatchManager: "aws-patch-manager-eu-north-1-795879e9b"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-north-1-795879e9b"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-north-1"
+    eu-central-2:
+      PatchManager: "aws-patch-manager-eu-central-2-184ce43c8"
+      PatchManagerMacOS: "aws-patchmanager-macos-eu-central-2-184ce43c8"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-eu-central-2"
+    il-central-1:
+      PatchManager: "aws-patch-manager-il-central-1-e221cb57b"
+      PatchManagerMacOS: "aws-patchmanager-macos-il-central-1-e221cb57b"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-il-central-1"
+    me-south-1:
+      PatchManager: "aws-patch-manager-me-south-1-a53fc9dce"
+      PatchManagerMacOS: "aws-patchmanager-macos-me-south-1-a53fc9dce"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-me-south-1-uduvl7q8"
+    me-central-1:
+      PatchManager: "aws-patch-manager-me-central-1-2932f2f80"
+      PatchManagerMacOS: "aws-patchmanager-macos-me-central-1-2932f2f80"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-me-central-1"
+    sa-east-1:
+      PatchManager: "aws-patch-manager-sa-east-1-ddf4b6a09"
+      PatchManagerMacOS: "aws-patchmanager-macos-sa-east-1-ddf4b6a09"
+      PatchBaselineSnapshot: "patch-baseline-snapshot-sa-east-1"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -1669,6 +1787,32 @@ Resources:
                         !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
+        # See https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent-technical-details.html
+        - PolicyName: SSMDocumentsS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                Resource:
+                - !Sub "arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*"
+                - !Sub "arn:aws:s3:::amazon-ssm-${AWS::Region}/*"
+                - !Sub "arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*"
+                - !Sub "arn:aws:s3:::${AWS::Region}-birdwatcher-prod/*"
+                - !Sub "arn:aws:s3:::aws-ssm-document-attachments-${AWS::Region}/*"
+                - !Sub "arn:aws:s3:::aws-ssm-${AWS::Region}/*"
+                # Below buckets can have extra suffixes per region.
+                - !Sub
+                  - "arn:aws:s3:::${PatchBaseline}/*"
+                  - PatchBaseline: !FindInMap [ SSMRegionalBuckets, !Ref 'AWS::Region', PatchBaselineSnapshot ]
+                - !Sub
+                  - "arn:aws:s3:::${PatchManager}/*"
+                  - PatchManager: !FindInMap [ SSMRegionalBuckets, !Ref 'AWS::Region', PatchManager ]
+                - !Sub
+                  - "arn:aws:s3:::${PatchManagerMacOS}/*"
+                  - PatchManagerMacOS: !FindInMap [ SSMRegionalBuckets, !Ref 'AWS::Region', PatchManagerMacOS ]
+
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
