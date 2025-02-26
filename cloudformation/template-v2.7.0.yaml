@@ -1583,6 +1583,21 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
+          - Sid: S3ServerAccessLogsPolicy
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: "s3:PutObject"
+            Resource:
+              - !Sub "arn:aws:s3:::${S3BucketLogging}/s3-cache-access-logs/*"
+              - !Sub "arn:aws:s3:::${S3BucketLogging}/s3-config-access-logs/*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Sub ${AWS::AccountId}
+              ArnLike:
+                aws:Sourcearn:
+                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
