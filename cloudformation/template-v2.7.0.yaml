@@ -8,6 +8,7 @@ Metadata:
           default: "App configuration [required]"
         Parameters:
           - GithubOrganization
+          - GithubEnterpriseUrl
           - LicenseKey
           - EmailAddress
       - Label:
@@ -68,6 +69,11 @@ Parameters:
     Description: "For instance if your GitHub organization lives at github.com/my-org, then the value of this parameter should be: my-org"
     MinLength: 1
 
+  GithubEnterpriseUrl:
+    Type: String
+    Default: ""
+    Description: "Set this only if you use a self-hosted GitHub Enterprise Server (GHES) instance. For instance if your GHES instance lives at https://github.mycompany.com, then the value of this parameter should be: https://github.mycompany.com"
+
   LicenseKey:
     Type: String
     Description: |
@@ -76,7 +82,7 @@ Parameters:
 
   EmailAddress:
     Type: String
-    Description: Email address for cost and alert reports. You must confirm the subscription by clicking the link in the email that you will receive after creating the stack.
+    Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
     MinLength: 1
 
   Environment:
@@ -1855,6 +1861,8 @@ Resources:
                 Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
                 Value: !Ref IntegrationStepSecurityApiKey
+              - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
+                Value: !Ref GithubEnterpriseUrl
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppVersion}"
             - AppVersion: !FindInMap [App, Image, Tag]
