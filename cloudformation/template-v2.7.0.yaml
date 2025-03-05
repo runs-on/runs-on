@@ -53,8 +53,10 @@ Metadata:
           - Environment
           - RunnerCustomTags
           - RunnerDefaultDiskSize
+          - RunnerDefaultDiskDeviceName
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
+          - RunnerLargeDiskDeviceName
           - RunnerLargeVolumeThroughput
           - AppEc2QueueSize
           - AppCPU
@@ -249,27 +251,37 @@ Parameters:
     Type: Number
     Default: 40
     MinValue: 40
-    Description: Disk size in GB for default runners.
+    Description: Disk size in GB for `disk=default` runners.
+
+  RunnerDefaultDiskDeviceName:
+    Type: String
+    Default: "/dev/sda1"
+    Description: Name of the root volume device name for the `disk=default` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
 
   RunnerDefaultVolumeThroughput:
     Type: Number
     Default: 400
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for default runners (helps with faster boot times, but costs more).
+    Description: Volume throughput in MiB/s for `disk=default` runners (helps with faster boot times, but costs more).
 
   RunnerLargeDiskSize:
     Type: Number
     Default: 80
     MinValue: 40
-    Description: Disk size in GB for large runners.
+    Description: Disk size in GB for `disk=large` runners.
+
+  RunnerLargeDiskDeviceName:
+    Type: String
+    Default: "/dev/sda1"
+    Description: Name of the root volume device name for the `disk=large` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
 
   RunnerLargeVolumeThroughput:
     Type: Number
     Default: 750
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for large runners (helps with faster boot times, but costs more).
+    Description: Volume throughput in MiB/s for `disk=large` runners (helps with faster boot times, but costs more).
 
   RunnerCustomTags:
     Type: CommaDelimitedList
@@ -1198,7 +1210,7 @@ Resources:
           HttpPutResponseHopLimit: 2
           InstanceMetadataTags: enabled
         BlockDeviceMappings:
-          - DeviceName: /dev/sda1
+          - DeviceName: !Ref RunnerDefaultDiskDeviceName
             Ebs:
               VolumeSize: !Ref RunnerDefaultDiskSize
               VolumeType: gp3
@@ -1256,7 +1268,7 @@ Resources:
           HttpPutResponseHopLimit: 2
           InstanceMetadataTags: enabled
         BlockDeviceMappings:
-          - DeviceName: /dev/sda1
+          - DeviceName: !Ref RunnerLargeDiskDeviceName
             Ebs:
               VolumeSize: !Ref RunnerLargeDiskSize
               VolumeType: gp3
@@ -1314,6 +1326,7 @@ Resources:
           HttpPutResponseHopLimit: 2
           InstanceMetadataTags: enabled
         BlockDeviceMappings:
+          # Windows is always /dev/sda1 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
           - DeviceName: /dev/sda1
             Ebs:
               VolumeSize: !Ref RunnerDefaultDiskSize
