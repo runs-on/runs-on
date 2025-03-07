@@ -40,6 +40,7 @@ check:
 
 tag:
 	git tag -m "$(VERSION)" "$(VERSION)" ;
+	cd server && git tag -m "$(VERSION)" "$(VERSION)"
 
 login:
 	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
