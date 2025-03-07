@@ -1,4 +1,4 @@
-VERSION=v2.6.7
+VERSION=v2.7.0
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -40,6 +40,7 @@ check:
 
 tag:
 	git tag -m "$(VERSION)" "$(VERSION)" ;
+	cd server && git tag -m "$(VERSION)" "$(VERSION)"
 
 login:
 	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
@@ -71,7 +72,7 @@ promote:
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 run-dev:
-	cd server && make agent && rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+	cd server && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
