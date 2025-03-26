@@ -170,7 +170,7 @@ Parameters:
   VpcFlowLogFormat:
     Type: String
     Default: ""
-    Description: "VPC Flow Log format. If blank, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
+    Description: "VPC Flow Log format. If blank, no VPC Flow Logs will be created. If set to `default`, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
 
   VpcFlowLogS3BucketArn:
     Type: String
@@ -380,8 +380,9 @@ Conditions:
   CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
-  HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
+  HasVpcFlowLogEnabled: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
+  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, "default"]]
+  HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
 
@@ -408,6 +409,7 @@ Resources:
   # EC2.6 - VPC flow logging should be enabled in all VPCs
   VPCFlowLog:
     Type: AWS::EC2::FlowLog
+    Condition: HasVpcFlowLogEnabled
     Properties:
       ResourceType: VPC
       ResourceId: !Ref VPC
@@ -419,6 +421,7 @@ Resources:
 
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: HasVpcFlowLogEnabled
     Properties:
       RetentionInDays: !Ref VpcFlowLogRetentionInDays
 
@@ -435,6 +438,7 @@ Resources:
 
   VPCFlowLogRole:
     Type: AWS::IAM::Role
+    Condition: HasVpcFlowLogEnabled
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:

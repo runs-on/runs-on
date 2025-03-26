@@ -98,6 +98,7 @@ install-dev:
 			AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
 			ServerPassword=$(SERVER_PASSWORD) \
 			Environment=dev \
+			VpcFlowLogFormat="" \
 			RunnerCustomTags="my/tag=my/value3" \
 			VpcEndpoints=EC2+ECR \
 			NatGatewayElasticIPCount=1 \
