@@ -1212,7 +1212,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           - DeviceName: !Ref RunnerDefaultDiskDeviceName
             Ebs:
@@ -1270,7 +1269,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           - DeviceName: !Ref RunnerLargeDiskDeviceName
             Ebs:
@@ -1328,7 +1326,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           # Windows is always /dev/sda1 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
           - DeviceName: /dev/sda1
@@ -1395,7 +1392,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
             Ebs:
@@ -1644,7 +1640,16 @@ Resources:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: TagInstance
+        - PolicyName: DescribeTags
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeTags
+                # No way (that I know of) to limit this to the instance itself.
+                Resource: "*"
+        - PolicyName: CreateTags
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -1950,7 +1955,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:TerminateInstances
-                Resource: "arn:aws:ec2:*:*:instance/*"
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/provider": "runs-on.com"
