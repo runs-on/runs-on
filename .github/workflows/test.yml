@@ -52,24 +52,12 @@ jobs:
       - run: echo Hello world
       - name: Ensure custom tags are present
         run: |
-          TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
-          # Get list of tag keys
-          curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance > tag_keys.txt
-          echo "---" >> tags.txt
-          # Get values for each key
-          while read key; do
-            value=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/$key)
-            echo "$key=$value" >> tags.txt
-          done < tag_keys.txt
-          echo "---" >> tags.txt
-          cat tags.txt
-          sleep 1
-          set -x
-          # runner tags
-          grep "tag-custom-key1" tags.txt | grep "tag-custom-value1"
-          # tag without values are only present as keys
-          grep "tag-custom-key2-no-value" tag_keys.txt
-          grep -q -v "tag-custom-key2-no-value" tags.txt
+          aws ec2 describe-tags --filters "Name=resource-id,Values=$RUNS_ON_INSTANCE_ID" --query "Tags[].{key:Key,value:Value}" --output json --max-items 40 > tags.json
+          cat tags.json
+           # Test for tag with value
+          jq -e '.[] | select(.key=="tag-custom-key1" and .value=="tag-custom-value1")' tags.json
+          # Test for tag without value
+          jq -e '.[] | select(.key=="tag-custom-key2-no-value" and .value=="")' tags.json
 
   test-ssd-mount:
     runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'production' }}
