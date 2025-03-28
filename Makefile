@@ -43,6 +43,8 @@ tag:
 	cd server && git tag -m "$(VERSION)" "$(VERSION)"
 
 release:
+	git push origin --tags
+	cd server && git push origin --tags
 	TAG=$(VERSION) ./scripts/generate-release.sh
 
 login:
