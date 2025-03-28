@@ -1995,6 +1995,9 @@ Resources:
       AlarmDescription: !Sub "RunsOn daily usage exceeds ${AppAlarmDailyMinutes} minutes"
       Namespace: RunsOn
       MetricName: minutesNoDimension
+      Dimensions:
+        - Name: StackName
+          Value: !Ref AWS::StackName
       Statistic: Sum
       Period: 86400 # 24h
       EvaluationPeriods: 1
