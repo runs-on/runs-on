@@ -52,6 +52,10 @@ build-push: login
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
+tunnel:
+	# https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/local-management/create-local-tunnel/
+	cloudflared tunnel run runs-on-dev
+
 # generates a dev release
 dev: login
 	docker buildx build --push \
