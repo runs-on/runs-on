@@ -338,7 +338,7 @@ Parameters:
 Mappings:
   App:
     Image:
-      Tag: "v2.7.1-dev"
+      Tag: "v2.7.2-dev"
 
 Conditions:
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
@@ -1192,6 +1192,11 @@ Resources:
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1249,6 +1254,11 @@ Resources:
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1306,6 +1316,11 @@ Resources:
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1372,6 +1387,11 @@ Resources:
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1856,13 +1876,13 @@ Resources:
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
-                Value: !Ref EC2FleetLaunchTemplateLinuxDefault
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
-                Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxLarge, !GetAtt EC2FleetLaunchTemplateLinuxLarge.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
-                Value: !Ref EC2FleetLaunchTemplateWindowsDefault
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_LARGE
-                Value: !Ref EC2FleetLaunchTemplateWindowsLarge
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsLarge, !GetAtt EC2FleetLaunchTemplateWindowsLarge.LatestVersionNumber]]
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
@@ -2357,16 +2377,16 @@ Outputs:
     Value: !Ref DefaultAdmins
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateLinuxDefault
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
   RunsOnLaunchTemplateLinuxLarge:
     Description: Large Linux launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxLarge, !GetAtt EC2FleetLaunchTemplateLinuxLarge.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsDefault:
     Description: Default Windows launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateWindowsDefault
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsLarge:
     Description: Large Windows launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateWindowsLarge
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsLarge, !GetAtt EC2FleetLaunchTemplateWindowsLarge.LatestVersionNumber]]
   RunsOnAppVersion:
     Description: Version of the RunsOn service
     Value: !FindInMap [App, Image, Tag]
