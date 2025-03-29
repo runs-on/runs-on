@@ -74,7 +74,7 @@ Parameters:
   GithubEnterpriseUrl:
     Type: String
     Default: ""
-    Description: "Set this only if you use a self-hosted GitHub Enterprise Server (GHES) instance. For instance if your GHES instance lives at https://github.mycompany.com, then the value of this parameter should be: https://github.mycompany.com"
+    Description: "Leave blank, unless you use a self-hosted GitHub Enterprise Server (GHES) instance. In that case, if your GHES instance lives at https://github.mycompany.com, then the value of this parameter should be: https://github.mycompany.com"
 
   LicenseKey:
     Type: String
