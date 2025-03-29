@@ -1,4 +1,4 @@
-VERSION=v2.7.1
+VERSION=v2.7.2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
