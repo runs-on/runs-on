@@ -63,6 +63,7 @@ Metadata:
           - AppMemory
           - AppRegistry
           - SpotCircuitBreaker
+          - S3CacheExpirationInDays
           - CostAllocationTag
 
 Parameters:
@@ -324,6 +325,11 @@ Parameters:
     Type: String
     Default: ""
     Description: Password for the /metrics Prometheus endpoint (https://runs-on.com/monitoring/metrics/#prometheus-metrics). If blank, the endpoint will be disabled.
+
+  S3CacheExpirationInDays:
+    Type: Number
+    Default: 10
+    Description: "Number of days to keep cache entries in the S3 cache bucket."
 
   CostAllocationTag:
     Type: String
@@ -1552,7 +1558,7 @@ Resources:
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
-            ExpirationInDays: 10
+            ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
               NoncurrentDays: 10
       LoggingConfiguration:
