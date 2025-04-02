@@ -5,28 +5,35 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "App configuration [required]"
+          default: "Main configuration [required]"
         Parameters:
           - GithubOrganization
           - GithubEnterpriseUrl
           - LicenseKey
           - EmailAddress
+          - VpcConfiguration # new or existing
       - Label:
-          default: "VPC configuration [optional]"
+          default: "Reuse existing VPC [optional]"
+        Parameters:
+          - ExistingVpcId
+          - ExistingVpcSubnetIds
+          - ExistingVpcSecurityGroupId
+      - Label:
+          default: "Create new VPC [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
           - VpcEndpoints
-          - Private
           - NatGatewayAvailability
           - NatGatewayElasticIPCount
-          - Ipv6Enabled
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
           - VpcFlowLogRetentionInDays
       - Label:
-          default: "Security settings [optional]"
+          default: "Network and Security settings [optional]"
         Parameters:
+          - Private
+          - Ipv6Enabled
           - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
@@ -88,6 +95,29 @@ Parameters:
     Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
     MinLength: 1
 
+  VpcConfiguration:
+    Type: String
+    Default: "new"
+    AllowedValues:
+      - "new"
+      - "existing"
+    Description: "Create a new VPC or reuse an existing one. If you select to reuse an existing VPC, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn. To get started quickly, we recommend using the 'new' option."
+
+  ExistingVpcId:
+    Type: String
+    Description: "ID of the existing VPC to reuse."
+    Default: ""
+
+  ExistingVpcSubnetIds:
+    Type: CommaDelimitedList
+    Description: "Subnet IDs (public, private, or both) of the existing VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Default: ""
+
+  ExistingVpcSecurityGroupId:
+    Type: String
+    Description: "Security group ID of the existing VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, and any other service your jobs will call."
+    Default: ""
+
   Environment:
     Type: String
     Default: "production"
@@ -117,7 +147,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues.
+    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues. If enabled and reusing a VPC, ensure the VPC is IPv6 enabled.
 
   SSHAllowed:
     Type: String
@@ -347,11 +377,13 @@ Mappings:
       Tag: "v2.8.0-dev"
 
 Conditions:
+  NewVpc: !Equals [!Ref VpcConfiguration, "new"]
+  ExistingVpc: !Equals [!Ref VpcConfiguration, "existing"]
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  HasPrivateSubnet: !And [!Condition NewVpc, !Not [!Equals [!Ref Private, "false"]]]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
@@ -386,7 +418,7 @@ Conditions:
   CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
   CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogEnabled: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
+  HasVpcFlowLogEnabled: !And [!Condition NewVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, "default"]]
   HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
@@ -394,6 +426,7 @@ Conditions:
 
 Resources:
   VPC:
+    Condition: NewVpc
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCidrBlock
@@ -407,6 +440,7 @@ Resources:
           Value: !Sub ${AWS::StackName}-VPC
 
   VPCIPv6CidrBlock:
+    Condition: NewVpc
     Type: AWS::EC2::VPCCidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -469,6 +503,7 @@ Resources:
 
   PrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -479,6 +514,7 @@ Resources:
 
   PrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -489,6 +525,7 @@ Resources:
 
   PrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -547,29 +584,34 @@ Resources:
 
   EgressOnlyInternetGateway:
     Type: AWS::EC2::EgressOnlyInternetGateway
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateSubnet1RouteTable
 
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateSubnet2RouteTable
 
   PrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateSubnet3RouteTable
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -596,6 +638,7 @@ Resources:
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -622,6 +665,7 @@ Resources:
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -981,6 +1025,7 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1007,6 +1052,7 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1033,6 +1079,7 @@ Resources:
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: NewVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1059,6 +1106,7 @@ Resources:
 
   S3VpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       ServiceName:
@@ -1072,6 +1120,7 @@ Resources:
 
   VPCEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: NewVpc
     Properties:
       GroupDescription: Security group for VPC Endpoints (EC2 and ECR)
       VpcId: !Ref VPC
@@ -1138,6 +1187,7 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Condition: NewVpc
     Properties:
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1147,12 +1197,14 @@ Resources:
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: NewVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -1163,6 +1215,7 @@ Resources:
 
   PublicRoute:
     Type: AWS::EC2::Route
+    Condition: NewVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1171,6 +1224,7 @@ Resources:
 
   PublicRouteIPv6:
     Type: AWS::EC2::Route
+    Condition: NewVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1179,18 +1233,21 @@ Resources:
 
   SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NewVpc
     Properties:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
@@ -1243,7 +1300,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1305,7 +1362,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1368,7 +1425,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1438,7 +1495,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1462,6 +1519,7 @@ Resources:
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: NewVpc
     Properties:
       GroupDescription: Security group for SSH access
       VpcId:
@@ -1528,7 +1586,7 @@ Resources:
             Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
             Condition:
               StringEquals:
-                aws:SourceVpce: !Ref S3VpcEndpoint
+                aws:SourceVpc: !If [ExistingVpc, !Ref ExistingVpcId, !Ref VPC]
           - Sid: DenyUnencryptedConnections
             Effect: Deny
             Principal: "*"
@@ -1841,7 +1899,7 @@ Resources:
                 Value: !Ref CostAllocationTag
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
-              - Name: RUNS_ON_ORG
+              - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_VERSION
                 Value: !FindInMap [App, Image, Tag]
@@ -1854,7 +1912,7 @@ Resources:
               - Name: RUNS_ON_BUCKET_CACHE
                 Value: !Ref S3BucketCache
               - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !Ref SecurityGroup
+                Value: !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_INSTANCE_ROLE_NAME
@@ -1865,18 +1923,8 @@ Resources:
                 Value: !Ref AWS::Region
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
-              - Name: RUNS_ON_PUBLIC_SUBNET1
-                Value: !Ref PublicSubnet1
-              - Name: RUNS_ON_PUBLIC_SUBNET2
-                Value: !Ref PublicSubnet2
-              - Name: RUNS_ON_PUBLIC_SUBNET3
-                Value: !Ref PublicSubnet3
-              - Name: RUNS_ON_PRIVATE_SUBNET1
-                Value: !Ref PrivateSubnet1
-              - Name: RUNS_ON_PRIVATE_SUBNET2
-                Value: !Ref PrivateSubnet2
-              - Name: RUNS_ON_PRIVATE_SUBNET3
-                Value: !Ref PrivateSubnet3
+              - Name: RUNS_ON_SUBNET_IDS
+                Value: !If [ExistingVpc, !Join [",", !Ref ExistingVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
@@ -1941,6 +1989,8 @@ Resources:
                 Action:
                   - ec2:DescribeImages
                   - ec2:DescribeInstances
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeRouteTables
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
                   - cloudwatch:PutMetricData
@@ -2269,43 +2319,46 @@ Outputs:
   RunsOnService:
     Description: Link to the AppRunner service in AWS console
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
-  RunsOnOrg:
-    Description: GitHub organization or personal account
-    Value: !Ref GithubOrganization
-  RunsOnLicenseKey:
-    Description: License key
-    Value: !Ref LicenseKey
+  RunsOnAppVersion:
+    Description: Version of the RunsOn service
+    Value: !FindInMap [App, Image, Tag]
+  RunsOnInstanceRoleName:
+    Description: Name of the instance role for the RunsOn service
+    Value: !Ref EC2InstanceRole
   RunsOnRegion:
     Description: AWS region
     Value: !Ref AWS::Region
   RunsOnVPCId:
     Description: VPC ID
-    Value: !Ref VPC
+    Value: !If [NewVpc, !Ref VPC, !Ref ExistingVpcId]
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
+  RunsOnSubnetIds:
+    Description: Subnet IDs
+    Value: !If [ExistingVpc, !Join [",", !Ref ExistingVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
-    Value: !Ref VpcCidrBlock
+    Value: !If [NewVpc, !Ref VpcCidrBlock, !Ref "AWS::NoValue"]
     Export:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicRouteTableId:
     Description: Public Route Table ID
-    Value: !Ref PublicRouteTable
+    Value: !If [NewVpc, !Ref PublicRouteTable, !Ref "AWS::NoValue"]
     Export:
       Name: !Sub "${AWS::StackName}-PublicRouteTableId"
   RunsOnPrivateRouteTable1Id:
     Description: Private Route Table 1 ID
-    Value: !Ref PrivateSubnet1RouteTable
+    Value: !If [NewVpc, !Ref PrivateSubnet1RouteTable, !Ref "AWS::NoValue"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable1Id"
   RunsOnPrivateRouteTable2Id:
     Description: Private Route Table 2 ID
-    Value: !Ref PrivateSubnet2RouteTable
+    Value: !If [NewVpc, !Ref PrivateSubnet2RouteTable, !Ref "AWS::NoValue"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable2Id"
   RunsOnPrivateRouteTable3Id:
     Description: Private Route Table 3 ID
-    Value: !Ref PrivateSubnet3RouteTable
+    Value: !If [NewVpc, !Ref PrivateSubnet3RouteTable, !Ref "AWS::NoValue"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
   RunsOnEgressStaticIps:
@@ -2327,48 +2380,12 @@ Outputs:
               - !If [CreateElasticIP7, !Ref ElasticIP7, !Ref "AWS::NoValue"]
               - !If [CreateElasticIP8, !Ref ElasticIP8, !Ref "AWS::NoValue"]
       - ""
-  RunsOnPublicSubnet1:
-    Description: Public subnet 1
-    Value: !Ref PublicSubnet1
-  RunsOnPublicSubnet2:
-    Description: Public subnet 2
-    Value: !Ref PublicSubnet2
-  RunsOnPublicSubnet3:
-    Description: Public subnet 3
-    Value: !Ref PublicSubnet3
-  RunsOnPrivateSubnet1:
-    Description: Private subnet 1
-    Value: !Ref PrivateSubnet1
-  RunsOnPrivateSubnet2:
-    Description: Private subnet 2
-    Value: !Ref PrivateSubnet2
-  RunsOnPrivateSubnet3:
-    Description: Private subnet 3
-    Value: !Ref PrivateSubnet3
   RunsOnPrivate:
     Description: Private subnets enabled
     Value: !Ref Private
-  RunsOnRunnerDefaultDiskSize:
-    Description: Default disk size for runners
-    Value: !Ref RunnerDefaultDiskSize
-  RunsOnRunnerLargeDiskSize:
-    Description: Large disk size for runners
-    Value: !Ref RunnerLargeDiskSize
-  RunsOnRunnerCustomTags:
-    Description: Custom tags for runners
-    Value: !Join [",", !Ref RunnerCustomTags]
-  RunsOnInstanceProfileArn:
-    Description: Runner instance profile ARN
-    Value: !GetAtt EC2InstanceProfile.Arn
-  RunsOnInstanceProfileName:
-    Description: Runner instance profile Name
-    Value: !Ref EC2InstanceProfile
-  RunsOnInstanceRoleName:
-    Description: Runner instance role Name
-    Value: !Ref EC2InstanceRole
   RunsOnSecurityGroupId:
     Description: Security group for runners
-    Value: !Ref SecurityGroup
+    Value: !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
   RunsOnBucketConfig:
     Description: S3 bucket for storing configuration
     Value: !Ref S3Bucket
@@ -2378,9 +2395,6 @@ Outputs:
   RunsOnTopicArn:
     Description: SNS Topic where email alerts and reports are sent
     Value: !Ref AlertTopic
-  RunsOnDefaultAdmins:
-    Description: Default GitHub usernames with SSH access to the runners
-    Value: !Ref DefaultAdmins
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
     Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
@@ -2393,15 +2407,6 @@ Outputs:
   RunsOnLaunchTemplateWindowsLarge:
     Description: Large Windows launch template for the RunsOn service
     Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsLarge, !GetAtt EC2FleetLaunchTemplateWindowsLarge.LatestVersionNumber]]
-  RunsOnAppVersion:
-    Description: Version of the RunsOn service
-    Value: !FindInMap [App, Image, Tag]
-  RunsOnStackName:
-    Description: Name of the stack
-    Value: !Ref AWS::StackName
-  RunsOnAppEc2QueueSize:
-    Description: Size of the EC2 queue
-    Value: !Ref AppEc2QueueSize
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
@@ -2414,15 +2419,6 @@ Outputs:
   RunsOnQueueEvents:
     Description: SQS queue for the RunsOn service, used for events from other AWS services
     Value: !Ref RunsOnQueueEvents
-  RunsOnCostReportsEnabled:
-    Description: Enable or disable cost reports sent by email
-    Value: !Ref CostReportsEnabled
-  RunsOnServerPassword:
-    Description: Password for the RunsOn server
-    Value: !Ref ServerPassword
-  RunsOnCostAllocationTag:
-    Description: Cost allocation tag for the RunsOn service
-    Value: !Ref CostAllocationTag
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
