@@ -413,9 +413,9 @@ Conditions:
   CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
   CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
   CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateInterfaceEndpointEc2: !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
-  CreateInterfaceEndpointEcrApi: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
-  CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
+  CreateInterfaceEndpointEc2: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrApi: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrDocker: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
   CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
   HasVpcFlowLogEnabled: !And [!Condition NewVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
@@ -2338,27 +2338,27 @@ Outputs:
     Value: !If [ExistingVpc, !Join [",", !Ref ExistingVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
-    Value: !If [NewVpc, !Ref VpcCidrBlock, !Ref "AWS::NoValue"]
+    Value: !If [NewVpc, !Ref VpcCidrBlock, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicRouteTableId:
     Description: Public Route Table ID
-    Value: !If [NewVpc, !Ref PublicRouteTable, !Ref "AWS::NoValue"]
+    Value: !If [NewVpc, !Ref PublicRouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PublicRouteTableId"
   RunsOnPrivateRouteTable1Id:
     Description: Private Route Table 1 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet1RouteTable, !Ref "AWS::NoValue"]
+    Value: !If [NewVpc, !Ref PrivateSubnet1RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable1Id"
   RunsOnPrivateRouteTable2Id:
     Description: Private Route Table 2 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet2RouteTable, !Ref "AWS::NoValue"]
+    Value: !If [NewVpc, !Ref PrivateSubnet2RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable2Id"
   RunsOnPrivateRouteTable3Id:
     Description: Private Route Table 3 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet3RouteTable, !Ref "AWS::NoValue"]
+    Value: !If [NewVpc, !Ref PrivateSubnet3RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
   RunsOnEgressStaticIps:
