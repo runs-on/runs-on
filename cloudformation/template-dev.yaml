@@ -1911,6 +1911,8 @@ Resources:
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
                 Value: !Ref S3BucketCache
+              - Name: RUNS_ON_VPC_ID
+                Value: !If [ExistingVpc, !Ref ExistingVpcId, !Ref VPC]
               - Name: RUNS_ON_SECURITY_GROUP_ID
                 Value: !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
