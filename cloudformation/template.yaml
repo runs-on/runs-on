@@ -2014,6 +2014,14 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+              - Effect: Allow
+                Action:
+                  - kms:CreateGrant
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:GenerateDataKey*
+                  - kms:ReEncrypt*
+                Resource: "*"
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
