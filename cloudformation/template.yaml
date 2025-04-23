@@ -30,6 +30,7 @@ Metadata:
           - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
+          - AppCustomPolicy
           - DefaultPermissionBoundaryArn
           - ServerPassword
           - DefaultAdmins
@@ -302,6 +303,11 @@ Parameters:
     Default: ""
     Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances."
 
+  AppCustomPolicy:
+    Type: String
+    Default: ""
+    Description: "Optional managed IAM Policy ARN to assign to the App runner service role."
+
   ECInstanceDetailedMonitoring:
     Type: String
     Default: "false"
@@ -356,6 +362,7 @@ Conditions:
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
+  AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
   CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
@@ -1920,6 +1927,8 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
+      ManagedPolicyArns:
+        !If [AppCustomPolicyProvided, [!Ref AppCustomPolicy], []]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2014,14 +2023,6 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
-              - Effect: Allow
-                Action:
-                  - kms:CreateGrant
-                  - kms:Decrypt
-                  - kms:DescribeKey
-                  - kms:GenerateDataKey*
-                  - kms:ReEncrypt*
-                Resource: "*"
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
