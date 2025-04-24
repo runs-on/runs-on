@@ -1305,13 +1305,14 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -e
+              #!/bin/bash
               _the_end() {
                 echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              set -ex
+              export RUNS_ON_BOOSTRAP_PATH="s3://${S3Bucket}/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
+              b=$(mktemp) ; aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.sh $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
   EC2FleetLaunchTemplateLinuxLarge:
@@ -1367,13 +1368,14 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -e
+              #!/bin/bash
               _the_end() {
                 echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              set -ex
+              export RUNS_ON_BOOSTRAP_PATH="s3://${S3Bucket}/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
+              b=$(mktemp) ; aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.sh $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
   EC2FleetLaunchTemplateWindowsDefault:
@@ -1432,12 +1434,10 @@ Resources:
             - |
               <powershell>
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_BOOSTRAP_PATH = "s3://${S3Bucket}/agents/${AppVersion}"
                 $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
                 $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
+                aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1 $b
                 powershell -File $b
               } finally {
                 Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1502,12 +1502,10 @@ Resources:
             - |
               <powershell>
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+                $env:RUNS_ON_BOOSTRAP_PATH = "s3://${S3Bucket}/agents/${AppVersion}"
                 $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
                 $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
+                aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1 $b
                 powershell -File $b
               } finally {
                 Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1579,14 +1577,6 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowReadForAgentBinariesFromVpcEndpoint
-            Effect: Allow
-            Principal: "*"
-            Action: "s3:GetObject"
-            Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
-            Condition:
-              StringEquals:
-                aws:SourceVpc: !If [ExistingVpc, !Ref ExistingVpcId, !Ref VPC]
           - Sid: DenyUnencryptedConnections
             Effect: Deny
             Principal: "*"
@@ -1796,6 +1786,11 @@ Resources:
                         !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
