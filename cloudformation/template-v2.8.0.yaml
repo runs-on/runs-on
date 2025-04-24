@@ -11,15 +11,15 @@ Metadata:
           - GithubEnterpriseUrl
           - LicenseKey
           - EmailAddress
-          - VpcConfiguration # new or existing
+          - NetworkingStack
       - Label:
-          default: "Reuse existing VPC [optional]"
+          default: "Use external networking stack [optional]"
         Parameters:
-          - ExistingVpcId
-          - ExistingVpcSubnetIds
-          - ExistingVpcSecurityGroupId
+          - ExternalVpcId
+          - ExternalVpcSubnetIds
+          - ExternalVpcSecurityGroupId
       - Label:
-          default: "Create new VPC [optional]"
+          default: "Use bundled networking stack [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
@@ -95,27 +95,27 @@ Parameters:
     Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
     MinLength: 1
 
-  VpcConfiguration:
+  NetworkingStack:
     Type: String
-    Default: "new"
+    Default: "embedded"
     AllowedValues:
-      - "new"
-      - "existing"
-    Description: "Create a new VPC or reuse an existing one. If you select to reuse an existing VPC, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn. To get started quickly, we recommend using the 'new' option."
+      - "embedded"
+      - "external"
+    Description: "Let RunsOn manage your networking stack (`embedded`), or use a stack under your control (`external`). If you select `external`, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn. To get started quickly, we recommend using the 'embedded' option."
 
-  ExistingVpcId:
+  ExternalVpcId:
     Type: String
-    Description: "ID of the existing VPC to reuse."
+    Description: "ID of the external VPC to reuse."
     Default: ""
 
-  ExistingVpcSubnetIds:
+  ExternalVpcSubnetIds:
     Type: CommaDelimitedList
-    Description: "Subnet IDs (public, private, or both) of the existing VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Description: "Subnet IDs (public, private, or both) of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
     Default: ""
 
-  ExistingVpcSecurityGroupId:
+  ExternalVpcSecurityGroupId:
     Type: String
-    Description: "Security group ID of the existing VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, and any other service your jobs will call."
+    Description: "Security group ID of the external VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, and any other service your jobs will call."
     Default: ""
 
   Environment:
@@ -377,13 +377,13 @@ Mappings:
       Tag: "v2.8.0"
 
 Conditions:
-  NewVpc: !Equals [!Ref VpcConfiguration, "new"]
-  ExistingVpc: !Equals [!Ref VpcConfiguration, "existing"]
+  EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
+  ExternalVpc: !Equals [!Ref NetworkingStack, "external"]
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !And [!Condition NewVpc, !Not [!Equals [!Ref Private, "false"]]]
+  HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref Private, "false"]]]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
@@ -413,12 +413,12 @@ Conditions:
   CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
   CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
   CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateInterfaceEndpointEc2: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
-  CreateInterfaceEndpointEcrApi: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
-  CreateInterfaceEndpointEcrDocker: !And [!Condition NewVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEc2: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrApi: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrDocker: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
   CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogEnabled: !And [!Condition NewVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
+  HasVpcFlowLogEnabled: !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, "default"]]
   HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
@@ -426,7 +426,7 @@ Conditions:
 
 Resources:
   VPC:
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCidrBlock
@@ -440,7 +440,7 @@ Resources:
           Value: !Sub ${AWS::StackName}-VPC
 
   VPCIPv6CidrBlock:
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Type: AWS::EC2::VPCCidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -503,7 +503,7 @@ Resources:
 
   PrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -514,7 +514,7 @@ Resources:
 
   PrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -525,7 +525,7 @@ Resources:
 
   PrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -584,34 +584,34 @@ Resources:
 
   EgressOnlyInternetGateway:
     Type: AWS::EC2::EgressOnlyInternetGateway
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateSubnet1RouteTable
 
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateSubnet2RouteTable
 
   PrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateSubnet3RouteTable
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -638,7 +638,7 @@ Resources:
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -665,7 +665,7 @@ Resources:
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1025,7 +1025,7 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1052,7 +1052,7 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1079,7 +1079,7 @@ Resources:
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1106,7 +1106,7 @@ Resources:
 
   S3VpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       ServiceName:
@@ -1120,7 +1120,7 @@ Resources:
 
   VPCEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       GroupDescription: Security group for VPC Endpoints (EC2 and ECR)
       VpcId: !Ref VPC
@@ -1187,7 +1187,7 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1197,14 +1197,14 @@ Resources:
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -1215,7 +1215,7 @@ Resources:
 
   PublicRoute:
     Type: AWS::EC2::Route
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1224,7 +1224,7 @@ Resources:
 
   PublicRouteIPv6:
     Type: AWS::EC2::Route
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1233,21 +1233,21 @@ Resources:
 
   SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
@@ -1300,18 +1300,19 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -e
+              #!/bin/bash
               _the_end() {
                 echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
               } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              set -ex
+              export RUNS_ON_BOOSTRAP_PATH="s3://${S3Bucket}/agents/${AppVersion}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
+              b=$(mktemp) ; aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.sh $b ; bash -ex $b
             - AppVersion: !FindInMap [App, Image, Tag]
 
   EC2FleetLaunchTemplateLinuxLarge:
@@ -1362,7 +1363,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1425,7 +1426,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1495,7 +1496,7 @@ Resources:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             Groups:
-              - !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1519,7 +1520,7 @@ Resources:
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
-    Condition: NewVpc
+    Condition: EmbeddedVpc
     Properties:
       GroupDescription: Security group for SSH access
       VpcId:
@@ -1542,6 +1543,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
@@ -1579,14 +1585,14 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowReadForAgentBinariesFromVpcEndpoint
-            Effect: Allow
-            Principal: "*"
-            Action: "s3:GetObject"
-            Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
-            Condition:
-              StringEquals:
-                aws:SourceVpc: !If [ExistingVpc, !Ref ExistingVpcId, !Ref VPC]
+          # - Sid: AllowReadForAgentBinariesFromVpc
+          #   Effect: Allow
+          #   Principal: "*"
+          #   Action: "s3:GetObject"
+          #   Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
+          #   Condition:
+          #     StringEquals:
+          #       aws:SourceVpc: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
           - Sid: DenyUnencryptedConnections
             Effect: Deny
             Principal: "*"
@@ -1603,6 +1609,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Suspended
       LifecycleConfiguration:
@@ -1651,6 +1662,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       OwnershipControls:
@@ -1770,6 +1786,7 @@ Resources:
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: "RunsOn/Runners"
+      
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -1796,6 +1813,11 @@ Resources:
                         !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1912,9 +1934,9 @@ Resources:
               - Name: RUNS_ON_BUCKET_CACHE
                 Value: !Ref S3BucketCache
               - Name: RUNS_ON_VPC_ID
-                Value: !If [ExistingVpc, !Ref ExistingVpcId, !Ref VPC]
+                Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
               - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+                Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_INSTANCE_ROLE_NAME
@@ -1926,7 +1948,7 @@ Resources:
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_SUBNET_IDS
-                Value: !If [ExistingVpc, !Join [",", !Ref ExistingVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
@@ -2066,6 +2088,9 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -2332,35 +2357,35 @@ Outputs:
     Value: !Ref AWS::Region
   RunsOnVPCId:
     Description: VPC ID
-    Value: !If [NewVpc, !Ref VPC, !Ref ExistingVpcId]
+    Value: !If [EmbeddedVpc, !Ref VPC, !Ref ExternalVpcId]
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
   RunsOnSubnetIds:
     Description: Subnet IDs
-    Value: !If [ExistingVpc, !Join [",", !Ref ExistingVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
-    Value: !If [NewVpc, !Ref VpcCidrBlock, "-"]
+    Value: !If [EmbeddedVpc, !Ref VpcCidrBlock, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicRouteTableId:
     Description: Public Route Table ID
-    Value: !If [NewVpc, !Ref PublicRouteTable, "-"]
+    Value: !If [EmbeddedVpc, !Ref PublicRouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PublicRouteTableId"
   RunsOnPrivateRouteTable1Id:
     Description: Private Route Table 1 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet1RouteTable, "-"]
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet1RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable1Id"
   RunsOnPrivateRouteTable2Id:
     Description: Private Route Table 2 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet2RouteTable, "-"]
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet2RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable2Id"
   RunsOnPrivateRouteTable3Id:
     Description: Private Route Table 3 ID
-    Value: !If [NewVpc, !Ref PrivateSubnet3RouteTable, "-"]
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet3RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
   RunsOnEgressStaticIps:
@@ -2387,7 +2412,7 @@ Outputs:
     Value: !Ref Private
   RunsOnSecurityGroupId:
     Description: Security group for runners
-    Value: !If [ExistingVpc, !Ref ExistingVpcSecurityGroupId, !Ref SecurityGroup]
+    Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
   RunsOnBucketConfig:
     Description: S3 bucket for storing configuration
     Value: !Ref S3Bucket
