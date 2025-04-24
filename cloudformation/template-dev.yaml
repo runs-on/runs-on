@@ -1540,6 +1540,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
@@ -1593,6 +1598,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Suspended
       LifecycleConfiguration:
@@ -1641,6 +1651,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       OwnershipControls:
