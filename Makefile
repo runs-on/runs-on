@@ -29,8 +29,9 @@ show:
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION_DEV)"|' cloudformation/template-dev.yaml
-	sed -i.bak 's|Tag: "v.*"|Tag: "$(VERSION)"|' cloudformation/template-$(VERSION).yaml
+	sed -i.bak 's|ImageTag: .*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
+	sed -i.bak 's|ImageTag: .*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
+	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
@@ -86,6 +87,14 @@ run-dev:
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 STACK_DEV_NAME=runs-on
+
+install-external-networking-stack:
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-disable-rollback \
+		--no-cli-pager --fail-on-empty-changeset \
+		--stack-name runs-on-external-networking \
+		--region=us-east-1 \
+		--template-file ./cloudformation/networking/public-private-managed-nat.yaml
 
 # Install with the dev template
 install-dev:
