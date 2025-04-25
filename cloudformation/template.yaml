@@ -373,8 +373,9 @@ Parameters:
 
 Mappings:
   App:
-    Image:
-      Tag: "v2.8.0"
+    Versions:
+      BootstrapTag: v0.1.9
+      ImageTag: v2.8.0
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1305,15 +1306,13 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash
-              _the_end() {
-                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
-              } ; trap _the_end EXIT INT TERM
-              set -ex
-              export RUNS_ON_BOOSTRAP_PATH="s3://${S3Bucket}/agents/${AppVersion}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; aws s3 cp $RUNS_ON_BOOSTRAP_PATH/bootstrap.sh $b ; bash -ex $b
-            - AppVersion: !FindInMap [App, Image, Tag]
+              #!/bin/bash -ex
+              _the_end() { echo "user-data: Going to shut down in a few seconds..." ; sleep 180 ; shutdown -h now; } ; trap _the_end EXIT INT TERM
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
+            - AppVersion: !FindInMap [App, Versions, ImageTag]
+              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1368,14 +1367,13 @@ Resources:
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -e
-              _the_end() {
-                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
-              } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
-            - AppVersion: !FindInMap [App, Image, Tag]
+              #!/bin/bash -ex
+              _the_end() { echo "user-data: Going to shut down in a few seconds..." ; sleep 180 ; shutdown -h now; } ; trap _the_end EXIT INT TERM
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
+            - AppVersion: !FindInMap [App, Versions, ImageTag]
+              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1432,21 +1430,21 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:AWS_REGION = "${AWS::Region}"
+              $bootstrapPath = "C:\runs-on\bootstrap.exe"
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
-                powershell -File $b
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapPath)
+                Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapPath -TimeoutSec 15 -RetryIntervalSec 3 -MaximumRetryCount 5
+                & $bootstrapPath --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE"
               } finally {
                 Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 45
+                Start-Sleep -Seconds 180
                 Stop-Computer -Force
               }
               </powershell>
-            - AppVersion: !FindInMap [App, Image, Tag]
+            - AppVersion: !FindInMap [App, Versions, ImageTag]
+              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1502,21 +1500,21 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:AWS_REGION = "${AWS::Region}"
+              $bootstrapPath = "C:\runs-on\bootstrap.exe"
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
-                powershell -File $b
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapPath)
+                Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapPath -TimeoutSec 15 -RetryIntervalSec 3 -MaximumRetryCount 5
+                & $bootstrapPath --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE"
               } finally {
                 Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 45
+                Start-Sleep -Seconds 180
                 Stop-Computer -Force
               }
               </powershell>
-            - AppVersion: !FindInMap [App, Image, Tag]
+            - AppVersion: !FindInMap [App, Versions, ImageTag]
+              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -1585,14 +1583,6 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          # - Sid: AllowReadForAgentBinariesFromVpc
-          #   Effect: Allow
-          #   Principal: "*"
-          #   Action: "s3:GetObject"
-          #   Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
-          #   Condition:
-          #     StringEquals:
-          #       aws:SourceVpc: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
           - Sid: DenyUnencryptedConnections
             Effect: Deny
             Principal: "*"
@@ -1786,7 +1776,6 @@ Resources:
                 Condition:
                   StringEquals:
                     cloudwatch:namespace: "RunsOn/Runners"
-      
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -2088,9 +2077,6 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
-      Tags:
-        - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
