@@ -1307,7 +1307,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              _the_end() { echo "user-data: Going to shut down in a few seconds..." ; sleep 180 ; shutdown -h now; } ; trap _the_end EXIT INT TERM
+              _the_end() { echo "THE END" ; sleep 180 ; shutdown -h now ; } ; trap _the_end EXIT INT TERM
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
@@ -1368,7 +1368,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              _the_end() { echo "user-data: Going to shut down in a few seconds..." ; sleep 180 ; shutdown -h now; } ; trap _the_end EXIT INT TERM
+              _the_end() { echo "THE END" ; sleep 180 ; shutdown -h now ; } ; trap _the_end EXIT INT TERM
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
@@ -1913,7 +1913,7 @@ Resources:
               - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_VERSION
-                Value: !FindInMap [App, Image, Tag]
+                Value: !FindInMap [App, Versions, ImageTag]
               - Name: RUNS_ON_LICENSE_KEY
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
@@ -1974,7 +1974,7 @@ Resources:
                 Value: !Ref GithubEnterpriseUrl
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppVersion}"
-            - AppVersion: !FindInMap [App, Image, Tag]
+            - AppVersion: !FindInMap [App, Versions, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:
@@ -2334,7 +2334,7 @@ Outputs:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
   RunsOnAppVersion:
     Description: Version of the RunsOn service
-    Value: !FindInMap [App, Image, Tag]
+    Value: !FindInMap [App, Versions, ImageTag]
   RunsOnInstanceRoleName:
     Description: Name of the instance role for the RunsOn service
     Value: !Ref EC2InstanceRole
