@@ -13,13 +13,13 @@ Metadata:
           - EmailAddress
           - NetworkingStack
       - Label:
-          default: "Use external networking stack [optional]"
+          default: "Networking: use external stack [optional]"
         Parameters:
           - ExternalVpcId
           - ExternalVpcSubnetIds
           - ExternalVpcSecurityGroupId
       - Label:
-          default: "Use bundled networking stack [optional]"
+          default: "Networking: use bundled stack [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
@@ -58,6 +58,8 @@ Metadata:
           default: "Advanced app configuration [optional]"
         Parameters:
           - Environment
+          - CostAllocationTag
+          - SpotCircuitBreaker
           - RunnerCustomTags
           - RunnerDefaultDiskSize
           - RunnerDefaultDiskDeviceName
@@ -69,9 +71,8 @@ Metadata:
           - AppCPU
           - AppMemory
           - AppRegistry
-          - SpotCircuitBreaker
+          - AppDebug
           - S3CacheExpirationInDays
-          - CostAllocationTag
 
 Parameters:
   GithubOrganization:
@@ -264,6 +265,14 @@ Parameters:
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
     Description: "Docker image (public) registry for the RunsOn service."
 
+  AppDebug:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable debug mode for the RunsOn stack. Enabling this will switch off the auto-shutdown of the runner instances when they are unable to bootstrap.
+
   SpotCircuitBreaker:
     Type: String
     Default: "2/15/30"
@@ -374,7 +383,7 @@ Parameters:
 Mappings:
   App:
     Versions:
-      BootstrapTag: v0.1.9
+      BootstrapTag: v0.1.10
       ImageTag: v2.8.0
 
 Conditions:
@@ -1307,10 +1316,10 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              _the_end() { echo "THE END" ; sleep 180 ; shutdown -h now ; } ; trap _the_end EXIT INT TERM
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              _the_end() { if [ "$RUNS_ON_DEBUG" = "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
             - AppVersion: !FindInMap [App, Versions, ImageTag]
               BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
@@ -1368,10 +1377,10 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              _the_end() { echo "THE END" ; sleep 180 ; shutdown -h now ; } ; trap _the_end EXIT INT TERM
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              _the_end() { if [ "$RUNS_ON_DEBUG" = "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
             - AppVersion: !FindInMap [App, Versions, ImageTag]
               BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
@@ -1431,16 +1440,21 @@ Resources:
             - |
               <powershell>
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapPath = "C:\runs-on\bootstrap.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap.exe"
               try {
-                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapPath)
-                Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapPath -TimeoutSec 15 -RetryIntervalSec 3 -MaximumRetryCount 5
-                & $bootstrapPath --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE"
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
+                if (-not (Test-Path $bootstrapBin)) {
+                    Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -TimeoutSec 15
+                }
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 180
-                Stop-Computer -Force
+                if ($env:RUNS_ON_DEBUG == "true") {
+                  Write-Output "user-data: Going to shut down in a few seconds..."
+                  Start-Sleep -Seconds 180
+                  Stop-Computer -Force
+                }
               }
               </powershell>
             - AppVersion: !FindInMap [App, Versions, ImageTag]
@@ -1501,16 +1515,21 @@ Resources:
             - |
               <powershell>
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapPath = "C:\runs-on\bootstrap.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap.exe"
               try {
-                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapPath)
-                Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapPath -TimeoutSec 15 -RetryIntervalSec 3 -MaximumRetryCount 5
-                & $bootstrapPath --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE"
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
+                if (-not (Test-Path $bootstrapBin)) {
+                    Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -TimeoutSec 15
+                }
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 180
-                Stop-Computer -Force
+                if ($env:RUNS_ON_DEBUG == "true") {
+                  Write-Output "user-data: Going to shut down in a few seconds..."
+                  Start-Sleep -Seconds 180
+                  Stop-Computer -Force
+                }
               }
               </powershell>
             - AppVersion: !FindInMap [App, Versions, ImageTag]

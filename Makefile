@@ -108,6 +108,7 @@ install-dev:
 		--parameter-overrides \
 			GithubOrganization=runs-on \
 			EmailAddress=ops+dev@runs-on.com \
+			AppDebug=true \
 			Private=$(PRIVATE) \
 			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
 			DefaultAdmins="crohr,github" \
