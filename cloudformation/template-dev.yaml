@@ -37,6 +37,7 @@ Metadata:
           - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
+          - AppCustomPolicy
           - DefaultPermissionBoundaryArn
           - ServerPassword
           - DefaultAdmins
@@ -339,7 +340,12 @@ Parameters:
   EC2InstanceCustomPolicy:
     Type: String
     Default: ""
-    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances."
+    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances. Can be used to give runners access to AWS resources that you manage."
+
+  AppCustomPolicy:
+    Type: String
+    Default: ""
+    Description: "Optional managed IAM Policy ARN to assign to the App runner service role. Can be used to e.g. allow access to KMS decryption keys for AMIs."
 
   ECInstanceDetailedMonitoring:
     Type: String
@@ -398,6 +404,7 @@ Conditions:
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
+  AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
   CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
@@ -2000,6 +2007,8 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
+      ManagedPolicyArns:
+        !If [AppCustomPolicyProvided, [!Ref AppCustomPolicy], []]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName

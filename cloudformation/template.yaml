@@ -340,12 +340,12 @@ Parameters:
   EC2InstanceCustomPolicy:
     Type: String
     Default: ""
-    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances."
+    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances. Can be used to give runners access to AWS resources that you manage."
 
   AppCustomPolicy:
     Type: String
     Default: ""
-    Description: "Optional managed IAM Policy ARN to assign to the App runner service role."
+    Description: "Optional managed IAM Policy ARN to assign to the App runner service role. Can be used to e.g. allow access to KMS decryption keys for AMIs."
 
   ECInstanceDetailedMonitoring:
     Type: String
