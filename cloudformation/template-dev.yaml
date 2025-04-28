@@ -1464,6 +1464,7 @@ Resources:
                 }
               }
               </powershell>
+              <detach>true</detach>
             - AppVersion: !FindInMap [App, Versions, ImageTag]
               BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
@@ -1539,6 +1540,7 @@ Resources:
                 }
               }
               </powershell>
+              <detach>true</detach>
             - AppVersion: !FindInMap [App, Versions, ImageTag]
               BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
 
