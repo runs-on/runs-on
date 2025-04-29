@@ -78,7 +78,7 @@ Metadata:
 Parameters:
   GithubOrganization:
     Type: String
-    Description: "For instance if your GitHub organization lives at github.com/my-org, then the value of this parameter should be: my-org"
+    Description: "If your GitHub organization lives at github.com/my-org, then enter: my-org. IMPORTANT: this field is case-sensitive."
     MinLength: 1
 
   GithubEnterpriseUrl:
@@ -94,7 +94,7 @@ Parameters:
 
   EmailAddress:
     Type: String
-    Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
+    Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation (check your spam folder if needed) so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
     MinLength: 1
 
   NetworkingStack:
@@ -103,7 +103,7 @@ Parameters:
     AllowedValues:
       - "embedded"
       - "external"
-    Description: "Let RunsOn manage your networking stack (`embedded`), or use a stack under your control (`external`). If you select `external`, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn. To get started quickly, we recommend using the 'embedded' option."
+    Description: "Let RunsOn manage your networking stack (`embedded`), or use a stack under your control (`external`). If you select `external`, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn (see https://runs-on.com/networking/embedded-vs-external/ for more details). To get started quickly, we recommend using the 'embedded' option."
 
   ExternalVpcId:
     Type: String
@@ -389,7 +389,7 @@ Parameters:
 Mappings:
   App:
     Versions:
-      BootstrapTag: v0.1.10
+      BootstrapTag: v0.1.12
       ImageTag: v2.8.0-dev
 
 Conditions:
@@ -1324,7 +1324,7 @@ Resources:
             - |
               #!/bin/bash -ex
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
-              _the_end() { if [ "$RUNS_ON_DEBUG" = "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
             - AppVersion: !FindInMap [App, Versions, ImageTag]
@@ -1385,7 +1385,7 @@ Resources:
             - |
               #!/bin/bash -ex
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
-              _the_end() { if [ "$RUNS_ON_DEBUG" = "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
             - AppVersion: !FindInMap [App, Versions, ImageTag]
@@ -1453,11 +1453,12 @@ Resources:
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                    Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -TimeoutSec 15
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
+                Add-MpPreference -ExclusionProcess $bootstrapBin
                 & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                if ($env:RUNS_ON_DEBUG == "true") {
+                if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
                   Start-Sleep -Seconds 180
                   Stop-Computer -Force
@@ -1529,11 +1530,12 @@ Resources:
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                    Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -TimeoutSec 15
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
+                Add-MpPreference -ExclusionProcess $bootstrapBin
                 & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                if ($env:RUNS_ON_DEBUG == "true") {
+                if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
                   Start-Sleep -Seconds 180
                   Stop-Computer -Force
