@@ -1691,7 +1691,7 @@ Resources:
         Status: Enabled
       OwnershipControls:
         Rules:
-          - ObjectOwnership: BucketOwnerPreferred
+          - ObjectOwnership: BucketOwnerEnforced
       LifecycleConfiguration:
         Rules:
           - Id: DeleteOldLogs
