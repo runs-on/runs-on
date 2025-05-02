@@ -1323,7 +1323,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapVersion} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
@@ -1384,7 +1384,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapVersion} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
@@ -1449,7 +1449,7 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapBin = "C:\runs-on\bootstrap.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapVersion}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
@@ -1526,7 +1526,7 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapBin = "C:\runs-on\bootstrap.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapVersion}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
