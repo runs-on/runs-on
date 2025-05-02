@@ -1975,6 +1975,8 @@ Resources:
                 Value: !Ref AWS::Region
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
+              - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
+                Value: !Ref AppGithubApiStrategy
               - Name: RUNS_ON_SUBNET_IDS
                 Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
