@@ -69,6 +69,7 @@ Metadata:
           - RunnerLargeDiskDeviceName
           - RunnerLargeVolumeThroughput
           - AppEc2QueueSize
+          - AppGithubApiStrategy
           - AppCPU
           - AppMemory
           - AppRegistry
@@ -236,6 +237,14 @@ Parameters:
     Type: Number
     Default: "4000"
     Description: "Trigger an alarm if the cumulative number of minutes consumed during a day is over that number."
+
+  AppGithubApiStrategy:
+    Type: String
+    Default: "normal"
+    AllowedValues:
+      - "normal"
+      - "conservative"
+    Description: "Use normal or conservative GitHub API strategy. The conservative strategy will attempt to save GitHub API tokens by not automatically de-registering runners from the GitHub API after they are no longer needed. It's more elegant to clean them up (recommended), but in any case GitHub will eventually clean them up on their side after 24h. Especially useful if you launch tens of thousands of jobs every day."
 
   AppCPU:
     Type: Number
