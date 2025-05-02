@@ -19,7 +19,7 @@ Metadata:
           - ExternalVpcSubnetIds
           - ExternalVpcSecurityGroupId
       - Label:
-          default: "Networking: use bundled stack [optional]"
+          default: "Networking: use embedded stack [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
