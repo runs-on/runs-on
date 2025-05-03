@@ -160,43 +160,19 @@ STACK_TEST_NAME=runs-on-test
 
 # Install with the VERSION template (temporary install)
 test-install-embedded:
-	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
-		--disable-rollback \
-		--no-cli-pager --no-fail-on-empty-changeset \
-		--stack-name $(STACK_TEST_NAME) \
-		--region=us-east-1 \
-		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) Environment=test \
-		--capabilities CAPABILITY_IAM
-	@make test-show
+	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) embedded
 
 test-install-external: networking-stack
-	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
-		--no-cli-pager --no-fail-on-empty-changeset \
-		--stack-name $(STACK_TEST_NAME) \
-		--region=us-east-1 \
-		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) Environment=test NetworkingStack=external \
-			ExternalVpcId=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text) \
-			ExternalVpcSubnetIds=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`SubnetIds`].OutputValue' --output text) \
-			ExternalVpcSecurityGroupId=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`DefaultSecurityGroupId`].OutputValue' --output text) \
-		--capabilities CAPABILITY_IAM
-	@make test-show
+	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external
+
+test-install-external-private-only: networking-stack
+	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external-private-only
 
 test-install-manual:
 	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml&stackName=runs-on-test"
 
 test-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test test-smoke.yml master
-
-test-show:
-	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
-		--stack-name $(STACK_TEST_NAME) \
-		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
-		--output text) && echo "https://$${URL}"
 
 test-delete:
 	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name $(STACK_TEST_NAME)

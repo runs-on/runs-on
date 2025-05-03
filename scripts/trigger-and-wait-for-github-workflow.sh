@@ -11,6 +11,7 @@ main() {
     echo "Waiting for workflow run to complete..."
     sleep 10
     run_id=$(gh run list -R $repo --workflow=$workflow --limit=1 --json databaseId --jq '.[0].databaseId' --status queued)
+    open "https://github.com/$repo/actions/runs/$run_id"
     echo "Workflow run id: $run_id"
     gh run watch -R $repo $run_id --exit-status
 }
