@@ -106,9 +106,10 @@ install-dev:
 		--template-file ./cloudformation/template-dev.yaml \
 		--s3-bucket runs-on-tmp \
 		--parameter-overrides \
+			AppGithubApiStrategy=conservative \
 			GithubOrganization=runs-on \
 			EmailAddress=ops+dev@runs-on.com \
-			AppDebug=true \
+			AppDebug=false \
 			Private=$(PRIVATE) \
 			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
 			DefaultAdmins="crohr,github" \
