@@ -397,7 +397,7 @@ Parameters:
 
 Mappings:
   App:
-    Versions:
+    Tags:
       BootstrapTag: v0.1.12
       ImageTag: v2.8.0
 
@@ -1332,12 +1332,12 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapVersion} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
-            - AppVersion: !FindInMap [App, Versions, ImageTag]
-              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1393,12 +1393,12 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapVersion} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-linux-$(uname -i)"
-            - AppVersion: !FindInMap [App, Versions, ImageTag]
-              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1458,14 +1458,14 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapVersion}.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1475,8 +1475,8 @@ Resources:
               }
               </powershell>
               <detach>true</detach>
-            - AppVersion: !FindInMap [App, Versions, ImageTag]
-              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1535,14 +1535,14 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
-              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapVersion}.exe"
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapVersion}/bootstrap-${BootstrapVersion}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppVersion}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1552,8 +1552,8 @@ Resources:
               }
               </powershell>
               <detach>true</detach>
-            - AppVersion: !FindInMap [App, Versions, ImageTag]
-              BootstrapVersion: !FindInMap [App, Versions, BootstrapTag]
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -1951,8 +1951,10 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
-              - Name: RUNS_ON_APP_VERSION
-                Value: !FindInMap [App, Versions, ImageTag]
+              - Name: RUNS_ON_APP_TAG
+                Value: !FindInMap [App, Tags, ImageTag]
+              - Name: RUNS_ON_BOOTSTRAP_TAG
+                Value: !FindInMap [App, Tags, BootstrapTag]
               - Name: RUNS_ON_LICENSE_KEY
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
@@ -2014,8 +2016,8 @@ Resources:
               - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
                 Value: !Ref GithubEnterpriseUrl
           ImageIdentifier: !Sub
-            - "${AppRegistry}:${AppVersion}"
-            - AppVersion: !FindInMap [App, Versions, ImageTag]
+            - "${AppRegistry}:${AppTag}"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceRole:
@@ -2375,9 +2377,12 @@ Outputs:
   RunsOnService:
     Description: Link to the AppRunner service in AWS console
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
-  RunsOnAppVersion:
-    Description: Version of the RunsOn service
-    Value: !FindInMap [App, Versions, ImageTag]
+  RunsOnAppTag:
+    Description: RunsOn application tag
+    Value: !FindInMap [App, Tags, ImageTag]
+  RunsOnBootstrapTag:
+    Description: RunsOn bootstrap tag
+    Value: !FindInMap [App, Tags, BootstrapTag]
   RunsOnInstanceRoleName:
     Description: Name of the instance role for the RunsOn service
     Value: !Ref EC2InstanceRole
