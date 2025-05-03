@@ -399,7 +399,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.8.0-dev
+      ImageTag: v2.8.1-dev
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1337,7 +1337,7 @@ Resources:
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
-              BootstrapTag: v0.1.12
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1398,7 +1398,7 @@ Resources:
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
-              BootstrapTag: v0.1.12
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1476,7 +1476,7 @@ Resources:
               </powershell>
               <detach>true</detach>
             - AppTag: !FindInMap [App, Tags, ImageTag]
-              BootstrapTag: v0.1.12
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1553,7 +1553,7 @@ Resources:
               </powershell>
               <detach>true</detach>
             - AppTag: !FindInMap [App, Tags, ImageTag]
-              BootstrapTag: v0.1.12
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -2380,7 +2380,7 @@ Outputs:
   RunsOnAppTag:
     Description: RunsOn application tag
     Value: !FindInMap [App, Tags, ImageTag]
-  RunsOnBootstrapTag: v0.1.12
+  RunsOnBootstrapTag:
     Description: RunsOn bootstrap tag
     Value: !FindInMap [App, Tags, BootstrapTag]
   RunsOnInstanceRoleName:

@@ -1,4 +1,4 @@
-VERSION=v2.8.0
+VERSION=v2.8.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -29,8 +29,8 @@ show:
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	sed -i.bak 's|ImageTag: .*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
-	sed -i.bak 's|ImageTag: .*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
+	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
+	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
 	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
