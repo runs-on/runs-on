@@ -9,7 +9,7 @@ apps=$(gh api \
   --jq '.installations[].app_slug')
 
 for app in $apps; do
-  if [[ ! "$app" =~ ^RunsOn ]] || [[ " ${safe_apps[@]} " =~ " ${app} " ]]; then
+  if [[ ! "$app" =~ ^runson ]] || [[ " ${safe_apps[@]} " =~ " ${app} " ]]; then
     echo "Skipping $app"
     continue
   fi
