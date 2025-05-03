@@ -83,6 +83,7 @@ dev: login copyright
 stage: build-push
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 sync ./cloudformation/networking/ s3://runs-on/cloudformation/networking/
 
 # promotes the stage release as latest production version
 promote:
