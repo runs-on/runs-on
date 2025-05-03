@@ -26,4 +26,4 @@ COPY --from=build /app/dist /app/dist
 COPY --from=build /app/copyright /app/copyright
 ENV RUNS_ON_AGENT_FOLDER="/app/dist"
 
-CMD ["/app/dist/server"]
+ENTRYPOINT ["/app/dist/server"]
