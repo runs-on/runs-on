@@ -6,7 +6,11 @@ Parameters:
   VPCName:
     Description: The name of the VPC being created.
     Type: String
-    Default: VPC Public and Private with NAT
+    Default: RunsOn External VPC
+  SshAllowedCidrBlock:
+    Description: The CIDR block that can SSH into the VPC instances. If empty, no SSH access will be allowed.
+    Type: String
+    Default: 0.0.0.0/0
 
 Mappings:
   SubnetConfig:
@@ -20,6 +24,9 @@ Mappings:
       CIDR: 10.0.2.0/24
     Private1:
       CIDR: 10.0.3.0/24
+
+Conditions:
+  AllowSshAccess: !Not [!Equals [!Ref SshAllowedCidrBlock, ""]]
 
 Resources:
   VPC:
@@ -38,6 +45,16 @@ Resources:
           Value: Public
         - Key: Name
           Value: !Ref VPCName
+
+  DefaultSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: AllowSshAccess
+    Properties:
+      GroupId: !GetAtt VPC.DefaultSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref SshAllowedCidrBlock
 
   PublicSubnet0:
     Type: AWS::EC2::Subnet
@@ -330,14 +347,14 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable1
 
 Outputs:
-  VPCId:
-    Description: VPCId of VPC
+  VpcId:
+    Description: Id of the VPC
     Value: !Ref VPC
     Export:
-      Name: !Sub ${AWS::Region}-${AWS::StackName}-VPC
+      Name: !Sub ${AWS::Region}-${AWS::StackName}-VpcId
 
   SubnetIds:
-    Description: SubnetIds of the VPC
+    Description: Comma separated list of subnet ids
     Value: !Join
       - ","
       - - !Ref PublicSubnet0
@@ -347,8 +364,8 @@ Outputs:
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-SubnetIds
 
-  DefaultSecurityGroup:
-    Description: DefaultSecurityGroup Id
+  DefaultSecurityGroupId:
+    Description: Id of the default security group for the VPC
     Value: !GetAtt VPC.DefaultSecurityGroup
     Export:
-      Name: !Sub ${AWS::Region}-${AWS::StackName}-DefaultSecurityGroup
+      Name: !Sub ${AWS::Region}-${AWS::StackName}-DefaultSecurityGroupId
