@@ -8,9 +8,9 @@ SHELL:=/bin/zsh
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
-.PHONY: bump check tag login build-push dev stage promote \
+.PHONY: bump check tag login build-push dev stage promote cf \
 	dev-run dev-install dev-logs dev-logs-instances dev-show \
-	test-install test-install-manual test-smoke test-show test-delete \
+	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
 	networking-stack trigger-spot-interruption copyright
@@ -93,10 +93,13 @@ promote:
 trigger-spot-interruption:
 	AWS_PROFILE=runs-on-admin ./scripts/trigger-spot-interruption.sh $(filter-out $@,$(MAKECMDGOALS))
 
+cf:
+	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks?filteringText=&filteringStatus=active&viewNested=true"
+
 networking-stack:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-disable-rollback \
-		--no-cli-pager --fail-on-empty-changeset \
+		--no-cli-pager --no-fail-on-empty-changeset \
 		--stack-name runs-on-external-networking \
 		--region=us-east-1 \
 		--template-file ./cloudformation/networking/public-private-managed-nat.yaml
@@ -156,17 +159,31 @@ dev-show:
 STACK_TEST_NAME=runs-on-test
 
 # Install with the VERSION template (temporary install)
-test-install:
+test-install-embedded:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--disable-rollback \
-		--no-cli-pager --fail-on-empty-changeset \
+		--no-cli-pager --no-fail-on-empty-changeset \
 		--stack-name $(STACK_TEST_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket runs-on-tmp \
 		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) Environment=test \
 		--capabilities CAPABILITY_IAM
-	@make show-test
+	@make test-show
+
+test-install-external: networking-stack
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--no-cli-pager --no-fail-on-empty-changeset \
+		--stack-name $(STACK_TEST_NAME) \
+		--region=us-east-1 \
+		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--s3-bucket runs-on-tmp \
+		--parameter-overrides GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$(LICENSE_KEY) Environment=test NetworkingStack=external \
+			ExternalVpcId=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text) \
+			ExternalVpcSubnetIds=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`SubnetIds`].OutputValue' --output text) \
+			ExternalVpcSecurityGroupId=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`DefaultSecurityGroupId`].OutputValue' --output text) \
+		--capabilities CAPABILITY_IAM
+	@make test-show
 
 test-install-manual:
 	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml&stackName=runs-on-test"
@@ -184,6 +201,7 @@ test-show:
 test-delete:
 	AWS_PROFILE=runs-on-admin aws cloudformation delete-stack --stack-name $(STACK_TEST_NAME)
 	AWS_PROFILE=runs-on-admin aws cloudformation wait stack-delete-complete --stack-name $(STACK_TEST_NAME)
+	./scripts/delete-github-app.sh
 
 STACK_STAGE_NAME=runs-on-stage
 
