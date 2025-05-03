@@ -8,7 +8,7 @@ SHELL:=/bin/bash
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
-.PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage trigger-spot-interruption
+.PHONY: bump check tag login build-push dev stage promote run-dev install-dev install-test delete-test install-stage logs-stage trigger-spot-interruption copyright
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -51,7 +51,10 @@ release:
 login:
 	AWS_PROFILE=runs-on-releaser aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(REGISTRY)
 
-build-push: login
+copyright:
+	cd server && make copyright
+
+build-push: login copyright
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION) .
@@ -63,7 +66,7 @@ tunnel:
 	cloudflared tunnel run runs-on-dev
 
 # generates a dev release
-dev: login
+dev: login copyright
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION_DEV) .
