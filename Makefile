@@ -145,6 +145,9 @@ dev-install:
 			SqsQueueOldestMessageThresholdSeconds=120 \
 		--capabilities CAPABILITY_IAM
 
+dev-smoke:
+	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
+
 dev-logs:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 10m --timestamp
 
