@@ -3,5 +3,10 @@
     "AWS_REGION": "us-east-1",
     "AWS_PROFILE": "runs-on-dev"
   },
-  "go.testFlags": ["-v", "-timeout", "10m"]
+  "go.testFlags": [
+    "-v",
+    "-timeout",
+    "10m"
+  ],
+  "go.lintTool": "golangci-lint"
 }
