@@ -127,6 +127,7 @@ dev-install:
 			EmailAddress=ops+dev@runs-on.com \
 			AppDebug=false \
 			Private=$(PRIVATE) \
+			EnableEfs=true \
 			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
 			DefaultAdmins="crohr,github" \
 			RunnerLargeDiskSize=120 \

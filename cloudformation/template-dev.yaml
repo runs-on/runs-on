@@ -42,6 +42,7 @@ Metadata:
           - ServerPassword
           - DefaultAdmins
           - EncryptEbs
+          - EnableEfs # Added EFS parameter here
       - Label:
           default: "Alert and monitoring settings [optional]"
         Parameters:
@@ -118,7 +119,7 @@ Parameters:
 
   ExternalVpcSecurityGroupId:
     Type: String
-    Description: "Security group ID of the external VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, and any other service your jobs will call."
+    Description: "Security group ID of the external VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, EFS (if enabled), and any other service your jobs will call."
     Default: ""
 
   Environment:
@@ -297,6 +298,14 @@ Parameters:
       - "false"
     Description: "Encrypt the EBS volumes of the runner instances. Encryption will slow the boot time of runner instances by ~10s."
 
+  EnableEfs:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable EFS shared filesystem for runners (only available with 'embedded' networking). If enabled, an EFS volume will be created and made available to runners. Runners will need appropriate permissions and tools (e.g., nfs-utils) to mount it."
+
   RunnerDefaultDiskSize:
     Type: Number
     Default: 40
@@ -449,6 +458,7 @@ Conditions:
   HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
+  CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
 
 Resources:
   VPC:
@@ -1278,6 +1288,64 @@ Resources:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
 
+  # --- EFS Resources ---
+  EfsFileSystem:
+    Condition: CreateEfs
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      FileSystemTags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EFS
+
+  EfsSecurityGroup:
+    Condition: CreateEfs
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Allow NFS traffic from RunsOn EC2 instances to EFS ${AWS::StackName}"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !GetAtt SecurityGroup.GroupId
+          Description: "Allow NFS from RunsOn EC2 instances"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EFSSecurityGroup
+
+  EfsMountTarget1:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet1 # Mount in public subnet for simplicity, runners in private can still reach
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  EfsMountTarget2:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  EfsMountTarget3:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet3
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+  # --- End EFS Resources ---
+
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -1332,12 +1400,17 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              export RUNS_ON_DEBUG="${AppDebug}"
+              export AWS_REGION="${AWS::Region}"
+              ${EfsExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1393,12 +1466,17 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag} ; export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}" RUNS_ON_DEBUG="${AppDebug}" AWS_REGION="${AWS::Region}"
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              export RUNS_ON_DEBUG="${AppDebug}"
+              export AWS_REGION="${AWS::Region}"
+              ${EfsExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1458,6 +1536,7 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
+              ${EfsEnvVar}
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
@@ -1477,6 +1556,7 @@ Resources:
               <detach>true</detach>
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1535,6 +1615,7 @@ Resources:
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
+              ${EfsEnvVar}
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
@@ -1554,12 +1635,13 @@ Resources:
               <detach>true</detach>
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Condition: EmbeddedVpc
     Properties:
-      GroupDescription: Security group for SSH access
+      GroupDescription: Security group for SSH access and EFS egress
       VpcId:
         Ref: VPC
       SecurityGroupIngress:
@@ -1570,7 +1652,17 @@ Resources:
             FromPort: 22
             ToPort: 22
             IpProtocol: tcp
+            Description: "Allow SSH Ingress"
           - !Ref AWS::NoValue
+      SecurityGroupEgress:
+        # Default Egress Rule (Allow All IPv4)
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: "Allow all outbound IPv4 traffic"
+        # Default Egress Rule (Allow All IPv6)
+        - IpProtocol: "-1"
+          CidrIpv6: "::/0"
+          Description: "Allow all outbound IPv6 traffic"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1846,6 +1938,23 @@ Resources:
                   - s3:GetObject
                 Resource:
                   - !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
+        - !If
+          - CreateEfs
+          - PolicyName: EfsMountAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # Required for mounting
+                    - elasticfilesystem:ClientMount
+                    - elasticfilesystem:ClientWrite
+                    - elasticfilesystem:DescribeMountTargets
+                    # Required by efs-utils helper to find mount target IP
+                    - ec2:DescribeSubnets
+                    - ec2:DescribeNetworkInterfaces
+                  Resource: "*" # Scoping down requires knowing EFS ARN, Subnet ARNs, etc. Keep broad for simplicity.
+          - !Ref AWS::NoValue
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2329,7 +2438,7 @@ Resources:
       Targets:
         - Arn: !GetAtt RunsOnQueueEvents.Arn
           Id: InstanceEvents
-          
+
   SpotInstanceEventRulePermission:
     Type: AWS::SQS::QueuePolicy
     Properties:
@@ -2486,3 +2595,7 @@ Outputs:
   RunsOnEC2InstanceLogGroupArn:
     Description: Log group ARN for the EC2 instances
     Value: !Ref EC2InstanceLogGroup
+  RunsOnEfsFileSystemId:
+    Condition: CreateEfs
+    Description: EFS File System ID (if enabled)
+    Value: !Ref EfsFileSystem
