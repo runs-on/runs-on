@@ -42,7 +42,8 @@ Metadata:
           - ServerPassword
           - DefaultAdmins
           - EncryptEbs
-          - EnableEfs # Added EFS parameter here
+          - EnableEfs
+          - EnableEphemeralRegistry
       - Label:
           default: "Alert and monitoring settings [optional]"
         Parameters:
@@ -306,6 +307,14 @@ Parameters:
       - "false"
     Description: "Enable EFS shared filesystem for runners (only available with 'embedded' networking). If enabled, an EFS volume will be created and made available to runners. Runners will need appropriate permissions and tools (e.g., nfs-utils) to mount it."
 
+  EnableEphemeralRegistry:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "If enabled, create an ECR ephemeral registry that can be used as a type=registry cache backend for Docker BuildKit. The registry will be created with a 10-day lifecycle policy, and runners will automatically be granted push/pull access."
+
   RunnerDefaultDiskSize:
     Type: Number
     Default: 40
@@ -459,6 +468,7 @@ Conditions:
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
   CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
+  CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
 
 Resources:
   VPC:
@@ -1292,6 +1302,8 @@ Resources:
   EfsFileSystem:
     Condition: CreateEfs
     Type: AWS::EFS::FileSystem
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
     Properties:
       Encrypted: true
       FileSystemTags:
@@ -1345,6 +1357,41 @@ Resources:
       SecurityGroups:
         - !Ref EfsSecurityGroup
   # --- End EFS Resources ---
+
+  # --- Ephemeral Registry Resources ---
+  EphemeralRegistry:
+    Condition: CreateEphemeralRegistry
+    Type: AWS::ECR::Repository
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/ephemeral-registry"
+      ImageScanningConfiguration:
+        ScanOnPush: false
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire images older than 10 days",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+  # --- End Ephemeral Registry Resources ---
 
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1405,12 +1452,14 @@ Resources:
               export RUNS_ON_DEBUG="${AppDebug}"
               export AWS_REGION="${AWS::Region}"
               ${EfsExport}
+              ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_EPHEMERAL_REGISTRY_URI="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1471,12 +1520,14 @@ Resources:
               export RUNS_ON_DEBUG="${AppDebug}"
               export AWS_REGION="${AWS::Region}"
               ${EfsExport}
+              ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_EPHEMERAL_REGISTRY_URI="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1537,6 +1588,7 @@ Resources:
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
               ${EfsEnvVar}
+              ${EphemeralRegistryExport}
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
@@ -1557,6 +1609,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_EPHEMERAL_REGISTRY_URI = "${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1616,6 +1669,7 @@ Resources:
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
               ${EfsEnvVar}
+              ${EphemeralRegistryExport}
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
@@ -1636,6 +1690,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_EPHEMERAL_REGISTRY_URI = "${EphemeralRegistry.RepositoryUri}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -1954,6 +2009,30 @@ Resources:
                     - ec2:DescribeSubnets
                     - ec2:DescribeNetworkInterfaces
                   Resource: "*" # Scoping down requires knowing EFS ARN, Subnet ARNs, etc. Keep broad for simplicity.
+          - !Ref AWS::NoValue
+        - !If
+          - CreateEphemeralRegistry
+          - PolicyName: EphemeralRegistryAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # Needed for docker login
+                    - ecr:GetAuthorizationToken
+                  Resource: "*" # GetAuthorizationToken requires "*" resource
+                - Effect: Allow
+                  Action:
+                    # Pull permissions
+                    - ecr:BatchCheckLayerAvailability
+                    - ecr:GetDownloadUrlForLayer
+                    - ecr:BatchGetImage
+                    # Push permissions
+                    - ecr:InitiateLayerUpload
+                    - ecr:UploadLayerPart
+                    - ecr:CompleteLayerUpload
+                    - ecr:PutImage
+                  Resource: !GetAtt EphemeralRegistry.Arn
           - !Ref AWS::NoValue
       Tags:
         - Key: !Ref CostAllocationTag
@@ -2599,3 +2678,7 @@ Outputs:
     Condition: CreateEfs
     Description: EFS File System ID (if enabled)
     Value: !Ref EfsFileSystem
+  EphemeralRegistryUri:
+    Condition: CreateEphemeralRegistry
+    Description: ECR Repository URI for Ephemeral Registry (if enabled)
+    Value: !GetAtt EphemeralRegistry.RepositoryUri
