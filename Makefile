@@ -1,4 +1,4 @@
-VERSION=v2.8.1
+VERSION=v2.8.2-pre1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -128,6 +128,7 @@ dev-install:
 			AppDebug=false \
 			Private=$(PRIVATE) \
 			EnableEfs=true \
+			EnableEphemeralRegistry=true \
 			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
 			DefaultAdmins="crohr,github" \
 			RunnerLargeDiskSize=120 \
@@ -223,7 +224,7 @@ demo-install:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on-demo Environment=demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=80 RunnerLargeDiskSize=240 \
+		--parameter-overrides GithubOrganization=runs-on-demo Environment=demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=40 RunnerLargeDiskSize=120 AppEc2QueueSize=4 \
 		--capabilities CAPABILITY_IAM
 
 demo-logs:
