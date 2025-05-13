@@ -1459,7 +1459,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_EPHEMERAL_REGISTRY_URI="${EphemeralRegistry.RepositoryUri}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateLinuxLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1527,7 +1527,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_EPHEMERAL_REGISTRY_URI="${EphemeralRegistry.RepositoryUri}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1609,7 +1609,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_EPHEMERAL_REGISTRY_URI = "${EphemeralRegistry.RepositoryUri}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsLarge:
     Type: AWS::EC2::LaunchTemplate
@@ -1690,7 +1690,7 @@ Resources:
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_EPHEMERAL_REGISTRY_URI = "${EphemeralRegistry.RepositoryUri}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
