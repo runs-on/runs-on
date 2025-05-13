@@ -1440,6 +1440,7 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
               - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
@@ -1508,6 +1509,7 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
               - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
@@ -1577,6 +1579,7 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
               - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
@@ -1658,6 +1661,7 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
               - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
