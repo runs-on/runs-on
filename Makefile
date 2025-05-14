@@ -1,4 +1,4 @@
-VERSION=v2.8.2-pre1
+VERSION=v2.8.2-pre2
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -199,6 +199,8 @@ stage-install:
 			GithubOrganization=runs-on \
 			EmailAddress=ops+stage@runs-on.com \
 			Private=false \
+			EnableEphemeralRegistry=true \
+			EnableEfs=true \
 			LicenseKey=$(LICENSE_KEY) \
 			ServerPassword=$(SERVER_PASSWORD) \
 			RunnerLargeDiskSize=120 \
