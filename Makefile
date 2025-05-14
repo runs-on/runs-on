@@ -108,7 +108,7 @@ networking-stack:
 STACK_DEV_NAME=runs-on
 
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_VERSION=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_TAG=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
