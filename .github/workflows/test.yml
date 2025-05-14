@@ -88,7 +88,7 @@ jobs:
         env:
           TAG: "${{ env.RUNS_ON_ECR_CACHE }}:example-voting-app-latest"
         with:
-          context: .
+          context: ./vote
           push: true
           tags: ${{ env.TAG }}
           cache-from: type=registry,ref=${{ env.TAG }}
