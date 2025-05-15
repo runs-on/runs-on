@@ -226,8 +226,24 @@ demo-install:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket runs-on-tmp \
-		--parameter-overrides GithubOrganization=runs-on-demo Environment=demo EmailAddress=ops+demo@runs-on.com Private=false LicenseKey=$(LICENSE_KEY) RunnerDefaultDiskSize=40 RunnerLargeDiskSize=120 AppEc2QueueSize=4 \
+		--parameter-overrides \
+			GithubOrganization=runs-on-demo \
+			Environment=demo \
+			EmailAddress=ops+demo@runs-on.com \
+			Private=false \
+			LicenseKey=$(LICENSE_KEY) \
+			RunnerDefaultDiskSize=40 \
+			RunnerLargeDiskSize=120 \
+			AppEc2QueueSize=4 \
+			ServerPassword=$(SERVER_PASSWORD) \
 		--capabilities CAPABILITY_IAM
+
+demo-show:
+	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+		--stack-name $(STACK_DEMO_NAME) \
+		--region=us-east-1 \
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
+		--output text) && echo "https://$${URL}"
 
 demo-logs:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-YkeiWRtxMBYa/05e398b31c2949cc96c23a061871d318/application -i 2 -w -s 120m --timestamp
