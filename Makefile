@@ -1,4 +1,4 @@
-VERSION=v2.8.2
+VERSION=v2.8.3-pre1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -236,6 +236,8 @@ demo-install:
 			RunnerLargeDiskSize=120 \
 			AppEc2QueueSize=4 \
 			ServerPassword=$(SERVER_PASSWORD) \
+			EnableEfs=true \
+			EnableEphemeralRegistry=true \
 		--capabilities CAPABILITY_IAM
 
 demo-show:
