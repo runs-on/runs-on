@@ -2,6 +2,9 @@ name: Lint CloudFormation Templates
 
 on: [push]
 
+permissions:
+  contents: read
+
 jobs:
   cloudformation-linter:
     runs-on: ubuntu-latest

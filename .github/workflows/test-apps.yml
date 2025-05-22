@@ -12,6 +12,9 @@ on:
         required: true
         default: "ruby,node"
 
+permissions:
+  contents: read
+
 jobs:
   ruby:
     if: contains(inputs.apps, 'ruby')
