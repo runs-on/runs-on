@@ -2214,6 +2214,8 @@ Resources:
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_REGION
                 Value: !Ref AWS::Region
+              - Name: RUNS_ON_SSH_ALLOWED
+                Value: !Ref SSHAllowed
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
