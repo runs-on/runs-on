@@ -5,8 +5,9 @@
   },
   "go.testFlags": [
     "-v",
+    "-race",
     "-timeout",
-    "10m"
+    "5m"
   ],
   "go.lintTool": "golangci-lint"
 }
