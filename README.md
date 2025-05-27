@@ -36,9 +36,7 @@ Before:
 
 After:
 ```yaml
-  runs-on:
-    - runs-on=${{ github.run_id }}
-    - runner=2cpu-linux-x64
+  runs-on: "runs-on=${{ github.run_id }}/runner=2cpu-linux-x64"
 ```
 
 Learn more about all the supported [job labels](https://runs-on.com/configuration/job-labels) for dynamic runner configuration.
