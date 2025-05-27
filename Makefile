@@ -130,7 +130,7 @@ dev-install:
 			EnableEfs=true \
 			EnableEphemeralRegistry=true \
 			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
-			DefaultAdmins="crohr,github" \
+			DefaultAdmins="crohr" \
 			RunnerLargeDiskSize=120 \
 			LicenseKey=$(LICENSE_KEY) \
 			AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
