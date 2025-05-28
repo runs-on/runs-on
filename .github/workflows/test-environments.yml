@@ -1,0 +1,37 @@
+name: Test / Environments
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "env"
+        required: true
+        default: "production"
+  push:
+    branches:
+      - main
+      
+
+permissions:
+  contents: read
+
+jobs:
+  test-environment:
+    runs-on:
+      labels: "runs-on=${{github.run_id}}/runner=2cpu-linux-x64/tag=env-test-protected/env=${{ inputs.env || 'production' }}"
+    environment:
+      name: test
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Hello world
+
+  test-environment-no-protection:
+    runs-on:
+      labels: "runs-on=${{github.run_id}}/runner=2cpu-linux-x64/tag=env-test-no-protection/env=${{ inputs.env || 'production' }}"
+    environment:
+      name: test-no-protection
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo Hello world
