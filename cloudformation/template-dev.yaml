@@ -1752,11 +1752,6 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        IgnorePublicAcls: true
-        BlockPublicPolicy: true
-        RestrictPublicBuckets: true
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-config-access-logs/
