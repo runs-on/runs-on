@@ -57,6 +57,9 @@ jobs:
           jq -e '.[] | select(.key=="tag-custom-key1" and .value=="tag-custom-value1")' tags.json
           # Test for tag without value
           jq -e '.[] | select(.key=="tag-custom-key2-no-value" and .value=="")' tags.json
+          # Test for custom property
+          jq -e '.[] | select(.key=="team" and .value=="Team1")' tags.json
+          jq -e '.[] | select(.key=="tag2" and .value=="value2")' tags.json
 
   test-efs-tmpfs:
     runs-on: runs-on,family=r7,ram=16,extras=efs+tmpfs+s3-cache,env=${{ inputs.env || 'production' }}
