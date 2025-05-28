@@ -206,6 +206,15 @@ stage-install:
 			RunnerLargeDiskSize=120 \
 		--capabilities CAPABILITY_IAM
 
+stage-redeploy:
+	AWS_PROFILE=runs-on-admin aws apprunner start-deployment \
+		--region=us-east-1 \
+		--service-arn $$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+			--stack-name $(STACK_STAGE_NAME) \
+			--region=us-east-1 \
+			--query "Stacks[0].Outputs[?OutputKey=='RunsOnServiceArn'].OutputValue" \
+			--output text)
+
 stage-show:
 	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name $(STACK_STAGE_NAME) \
