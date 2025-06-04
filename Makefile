@@ -66,10 +66,6 @@ build-push: login copyright
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
-tunnel:
-	# https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/local-management/create-local-tunnel/
-	cloudflared tunnel run runs-on-dev
-
 # generates a dev release
 dev: login copyright
 	docker buildx build --push \
@@ -92,10 +88,7 @@ promote:
 
 # make trigger-spot-interruption INSTANCE_ID1 INSTANCE_ID2
 trigger-spot-interruption:
-	AWS_PROFILE=runs-on-admin ./scripts/trigger-spot-interruption.sh $(filter-out $@,$(MAKECMDGOALS))
-
-cf:
-	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks?filteringText=&filteringStatus=active&viewNested=true"
+	AWS_PROFILE=$(STACK_DEV_NAME) ./scripts/trigger-spot-interruption.sh $(filter-out $@,$(MAKECMDGOALS))
 
 networking-stack:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
@@ -105,62 +98,37 @@ networking-stack:
 		--region=us-east-1 \
 		--template-file ./cloudformation/networking/public-private-managed-nat.yaml
 
-STACK_DEV_NAME=runs-on
-
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=runs-on-dev RUNS_ON_APP_TAG=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 dev-install:
-	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
-		--no-disable-rollback \
-		--no-cli-pager --fail-on-empty-changeset \
-		--stack-name $(STACK_DEV_NAME) \
+	AWS_PROFILE=$(STACK_DEV_NAME) aws s3 mb s3://$(STACK_DEV_NAME)-tmp
+	AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation deploy \
 		--region=us-east-1 \
+		--no-disable-rollback --no-cli-pager --fail-on-empty-changeset \
 		--template-file ./cloudformation/template-dev.yaml \
-		--s3-bucket runs-on-tmp \
-		--parameter-overrides \
-			AppGithubApiStrategy=conservative \
-			GithubOrganization=runs-on \
-			EmailAddress=ops+dev@runs-on.com \
-			AppDebug=false \
-			Private=$(PRIVATE) \
-			EnableEfs=true \
-			EnableEphemeralRegistry=true \
-			EC2InstanceCustomPolicy=arn:aws:iam::756351362063:policy/my-custom-policy \
-			DefaultAdmins="crohr" \
-			RunnerLargeDiskSize=120 \
-			LicenseKey=$(LICENSE_KEY) \
-			AlertTopicSubscriptionHttpsEndpoint=$(ALERT_TOPIC_SUBSCRIPTION_HTTPS_ENDPOINT) \
-			ServerPassword=$(SERVER_PASSWORD) \
-			Environment=dev \
-			VpcFlowLogFormat="" \
-			RunnerCustomTags="my/tag=my/value3" \
-			VpcEndpoints=EC2+ECR \
-			NatGatewayElasticIPCount=1 \
-			Ipv6Enabled=true \
-			NatGatewayAvailability=SingleAZ \
-			SpotCircuitBreaker=1/10/5 \
-			IntegrationStepSecurityApiKey=$(INTEGRATION_STEP_SECURITY_API_KEY) \
-			SqsQueueOldestMessageThresholdSeconds=120 \
-		--capabilities CAPABILITY_IAM
+		--capabilities CAPABILITY_IAM \
+		--stack-name $(STACK_DEV_NAME) \
+		--s3-bucket $(STACK_DEV_NAME)-tmp \
+		--parameter-overrides file://cloudformation/parameters/$(STACK_DEV_NAME).json
 
 dev-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
 
 dev-logs:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 10m --timestamp
+	AWS_PROFILE=$(STACK_DEV_NAME) awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-NWAiVjCasSdH/5eaf2c1bd7ab4baaacfde8b7dd574fda/application -i 2 -w -s 10m --timestamp
 
 dev-logs-instances:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 runs-on-EC2InstanceLogGroup-x74jb9bPgttZ -i 2 -w -s 10m --timestamp
+	AWS_PROFILE=$(STACK_DEV_NAME) awslogs get --aws-region us-east-1 runs-on-EC2InstanceLogGroup-x74jb9bPgttZ -i 2 -w -s 10m --timestamp
 
 dev-show:
-	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+	AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation describe-stacks \
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps'].[OutputKey,OutputValue]"
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps' || OutputKey=='RunsOnServiceRoleArn'].[OutputKey,OutputValue]"
 
 STACK_TEST_NAME=runs-on-test
 
@@ -250,11 +218,10 @@ demo-install:
 		--capabilities CAPABILITY_IAM
 
 demo-show:
-	@URL=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
+	AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks \
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
-		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
-		--output text) && echo "https://$${URL}"
+		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps'].[OutputKey,OutputValue]"
 
 demo-logs:
-	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-YkeiWRtxMBYa/05e398b31c2949cc96c23a061871d318/application -i 2 -w -s 120m --timestamp
+	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-3RYH6bpqKHoj/2795a05779a8454ba27a897ee856bfe8/application -i 2 -w -s 120m --timestamp
