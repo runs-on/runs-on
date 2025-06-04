@@ -406,7 +406,7 @@ Parameters:
   CostAllocationTag:
     Type: String
     Default: "stack"
-    Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
+    Description: "Cost allocation tag key to use for all the deployed resources. The value for this tag will be set to the stack name. Updating this after creation will require deleting the stack and recreating it."
 
   IntegrationStepSecurityApiKey:
     Type: String
