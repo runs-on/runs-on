@@ -3,6 +3,7 @@ VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/zsh
+BUCKET_TMP=runs-on-tmp-$(USER)
 
 # Override any of these variables in .env.local
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
@@ -98,21 +99,23 @@ networking-stack:
 		--region=us-east-1 \
 		--template-file ./cloudformation/networking/public-private-managed-nat.yaml
 
+STACK_DEV_NAME=runs-on-dev
+
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) WEBHOOK_PROXY_URL=$(WEBHOOK_PROXY_URL) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 # Install with the dev template
 dev-install:
-	AWS_PROFILE=$(STACK_DEV_NAME) aws s3 mb s3://$(STACK_DEV_NAME)-tmp
+	AWS_PROFILE=$(STACK_DEV_NAME) aws s3 mb s3://$(BUCKET_TMP)
 	AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation deploy \
 		--region=us-east-1 \
-		--no-disable-rollback --no-cli-pager --fail-on-empty-changeset \
+		--no-disable-rollback --no-cli-pager --no-fail-on-empty-changeset \
 		--template-file ./cloudformation/template-dev.yaml \
 		--capabilities CAPABILITY_IAM \
 		--stack-name $(STACK_DEV_NAME) \
-		--s3-bucket $(STACK_DEV_NAME)-tmp \
+		--s3-bucket $(BUCKET_TMP) \
 		--parameter-overrides file://cloudformation/parameters/$(STACK_DEV_NAME).json
 
 dev-smoke:
@@ -162,7 +165,7 @@ stage-install:
 		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-tmp \
+		--s3-bucket $(BUCKET_TMP) \
 		--parameter-overrides \
 			GithubOrganization=runs-on \
 			EmailAddress=ops+stage@runs-on.com \
@@ -202,7 +205,7 @@ demo-install:
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket runs-on-tmp \
+		--s3-bucket $(BUCKET_TMP) \
 		--parameter-overrides \
 			GithubOrganization=runs-on-demo \
 			Environment=demo \
