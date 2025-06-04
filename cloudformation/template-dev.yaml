@@ -2731,6 +2731,9 @@ Outputs:
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
+  RunsOnServiceRoleArn:
+    Description: ARN of the App Runner service role
+    Value: !GetAtt RunsOnServiceRole.Arn
   RunsOnEC2InstanceLogGroupArn:
     Description: Log group ARN for the EC2 instances
     Value: !Ref EC2InstanceLogGroup
