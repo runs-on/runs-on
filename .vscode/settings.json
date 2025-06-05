@@ -2,7 +2,7 @@
   "go.testEnvVars": {
     "AWS_REGION": "us-east-1",
     "AWS_PROFILE": "runs-on-dev-local",
-    "RUNS_ON_STACK_NAME": "runs-on-dev",
+    "RUNS_ON_STACK_NAME": "runs-on-dev"
   },
   "go.testFlags": [
     "-v",
