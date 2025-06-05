@@ -2619,6 +2619,9 @@ Resources:
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
 
 Outputs:
+  RunsOnAwsAccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
     Value: !GetAtt RunsOnService.ServiceUrl
