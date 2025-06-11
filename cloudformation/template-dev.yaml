@@ -2337,6 +2337,7 @@ Resources:
                   - cloudwatch:DescribeAlarms
                   - cloudtrail:LookupEvents
                   - iam:GetRole
+                  - sns:ListSubscriptionsByTopic
                 Resource: "*"
               - Effect: Allow
                 Action:
