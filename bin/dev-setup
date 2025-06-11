@@ -1,0 +1,56 @@
+#!/bin/bash
+set -eou pipefail
+
+MAIN_PROFILE=runs-on-main
+DEV_PROFILE=runs-on-dev
+DEV_LOCAL_PROFILE=runs-on-dev-local
+
+if ! aws configure list --profile $MAIN_PROFILE &>/dev/null; then
+    echo "Setting up your main AWS profile ($MAIN_PROFILE). Use your access key and secret key."
+    aws configure --profile $MAIN_PROFILE
+else
+    echo "Main AWS profile ($MAIN_PROFILE) already set up."
+fi
+
+TARGET_ACCOUNT_ID=""
+for ACCOUNT_ID in 966509368716 527743316190; do
+    if aws sts assume-role --role-arn arn:aws:iam::${ACCOUNT_ID}:role/OrganizationAccountAccessRole --role-session-name test --profile $MAIN_PROFILE &>/dev/null; then
+        TARGET_ACCOUNT_ID=$ACCOUNT_ID
+        break
+    fi
+done
+
+if [ -z "$TARGET_ACCOUNT_ID" ]; then
+    echo "No target account ID found"
+    exit 1
+fi
+
+DEV_ROLE_ARN=arn:aws:iam::${TARGET_ACCOUNT_ID}:role/OrganizationAccountAccessRole
+echo "Setting up your dev AWS profile (runs-on-dev)..."
+aws configure set role_arn $DEV_ROLE_ARN --profile $DEV_PROFILE
+aws configure set source_profile $MAIN_PROFILE --profile $DEV_PROFILE
+aws configure set region us-east-1 --profile $DEV_PROFILE
+echo "✅ Done"
+
+echo "Installing dev stack..."
+make dev-install
+
+APP_RUNNER_ROLE_ARN=$(AWS_PROFILE=$DEV_PROFILE aws cloudformation describe-stacks --stack-name runs-on-dev --query 'Stacks[0].Outputs[?OutputKey==`RunsOnServiceRoleArn`].OutputValue' --output text)
+echo "Setting up your dev local AWS profile (runs-on-dev-local)..."
+aws configure set role_arn $APP_RUNNER_ROLE_ARN --profile $DEV_LOCAL_PROFILE
+aws configure set source_profile $DEV_PROFILE --profile $DEV_LOCAL_PROFILE
+aws configure set region us-east-1 --profile $DEV_LOCAL_PROFILE
+echo "✅ Done (role found: $APP_RUNNER_ROLE_ARN)"
+
+echo "Adding trust relationship to AppRunner role..."
+POLICY_JSON="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"$DEV_ROLE_ARN\"},\"Action\":\"sts:AssumeRole\"}]}"
+AWS_PROFILE=$DEV_PROFILE aws iam update-assume-role-policy --role-name "${APP_RUNNER_ROLE_ARN#*/}" --policy-document "$POLICY_JSON"
+echo "✅ Done"
+
+APP_RUNNER_ENTRYPOINT=$(AWS_PROFILE=$DEV_PROFILE aws cloudformation describe-stacks --stack-name runs-on-dev --query 'Stacks[0].Outputs[?OutputKey==`RunsOnEntryPoint`].OutputValue' --output text)
+
+echo "Next steps:"
+echo "1. Go to https://$APP_RUNNER_ENTRYPOINT"
+echo "2. Install the GitHub App"
+echo "3. Update the webhook to point at your local Cloudflare tunnel"
+echo "3. Run 'make dev-run' to start the dev server"

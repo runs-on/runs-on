@@ -5,3 +5,4 @@
 /.trash
 tmp/
 .DS_Store
+/cloudformation/parameters/*.json
