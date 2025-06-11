@@ -1978,7 +1978,7 @@ Resources:
                 Resource:
                 - !Sub "${EC2InstanceLogGroup.Arn}"
                 - !Sub "${EC2InstanceLogGroup.Arn}:*"
-        - PolicyName: SendMetrics
+        - PolicyName: PutMetrics
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -1988,7 +1988,19 @@ Resources:
                 Resource: "*"
                 Condition:
                   StringEquals:
-                    cloudwatch:namespace: "RunsOn/Runners"
+                    cloudwatch:namespace:
+                      - "RunsOn/Runners"
+                      - "CWAgent"
+        - PolicyName: GetMetrics
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                # can't restrict on specific namespaces unfortunately
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: "*"
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
             Version: "2012-10-17"
