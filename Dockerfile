@@ -1,4 +1,4 @@
-FROM golang:1.23 AS build
+FROM golang:1.24 AS build
 ENV GOCACHE=/root/.gocache
 ENV CGO_ENABLED=0
 ENV UPX_VERSION=4.2.4
