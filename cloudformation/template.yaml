@@ -1936,14 +1936,14 @@ Resources:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: DescribeTags
+        - PolicyName: ReadOnly
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - ec2:DescribeTags
-                # No way (that I know of) to limit this to the instance itself.
+                  - ec2:DescribeAvailabilityZones
                 Resource: "*"
         - PolicyName: CreateTags
           PolicyDocument:
