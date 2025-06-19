@@ -70,6 +70,7 @@ Metadata:
           - RunnerLargeDiskSize
           - RunnerLargeDiskDeviceName
           - RunnerLargeVolumeThroughput
+          - RunnerMaxRuntime
           - AppEc2QueueSize
           - AppGithubApiStrategy
           - AppCPU
@@ -355,6 +356,12 @@ Parameters:
     Type: CommaDelimitedList
     Default: ""
     Description: "Optional custom tags for the runner instances (e.g. 'key1=value1,key2=value2'). Tag keys cannot start with `runs-on`, and can only use letters (a-z, A-Z), numbers (0-9), and the following characters: + - = . , _ : @ (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions)"
+
+  RunnerMaxRuntime:
+    Type: Number
+    Default: 720
+    MinValue: 30
+    Description: Maximum runtime in minutes for runners. After this time, the runner will be forcefully terminated.
 
   CostReportsEnabled:
     Type: String
@@ -1449,6 +1456,7 @@ Resources:
             - |
               #!/bin/bash -ex
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
               export RUNS_ON_DEBUG="${AppDebug}"
               export AWS_REGION="${AWS::Region}"
@@ -1518,6 +1526,7 @@ Resources:
             - |
               #!/bin/bash -ex
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
               export RUNS_ON_DEBUG="${AppDebug}"
               export AWS_REGION="${AWS::Region}"
@@ -1587,6 +1596,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
@@ -1669,6 +1679,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
               $env:AWS_REGION = "${AWS::Region}"
@@ -2269,6 +2280,8 @@ Resources:
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
+              - Name: RUNS_ON_RUNNER_MAX_RUNTIME
+                Value: !Ref RunnerMaxRuntime
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
                 Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
