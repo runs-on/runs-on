@@ -3,7 +3,6 @@ VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/zsh
-BUCKET_TMP=runs-on-tmp-$(USER)
 
 # Override any of these variables in .env.local
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
@@ -108,14 +107,14 @@ dev-run:
 
 # Install with the dev template
 dev-install:
-	AWS_PROFILE=$(STACK_DEV_NAME) aws s3 mb s3://$(BUCKET_TMP)
+	AWS_PROFILE=$(STACK_DEV_NAME) aws s3 mb s3://$(STACK_DEV_NAME)-tmp-$(USER)
 	AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation deploy \
 		--region=us-east-1 \
 		--no-disable-rollback --no-cli-pager --no-fail-on-empty-changeset \
 		--template-file ./cloudformation/template-dev.yaml \
 		--capabilities CAPABILITY_IAM \
 		--stack-name $(STACK_DEV_NAME) \
-		--s3-bucket $(BUCKET_TMP) \
+		--s3-bucket $(STACK_DEV_NAME)-tmp-$(USER) \
 		--parameter-overrides file://cloudformation/parameters/$(STACK_DEV_NAME).json
 
 dev-smoke:
@@ -160,12 +159,13 @@ STACK_STAGE_NAME=runs-on-stage
 
 # Permanent installation for runs-on org
 stage-install:
+	AWS_PROFILE=runs-on-admin aws s3 mb s3://$(STACK_STAGE_NAME)-tmp
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket $(BUCKET_TMP) \
+		--s3-bucket $(STACK_STAGE_NAME)-tmp \
 		--parameter-overrides \
 			GithubOrganization=runs-on \
 			EmailAddress=ops+stage@runs-on.com \
@@ -200,12 +200,13 @@ STACK_DEMO_NAME=runs-on-demo
 
 # Permanent installation for runs-on-demo org, in different region
 demo-install:
+	AWS_PROFILE=runs-on-admin aws s3 mb s3://$(STACK_DEMO_NAME)-tmp
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
-		--s3-bucket $(BUCKET_TMP) \
+		--s3-bucket $(STACK_DEMO_NAME)-tmp \
 		--parameter-overrides \
 			GithubOrganization=runs-on-demo \
 			Environment=demo \
