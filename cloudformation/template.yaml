@@ -2223,6 +2223,8 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_AWS_ACCOUNT_ID
+                Value: !Ref AWS::AccountId
               - Name: RUNS_ON_ENV
                 Value: !Ref Environment
               - Name: RUNS_ON_COST_ALLOCATION_TAG

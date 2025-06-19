@@ -1455,8 +1455,8 @@ Resources:
               ${EfsExport}
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1524,8 +1524,8 @@ Resources:
               ${EfsExport}
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-time 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -i) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -i)"
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1924,7 +1924,10 @@ Resources:
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
-        !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"], ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]]
+        !If 
+          - CustomPolicyProvided
+          - [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
+          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -2220,6 +2223,8 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_AWS_ACCOUNT_ID
+                Value: !Ref AWS::AccountId
               - Name: RUNS_ON_ENV
                 Value: !Ref Environment
               - Name: RUNS_ON_COST_ALLOCATION_TAG
@@ -2276,8 +2281,6 @@ Resources:
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
-              - Name: RUNS_ON_AWS_ACCOUNT_ID
-                Value: !Ref AWS::AccountId
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_QUEUE_HOUSEKEEPING
