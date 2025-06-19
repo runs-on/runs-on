@@ -406,7 +406,7 @@ Parameters:
   CostAllocationTag:
     Type: String
     Default: "stack"
-    Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
+    Description: "Cost allocation tag key to use for all the deployed resources. The value for this tag will be set to the stack name. Updating this after creation will require deleting the stack and recreating it."
 
   IntegrationStepSecurityApiKey:
     Type: String
@@ -1893,6 +1893,24 @@ Resources:
                   - !Sub "arn:aws:s3:::${S3BucketCache}"
                   - !Sub "arn:aws:s3:::${S3Bucket}"
 
+  EC2InstanceResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Sub "${AWS::StackName}-EC2Instances"
+      Description: "Resource group for EC2 instances belonging to this stack"
+      ResourceQuery:
+        Type: TAG_FILTERS_1_0
+        Query:
+          ResourceTypeFilters:
+            - "AWS::EC2::Instance"
+          TagFilters:
+            - Key: "runs-on-stack-name"
+              Values:
+                - !Ref AWS::StackName
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -1960,7 +1978,7 @@ Resources:
                 Resource:
                 - !Sub "${EC2InstanceLogGroup.Arn}"
                 - !Sub "${EC2InstanceLogGroup.Arn}:*"
-        - PolicyName: SendMetrics
+        - PolicyName: PutMetrics
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -1970,7 +1988,19 @@ Resources:
                 Resource: "*"
                 Condition:
                   StringEquals:
-                    cloudwatch:namespace: "RunsOn/Runners"
+                    cloudwatch:namespace:
+                      - "RunsOn/Runners"
+                      - "CWAgent"
+        - PolicyName: GetMetrics
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                # can't restrict on specific namespaces unfortunately
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: "*"
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -2035,6 +2065,18 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
                   - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+        - PolicyName: EnableDetailedMonitoring
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:MonitorInstances
+                Resource:
                   - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
@@ -2123,6 +2165,7 @@ Resources:
   SchedulerInvokeRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -2294,7 +2337,15 @@ Resources:
                   - cloudwatch:DescribeAlarms
                   - cloudtrail:LookupEvents
                   - iam:GetRole
+                  - sns:ListSubscriptionsByTopic
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                Resource: "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Condition:
+                  StringEquals:
+                    "iam:AWSServiceName": "spot.amazonaws.com"
               - Effect: Allow
                 Action:
                   - cloudformation:DescribeStacks
@@ -2619,6 +2670,9 @@ Resources:
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
 
 Outputs:
+  RunsOnAwsAccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
     Value: !GetAtt RunsOnService.ServiceUrl
@@ -2731,6 +2785,9 @@ Outputs:
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
+  RunsOnServiceRoleArn:
+    Description: ARN of the App Runner service role
+    Value: !GetAtt RunsOnServiceRole.Arn
   RunsOnEC2InstanceLogGroupArn:
     Description: Log group ARN for the EC2 instances
     Value: !Ref EC2InstanceLogGroup
