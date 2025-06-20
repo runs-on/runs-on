@@ -46,7 +46,7 @@ jobs:
   artifact-toolkit:
     runs-on: runs-on=${{github.run_id}}-artifact/runner=s3-cache/env=${{ inputs.env || 'production' }}
     steps:
-      - uses: runs-on/action@v1
+      - uses: runs-on/action@v2
       - run: mkdir -p path/to/artifact
       - run: echo hello > path/to/artifact/world.txt
       - uses: actions/upload-artifact@v4

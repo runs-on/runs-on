@@ -64,6 +64,11 @@ jobs:
   test-efs-tmpfs:
     runs-on: runs-on,family=r7,ram=16,extras=efs+tmpfs+s3-cache,env=${{ inputs.env || 'production' }}
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,memory,disk,io,network
+          show_env: true
+          show_costs: summary
       - name: Show disk setup
         run: |
           sudo lsblk -l
