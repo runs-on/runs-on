@@ -1,6 +1,7 @@
-VERSION=v2.8.4
+VERSION=v2.8.5
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
+FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/zsh
 
@@ -31,6 +32,10 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
+
+branch:
+	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
+	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
