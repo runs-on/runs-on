@@ -424,7 +424,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.8.4-dev
+      ImageTag: v2.8.5-dev
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
