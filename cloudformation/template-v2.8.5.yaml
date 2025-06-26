@@ -16,7 +16,8 @@ Metadata:
           default: "Networking: use external stack [optional]"
         Parameters:
           - ExternalVpcId
-          - ExternalVpcSubnetIds
+          - ExternalVpcPublicSubnetIds
+          - ExternalVpcPrivateSubnetIds
           - ExternalVpcSecurityGroupId
       - Label:
           default: "Networking: use embedded stack [optional]"
@@ -114,9 +115,14 @@ Parameters:
     Description: "ID of the external VPC to reuse."
     Default: ""
 
-  ExternalVpcSubnetIds:
+  ExternalVpcPublicSubnetIds:
     Type: CommaDelimitedList
-    Description: "Subnet IDs (public, private, or both) of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Description: "List of PUBLIC subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Default: ""
+
+  ExternalVpcPrivateSubnetIds:
+    Type: CommaDelimitedList
+    Description: "List of PRIVATE subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
     Default: ""
 
   ExternalVpcSecurityGroupId:
@@ -433,7 +439,8 @@ Conditions:
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref Private, "false"]]]
+  PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
+  HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Condition PrivateEnabled]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
@@ -2218,7 +2225,8 @@ Resources:
         InstanceRoleArn: !GetAtt RunsOnServiceRole.Arn
       NetworkConfiguration:
         EgressConfiguration:
-          EgressType: DEFAULT
+          EgressType: !If [PrivateEnabled, VPC, DEFAULT]
+          VpcConnectorArn: !If [PrivateEnabled, !Ref RunsOnServiceVpcConnector, !Ref "AWS::NoValue"]
         IngressConfiguration:
           IsPubliclyAccessible: true
         IpAddressType: IPV4
@@ -2242,6 +2250,8 @@ Resources:
                 Value: !Ref CostAllocationTag
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
+              - Name: RUNS_ON_NETWORKING_STACK
+                Value: !Ref NetworkingStack
               - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_TAG
@@ -2274,8 +2284,10 @@ Resources:
                 Value: !Ref AppEc2QueueSize
               - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
                 Value: !Ref AppGithubApiStrategy
-              - Name: RUNS_ON_SUBNET_IDS
-                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+              - Name: RUNS_ON_PUBLIC_SUBNET_IDS
+                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPublicSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+              - Name: RUNS_ON_PRIVATE_SUBNET_IDS
+                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPrivateSubnetIds], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
@@ -2316,6 +2328,16 @@ Resources:
             - "${AppRegistry}:${AppTag}"
             - AppTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
+
+  RunsOnServiceVpcConnector:
+    Type: AWS::AppRunner::VpcConnector
+    Condition: PrivateEnabled
+    Properties:
+      Subnets: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+      SecurityGroups: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
 
   RunsOnServiceRole:
     Type: AWS::IAM::Role
@@ -2714,9 +2736,12 @@ Outputs:
     Value: !If [EmbeddedVpc, !Ref VPC, !Ref ExternalVpcId]
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
-  RunsOnSubnetIds:
-    Description: Subnet IDs
-    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3, !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+  RunsOnPublicSubnetIds:
+    Description: Public subnet IDs
+    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPublicSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+  RunsOnPrivateSubnetIds:
+    Description: Private subnet IDs
+    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPrivateSubnetIds], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
     Value: !If [EmbeddedVpc, !Ref VpcCidrBlock, "-"]

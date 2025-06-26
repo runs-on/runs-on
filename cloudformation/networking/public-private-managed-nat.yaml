@@ -353,16 +353,23 @@ Outputs:
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-VpcId
 
-  SubnetIds:
+  PublicSubnetIds:
     Description: Comma separated list of subnet ids
     Value: !Join
       - ","
       - - !Ref PublicSubnet0
         - !Ref PublicSubnet1
-        - !Ref PrivateSubnet0
+    Export:
+      Name: !Sub ${AWS::Region}-${AWS::StackName}-PublicSubnetIds
+
+  PrivateSubnetIds:
+    Description: Comma separated list of private subnet ids
+    Value: !Join
+      - ","
+      - - !Ref PrivateSubnet0
         - !Ref PrivateSubnet1
     Export:
-      Name: !Sub ${AWS::Region}-${AWS::StackName}-SubnetIds
+      Name: !Sub ${AWS::Region}-${AWS::StackName}-PrivateSubnetIds
 
   DefaultSecurityGroupId:
     Description: Id of the default security group for the VPC
