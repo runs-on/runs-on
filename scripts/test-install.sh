@@ -18,7 +18,8 @@ case $VARIANT in
   external*)
     PARAMETERS="$PARAMETERS NetworkingStack=external"
     PARAMETERS="$PARAMETERS ExternalVpcId=$(aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text)"
-    PARAMETERS="$PARAMETERS ExternalVpcSubnetIds=$(aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`SubnetIds`].OutputValue' --output text)"
+    PARAMETERS="$PARAMETERS ExternalVpcPublicSubnetIds=$(aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`PublicSubnetIds`].OutputValue' --output text)"
+    PARAMETERS="$PARAMETERS ExternalVpcPrivateSubnetIds=$(aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnetIds`].OutputValue' --output text)"
     PARAMETERS="$PARAMETERS ExternalVpcSecurityGroupId=$(aws cloudformation describe-stacks --stack-name runs-on-external-networking --region=us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`DefaultSecurityGroupId`].OutputValue' --output text)"
     ;;
   *)

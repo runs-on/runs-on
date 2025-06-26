@@ -2,7 +2,9 @@
   "go.testEnvVars": {
     "AWS_REGION": "us-east-1",
     "AWS_PROFILE": "runs-on-dev-local",
-    "RUNS_ON_STACK_NAME": "runs-on-dev"
+    "RUNS_ON_STACK_NAME": "runs-on-dev",
+    "DEV_S3_BUCKET_CACHE": "runs-on-dev-s3bucketcache-mdxochnaixim",
+    "DEV_EC2_INSTANCE_ROLE_ARN": "arn:aws:iam::966509368716:role/runs-on-dev-EC2InstanceRole-nrVG7CJbejrp"
   },
   "go.testFlags": [
     "-v",
