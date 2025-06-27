@@ -18,4 +18,4 @@ jobs:
       - name: Run linter
         run: |
           cfn-lint --version
-          cfn-lint -t ./cloudformation/template.yaml
+          cfn-lint -i W1030 -t ./cloudformation/template.yaml

@@ -113,26 +113,22 @@ Parameters:
   ExternalVpcId:
     Type: String
     Description: "ID of the external VPC to reuse."
-    Default: "vpc-12345678"
-    AllowedPattern: "^vpc-([0-9a-fA-F]{8}|[0-9a-fA-F]{17})$"
-    ConstraintDescription: "Must be a VPC ID like vpc-xxxxxxxx or vpc-xxxxxxxxxxxxxxxxx"
+    Default: ""
 
   ExternalVpcPublicSubnetIds:
     Type: CommaDelimitedList
     Description: "List of PUBLIC subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
-    Default: "subnet-12345678"
+    Default: ""
 
   ExternalVpcPrivateSubnetIds:
     Type: CommaDelimitedList
     Description: "List of PRIVATE subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
-    Default: "subnet-12345678"
+    Default: ""
 
   ExternalVpcSecurityGroupId:
     Type: String
     Description: "Security group ID of the external VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, EFS (if enabled), and any other service your jobs will call."
-    Default: "sg-12345678"
-    AllowedPattern: "^sg-([0-9a-fA-F]{8}|[0-9a-fA-F]{17})$"
-    ConstraintDescription: "Must be a security group ID like sg-xxxxxxxx or sg-xxxxxxxxxxxxxxxxx"
+    Default: ""
 
   Environment:
     Type: String
