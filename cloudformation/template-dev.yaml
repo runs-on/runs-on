@@ -1764,12 +1764,18 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+            ExpiredObjectDeleteMarker: true
           - Id: ExpireDbEntries
             Prefix: runs-on/db/
             Status: Enabled
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+            ExpiredObjectDeleteMarker: true
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-config-access-logs/
@@ -1817,12 +1823,18 @@ Resources:
             ExpirationInDays: 1
             NoncurrentVersionExpiration:
               NoncurrentDays: 1
+            ExpiredObjectDeleteMarker: true
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
             ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
               NoncurrentDays: 10
+            ExpiredObjectDeleteMarker: true
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-cache-access-logs/
@@ -1872,6 +1884,11 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+            ExpiredObjectDeleteMarker: true
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
