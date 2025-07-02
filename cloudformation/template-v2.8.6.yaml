@@ -1764,14 +1764,12 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
-            ExpiredObjectDeleteMarker: true
           - Id: ExpireDbEntries
             Prefix: runs-on/db/
             Status: Enabled
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
-            ExpiredObjectDeleteMarker: true
           - Id: CleanupIncompleteMultipartUploads
             Status: Enabled
             AbortIncompleteMultipartUpload:
@@ -1823,14 +1821,12 @@ Resources:
             ExpirationInDays: 1
             NoncurrentVersionExpiration:
               NoncurrentDays: 1
-            ExpiredObjectDeleteMarker: true
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
             ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
-              NoncurrentDays: 10
-            ExpiredObjectDeleteMarker: true
+              NoncurrentDays: 1
           - Id: CleanupIncompleteMultipartUploads
             Status: Enabled
             AbortIncompleteMultipartUpload:
@@ -1883,8 +1879,7 @@ Resources:
             Status: Enabled
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
-              NoncurrentDays: 30
-            ExpiredObjectDeleteMarker: true
+              NoncurrentDays: 7
           - Id: CleanupIncompleteMultipartUploads
             Status: Enabled
             AbortIncompleteMultipartUpload:
