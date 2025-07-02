@@ -430,7 +430,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.8.5-dev
+      ImageTag: v2.8.6-dev
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1770,6 +1770,10 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-config-access-logs/
@@ -1822,7 +1826,11 @@ Resources:
             Status: Enabled
             ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
-              NoncurrentDays: 10
+              NoncurrentDays: 1
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-cache-access-logs/
@@ -1871,7 +1879,11 @@ Resources:
             Status: Enabled
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
-              NoncurrentDays: 30
+              NoncurrentDays: 7
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
