@@ -325,7 +325,7 @@ Parameters:
   RunnerDefaultDiskSize:
     Type: Number
     Default: 40
-    MinValue: 40
+    MinValue: 10
     Description: Disk size in GB for `disk=default` runners.
 
   RunnerDefaultDiskDeviceName:
@@ -343,7 +343,7 @@ Parameters:
   RunnerLargeDiskSize:
     Type: Number
     Default: 80
-    MinValue: 40
+    MinValue: 10
     Description: Disk size in GB for `disk=large` runners.
 
   RunnerLargeDiskDeviceName:
