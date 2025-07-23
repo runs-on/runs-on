@@ -1469,7 +1469,7 @@ Resources:
               export AWS_REGION="${AWS::Region}"
               ${EfsExport}
               ${EphemeralRegistryExport}
-              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
@@ -1539,7 +1539,7 @@ Resources:
               export AWS_REGION="${AWS::Region}"
               ${EfsExport}
               ${EphemeralRegistryExport}
-              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
@@ -2382,6 +2382,7 @@ Resources:
                   - ec2:DescribeRouteTables
                   - ec2:DescribeVolumes
                   - ec2:DescribeSnapshots
+                  - ec2:DescribeLaunchTemplateVersions
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
                   - cloudwatch:PutMetricData
@@ -2410,7 +2411,11 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:CreateTags
+                  - ec2:DeleteTags
+                  - ec2:StartInstances
                   - ec2:RunInstances
+                  - ec2:TerminateInstances
+                  - ec2:ModifyInstanceAttribute
                 Resource:
                   - !Sub "arn:aws:ec2:${AWS::Region}::image/*"
                   - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*"
