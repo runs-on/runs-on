@@ -1774,6 +1774,9 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 7
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-config-access-logs/
@@ -1831,6 +1834,9 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-cache-access-logs/
@@ -1884,6 +1890,9 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 7
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
