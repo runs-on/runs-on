@@ -253,6 +253,7 @@ demo-install:
 			ServerPassword=$(SERVER_PASSWORD) \
 			EnableEfs=true \
 			EnableEphemeralRegistry=true \
+			EnableDashboard=true \
 		--capabilities CAPABILITY_IAM
 
 demo-show:
