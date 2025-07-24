@@ -48,6 +48,7 @@ Metadata:
       - Label:
           default: "Alert and monitoring settings [optional]"
         Parameters:
+          - EnableDashboard
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
@@ -406,6 +407,12 @@ Parameters:
     Default: 0
     Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds. Leave as 0 to disable SQS alarms.
 
+  EnableDashboard:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Create a CloudWatch dashboard for monitoring RunsOn operations (number of jobs processed, rate limit status, last error messages, etc.). The dashboard will be named STACK_NAME-Dashboard.
+
   ServerPassword:
     Type: String
     Default: ""
@@ -483,6 +490,7 @@ Conditions:
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
   CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
   CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
+  CreateDashboard: !Equals [!Ref EnableDashboard, "true"]
 
 Resources:
   VPC:
@@ -2730,6 +2738,27 @@ Resources:
       TopicArn: !Ref AlertTopic
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
 
+  DashboardStack:
+    Condition: CreateDashboard
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.8.6.yaml"
+      Parameters:
+        StackName: !Ref AWS::StackName
+        LogGroupName: !Join
+          - ""
+          - - "/aws/apprunner/"
+            - !Select
+              - 1
+              - !Split
+                - "service/"
+                - !GetAtt RunsOnService.ServiceArn
+            - "/application"
+        DashboardName: !Sub "${AWS::StackName}-Dashboard"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
 Outputs:
   RunsOnAwsAccountId:
     Description: AWS Account ID
@@ -2740,6 +2769,17 @@ Outputs:
   RunsOnService:
     Description: Link to the AppRunner service in AWS console
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
+  RunsOnServiceLogGroupName:
+    Description: Log group for the RunsOn service
+    Value: !Join
+      - ""
+      - - "/aws/apprunner/"
+        - !Select
+          - 1
+          - !Split
+            - "service/"
+            - !GetAtt RunsOnService.ServiceArn
+        - "/application"
   RunsOnAppTag:
     Description: RunsOn application tag
     Value: !FindInMap [App, Tags, ImageTag]

@@ -39,6 +39,8 @@ branch:
 
 bump:
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
+	cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template-$(VERSION).yaml
+	sed -i.bak 's|dashboard/template-dev.yaml|dashboard/template-$(VERSION).yaml|' cloudformation/template-$(VERSION).yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
 	./scripts/set-bootstrap-tag.sh
@@ -83,6 +85,7 @@ dev: login copyright
 # generates a stage release
 stage: build-push
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-$(VERSION).yaml s3://runs-on/cloudformation/dashboard/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 sync ./cloudformation/networking/ s3://runs-on/cloudformation/networking/
 
@@ -121,6 +124,17 @@ dev-install:
 		--stack-name $(STACK_DEV_NAME) \
 		--s3-bucket $(STACK_DEV_NAME)-tmp-$(USER) \
 		--parameter-overrides file://cloudformation/parameters/$(STACK_DEV_NAME).json
+
+dev-dashboard:
+	@echo "Finding dashboard nested stack for $(STACK_DEV_NAME)..."
+	DASHBOARD_STACK_NAME=$$(AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation describe-stacks --query "Stacks[?starts_with(StackName, '$(STACK_DEV_NAME)-DashboardStack-')].[StackName]" --output text | head -n1) && \
+	echo "Deploying dashboard to $$DASHBOARD_STACK_NAME" && \
+	AWS_PROFILE=$(STACK_DEV_NAME) aws cloudformation deploy \
+		--region=us-east-1 \
+		--no-disable-rollback --no-cli-pager --no-fail-on-empty-changeset \
+		--template-file ./cloudformation/dashboard/template-dev.yaml \
+		--capabilities CAPABILITY_IAM \
+		--stack-name $$DASHBOARD_STACK_NAME
 
 dev-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
@@ -183,7 +197,19 @@ stage-install:
 			LicenseKey=$(LICENSE_KEY) \
 			ServerPassword=$(SERVER_PASSWORD) \
 			RunnerLargeDiskSize=120 \
+			EnableDashboard=true \
 		--capabilities CAPABILITY_IAM
+
+stage-dashboard:
+	@echo "Finding dashboard nested stack for $(STACK_STAGE_NAME)..."
+	DASHBOARD_STACK_NAME=$$(AWS_PROFILE=runs-on-admin aws cloudformation describe-stacks --query "Stacks[?starts_with(StackName, '$(STACK_STAGE_NAME)-DashboardStack-')].[StackName]" --output text | head -n1) && \
+	echo "Deploying dashboard to $$DASHBOARD_STACK_NAME" && \
+	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
+		--region=us-east-1 \
+		--no-disable-rollback --no-cli-pager --no-fail-on-empty-changeset \
+		--template-file ./cloudformation/dashboard/template-$(VERSION).yaml \
+		--capabilities CAPABILITY_IAM \
+		--stack-name $$DASHBOARD_STACK_NAME
 
 stage-redeploy:
 	AWS_PROFILE=runs-on-admin aws apprunner start-deployment \
