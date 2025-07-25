@@ -81,6 +81,7 @@ dev: login copyright
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION_DEV)"
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
 # generates a stage release
 stage: build-push
