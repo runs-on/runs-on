@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-safe_apps=("runs-on-dev" "runs-on-runs-on-stage")
+safe_apps=("runs-on-dev" "runs-on-runs-on-stage", "runson-dev-runs-on")
 
 apps=$(gh api \
   -H "Accept: application/vnd.github+json" \
