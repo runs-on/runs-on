@@ -53,9 +53,4 @@ Jobs can add the `pool=POOL_NAME` label to the `runs-on:` definition, so that th
 ## Limitations
 
 * If SSH is enabled for the instances in the pool, only the stack default admins will be added to the instance.
-
-* Instances from a pool are always launched as `on-demand` for now. Support for `spot` for the `hot` pool is possible and will be added.
-
-## TODO
-
-- pool volume override
+* Instances from a pool are always launched as `on-demand` for now. Support for `spot` for the `hot` pool is theoretically possible and will be added once pools are stable.
