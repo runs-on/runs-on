@@ -331,7 +331,7 @@ Parameters:
 
   RunnerDefaultDiskDeviceName:
     Type: String
-    Default: "/dev/sda1"
+    Default: "/dev/xvda"
     Description: Name of the root volume device name for the `disk=default` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
 
   RunnerDefaultVolumeThroughput:
@@ -349,7 +349,7 @@ Parameters:
 
   RunnerLargeDiskDeviceName:
     Type: String
-    Default: "/dev/sda1"
+    Default: "/dev/xvda"
     Description: Name of the root volume device name for the `disk=large` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
 
   RunnerLargeVolumeThroughput:
@@ -2061,7 +2061,6 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                  - s3:DeleteObject
                   - s3:ListBucket
                   - s3:GetBucketLocation
                   - s3:ListBucketMultipartUploads
@@ -2337,6 +2336,10 @@ Resources:
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
+              - Name: RUNS_ON_RUNNER_DEFAULT_DISK_DEVICE_NAME
+                Value: !Ref RunnerDefaultDiskDeviceName
+              - Name: RUNS_ON_RUNNER_LARGE_DISK_DEVICE_NAME
+                Value: !Ref RunnerLargeDiskDeviceName
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_QUEUE_HOUSEKEEPING
@@ -2401,6 +2404,7 @@ Resources:
                   - ec2:DescribeRouteTables
                   - ec2:DescribeVolumes
                   - ec2:DescribeSnapshots
+                  - ec2:DescribeLaunchTemplateVersions
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
                   - cloudwatch:PutMetricData
@@ -2450,6 +2454,8 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:TerminateInstances
+                  - ec2:StopInstances
+                  - ec2:StartInstances
                 Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
