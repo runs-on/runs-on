@@ -118,12 +118,12 @@ Parameters:
 
   ExternalVpcPublicSubnetIds:
     Type: CommaDelimitedList
-    Description: "List of PUBLIC subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Description: "List of PUBLIC subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs. You must enter `-` if you don't have any public subnets."
     Default: ""
 
   ExternalVpcPrivateSubnetIds:
     Type: CommaDelimitedList
-    Description: "List of PRIVATE subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs."
+    Description: "List of PRIVATE subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs. You must enter `-` if you don't have any private subnets."
     Default: ""
 
   ExternalVpcSecurityGroupId:
@@ -442,6 +442,8 @@ Mappings:
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
   ExternalVpc: !Equals [!Ref NetworkingStack, "external"]
+  ExternalVpcPublicSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], ""]]]
+  ExternalVpcPrivateSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], ""]]]
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
@@ -2315,9 +2317,13 @@ Resources:
               - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
                 Value: !Ref AppGithubApiStrategy
               - Name: RUNS_ON_PUBLIC_SUBNET_IDS
-                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPublicSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+                  !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
               - Name: RUNS_ON_PRIVATE_SUBNET_IDS
-                Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPrivateSubnetIds], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+                  !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
@@ -2807,10 +2813,14 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VPCId"
   RunsOnPublicSubnetIds:
     Description: Public subnet IDs
-    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPublicSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+      !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
   RunsOnPrivateSubnetIds:
     Description: Private subnet IDs
-    Value: !If [ExternalVpc, !Join [",", !Ref ExternalVpcPrivateSubnetIds], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+      !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
     Value: !If [EmbeddedVpc, !Ref VpcCidrBlock, "-"]
