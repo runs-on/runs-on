@@ -33,7 +33,11 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-pre-release: bump
+pre-release: check-clean bump
+	git checkout main && git pull
+	cd server && make pre-release && git checkout main && git pull
+
+check-clean:
 	@if ! git diff-index --quiet HEAD --; then \
 		echo "Error: You have uncommitted changes. Commit or stash them first."; \
 		git status --short; \
@@ -44,8 +48,6 @@ pre-release: bump
 		git status --short; \
 		exit 1; \
 	fi
-	git checkout main && git pull
-	cd server && make pre-release && git checkout main && git pull
 
 branch:
 	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
