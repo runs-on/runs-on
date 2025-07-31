@@ -10,6 +10,8 @@
 
 ## Release
 
-1. Merge PR
-2. `make tag`
-3. `make release`
+1. Merge PRs
+2. `make pristine`
+2. `make stage`
+3. `make tag`
+4. `make release`

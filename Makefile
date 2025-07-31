@@ -33,6 +33,22 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
+pre-release: bump
+	@if ! git diff-index --quiet HEAD --; then \
+		echo "Error: You have uncommitted changes. Commit or stash them first."; \
+		git status --short; \
+		exit 1; \
+	fi
+	@if ! git diff-index --quiet --cached HEAD --; then \
+		echo "Error: You have staged changes. Commit them first."; \
+		git status --short; \
+		exit 1; \
+	fi
+	cd server && make pre-release
+	cd server && git checkout main && git pull
+	git checkout main && git pull
+	git submodule update --init --recursive
+
 branch:
 	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
 	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
