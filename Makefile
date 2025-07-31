@@ -44,10 +44,8 @@ pre-release: bump
 		git status --short; \
 		exit 1; \
 	fi
-	cd server && make pre-release
-	cd server && git checkout main && git pull
 	git checkout main && git pull
-	git submodule update --init --recursive
+	cd server && make pre-release && git checkout main && git pull
 
 branch:
 	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
