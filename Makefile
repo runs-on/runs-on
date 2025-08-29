@@ -54,12 +54,12 @@ branch:
 	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
 
 bump:
+	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
 	cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template-$(VERSION).yaml
 	sed -i.bak 's|dashboard/template-dev.yaml|dashboard/template-$(VERSION).yaml|' cloudformation/template-$(VERSION).yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
-	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:

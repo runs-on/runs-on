@@ -436,7 +436,7 @@ Parameters:
 Mappings:
   App:
     Tags:
-      BootstrapTag: v0.1.16
+      BootstrapTag: v0.1.12
       ImageTag: v2.8.9-dev
 
 Conditions:
