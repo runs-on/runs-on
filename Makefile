@@ -183,6 +183,9 @@ test-install-external: networking-stack
 test-install-external-private-only: networking-stack
 	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external-private-only
 
+test-install-external-private-always: networking-stack
+	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external-private-always
+
 test-install-manual:
 	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml&stackName=runs-on-test"
 
