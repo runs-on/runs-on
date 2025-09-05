@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudWatch Dashboard for RunsOn stack monitoring
+
+Parameters:
+  StackName:
+    Type: String
+    Description: Name of the parent RunsOn stack
+    
+  LogGroupName:
+    Type: String
+    Description: Log group name from the parent stack
+    
+  DashboardName:
+    Type: String
+    Description: Name for the CloudWatch dashboard
+    Default: RunsOn-Operations-Dashboard
+
+Resources:
+  RunsOnDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Ref DashboardName
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "log",
+              "x": 0,
+              "y": 0,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter message like /🎉 Runner scheduled successfully/\n| stats count() as RunnersScheduled",
+                "region": "${AWS::Region}",
+                "title": "Total Runners Scheduled (Current Period)",
+                "view": "table"
+              }
+            },
+            {
+              "type": "log",
+              "x": 8,
+              "y": 0,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter message like /🎉 Runner scheduled successfully/\n| stats count() as RunnersScheduled by bin(5m)\n| sort bin",
+                "region": "${AWS::Region}",
+                "title": "Runners Scheduled over time (5min intervals)",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 16,
+              "y": 0,
+              "width": 8,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter message like /Posted .* of workflow usage/\n| stats count() as Count by job_conclusion\n| sort Count desc",
+                "region": "${AWS::Region}",
+                "title": "Completed Jobs by Conclusion",
+                "view": "stackedArea"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": { 
+                "query": "SOURCE '${LogGroupName}'\n| filter @message like /Current tokens remaining for limiters/ \n | parse @message /ec2ReadLimiter=tokens:(?<ec2_read_tokens>[0-9.]+),burst:(?<ec2_read_burst>[0-9]+) ec2RunLimiter=tokens:(?<ec2_run_tokens>[0-9.]+),burst:(?<ec2_run_burst>[0-9]+) ec2TerminateLimiter=tokens:(?<ec2_terminate_tokens>[0-9.]+),burst:(?<ec2_terminate_burst>[0-9]+) ec2MutatingLimiter=tokens:(?<ec2_mutating_tokens>[0-9.]+),burst:(?<ec2_mutating_burst>[0-9]+)/ \n | stats avg(ec2_read_tokens) as avg_ec2_read_tokens, avg(ec2_run_tokens) as avg_ec2_run_tokens, avg(ec2_terminate_tokens) as avg_ec2_terminate_tokens, avg(ec2_mutating_tokens) as avg_ec2_mutating_tokens by bin(5m) | sort bin",
+                "region": "${AWS::Region}",
+                "title": "EC2 Rate Limiters (tokens remaining)",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter @message like /Current tokens remaining for limiters/ \n | parse @message /githubLimiter=tokens:(?<github_tokens>[0-9.]+),burst:(?<github_burst>[0-9]+)/ \n | stats avg(github_burst) as avg_github_tokens_left by bin(5m) | sort bin",
+                "region": "${AWS::Region}",
+                "title": "GitHub API Rate Limiters (tokens remaining)",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 12,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter level = \"error\"\n| fields @timestamp, message\n| sort @timestamp desc\n| limit 50",
+                "region": "${AWS::Region}",
+                "title": "Recent Error Messages (Latest 50)",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardURL:
+    Description: URL to the CloudWatch Dashboard
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DashboardName}"
+    
+  DashboardName:
+    Description: Name of the created dashboard
+    Value: !Ref DashboardName
