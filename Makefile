@@ -54,12 +54,12 @@ branch:
 	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
 
 bump:
+	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
 	cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template-$(VERSION).yaml
 	sed -i.bak 's|dashboard/template-dev.yaml|dashboard/template-$(VERSION).yaml|' cloudformation/template-$(VERSION).yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
 	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
-	./scripts/set-bootstrap-tag.sh
 	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
@@ -182,6 +182,9 @@ test-install-external: networking-stack
 
 test-install-external-private-only: networking-stack
 	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external-private-only
+
+test-install-external-private-always: networking-stack
+	AWS_PROFILE=runs-on-admin LICENSE_KEY=$(LICENSE_KEY) ./scripts/test-install.sh $(VERSION) $(STACK_TEST_NAME) external-private-always
 
 test-install-manual:
 	assume runs-on-admin --cd "https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateUrl=https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml&stackName=runs-on-test"
