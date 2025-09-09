@@ -6,3 +6,5 @@
 tmp/
 .DS_Store
 /cloudformation/parameters/*.json
+node_modules
+app.json

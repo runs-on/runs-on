@@ -1,0 +1,14 @@
+{
+  "name": "github-app-file-reader",
+  "version": "1.0.0",
+  "description": "Script to read files from GitHub repos using GitHub App authentication",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^7.0.1",
+    "@octokit/rest": "^21.0.0"
+  }
+}
