@@ -58,9 +58,9 @@ async function getFileContent() {
     console.log('Installation ID:', installation.id);
     
     try {
-      const { data: repos } = await octokitWithToken.rest.apps.listReposAccessibleToInstallation();
+      const repos = await octokitWithToken.paginate(octokitWithToken.rest.apps.listReposAccessibleToInstallation);
       console.log('Accessible repositories:');
-      repos.repositories.forEach(repo => {
+      repos.forEach(repo => {
         console.log(`- ${repo.full_name}`);
       });
     } catch (repoError) {
