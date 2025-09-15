@@ -1472,6 +1472,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
+              date -u
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
               export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
@@ -1542,6 +1543,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               #!/bin/bash -ex
+              date -u
               BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
               export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
@@ -1613,6 +1615,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              Get-Date -format s
               $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
@@ -1697,6 +1700,7 @@ Resources:
           Fn::Base64: !Sub
             - |
               <powershell>
+              Get-Date -format s
               $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
@@ -2769,6 +2773,7 @@ Resources:
                 - !GetAtt RunsOnService.ServiceArn
             - "/application"
         DashboardName: !Sub "${AWS::StackName}-Dashboard"
+        QueueName: !GetAtt RunsOnQueue.QueueName
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
