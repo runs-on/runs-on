@@ -2773,7 +2773,7 @@ Resources:
                 - !GetAtt RunsOnService.ServiceArn
             - "/application"
         DashboardName: !Sub "${AWS::StackName}-Dashboard"
-        QueueName: !Ref RunsOnQueue
+        QueueName: !GetAtt RunsOnQueue.QueueName
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName

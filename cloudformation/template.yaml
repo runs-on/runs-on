@@ -2763,7 +2763,6 @@ Resources:
       TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.9.0.yaml"
       Parameters:
         StackName: !Ref AWS::StackName
-        DashboardName: !Sub "${AWS::StackName}-Dashboard"
         LogGroupName: !Join
           - ""
           - - "/aws/apprunner/"
@@ -2773,6 +2772,7 @@ Resources:
                 - "service/"
                 - !GetAtt RunsOnService.ServiceArn
             - "/application"
+        DashboardName: !Sub "${AWS::StackName}-Dashboard"
         QueueName: !GetAtt RunsOnQueue.QueueName
       Tags:
         - Key: !Ref CostAllocationTag

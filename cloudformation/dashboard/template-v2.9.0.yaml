@@ -35,7 +35,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/SQS", "ApproximateNumberOfMessages", "QueueName", "${QueueName}" ]
+                  [ "AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "${QueueName}" ]
                 ],
                 "period": 300,
                 "stat": "Maximum",
