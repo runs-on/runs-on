@@ -52,6 +52,7 @@ Metadata:
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
+          - AlertTopicSlackWebhookUrl
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
           - SqsQueueOldestMessageThresholdSeconds
@@ -141,6 +142,12 @@ Parameters:
     Type: String
     Description: HTTPS endpoint for cost and alert reports.
     Default: ""
+
+  AlertTopicSlackWebhookUrl:
+    Type: String
+    Description: Slack incoming webhook URL for alert notifications.
+    Default: ""
+    NoEcho: true
 
   VpcCidrBlock:
     Type: String
@@ -448,6 +455,7 @@ Conditions:
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
+  AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
   PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
   HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Condition PrivateEnabled]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
@@ -2755,6 +2763,105 @@ Resources:
       Protocol: https
       TopicArn: !Ref AlertTopic
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
+
+  AlertTopicSlackWebhookRole:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  AlertTopicSlackWebhookFunction:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt AlertTopicSlackWebhookRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref AlertTopicSlackWebhookUrl
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import os
+          import urllib.error
+          import urllib.request
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+              webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
+              if not webhook_url:
+                  logger.error("Slack webhook URL is not configured")
+                  return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
+
+              records = event.get("Records", [])
+              for record in records:
+                  sns = record.get("Sns", {})
+                  subject = sns.get("Subject")
+                  message = sns.get("Message", "")
+
+                  if subject:
+                      text = f"*{subject}*\n{message}"
+                  else:
+                      text = message
+
+                  data = json.dumps({"text": text}).encode("utf-8")
+                  request = urllib.request.Request(
+                      webhook_url,
+                      data=data,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+
+                  try:
+                      with urllib.request.urlopen(request, timeout=5) as response:
+                          logger.info("Sent alert to Slack with status %s", response.status)
+                  except urllib.error.HTTPError as error:
+                      logger.error(
+                          "Failed to send alert to Slack: HTTP %s %s", error.code, error.reason
+                      )
+                  except Exception as error:  # noqa: BLE001
+                      logger.exception("Unexpected error sending alert to Slack: %s", error)
+
+              return {"statusCode": 200, "body": "Processed SNS records"}
+
+  AlertTopicSlackWebhookPermission:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AlertTopicSlackWebhookFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref AlertTopic
+
+  AlertTopicSlackWebhookSubscription:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::SNS::Subscription
+    DependsOn:
+      - AlertTopicSlackWebhookPermission
+    Properties:
+      Protocol: lambda
+      TopicArn: !Ref AlertTopic
+      Endpoint: !GetAtt AlertTopicSlackWebhookFunction.Arn
 
   DashboardStack:
     Condition: CreateDashboard
