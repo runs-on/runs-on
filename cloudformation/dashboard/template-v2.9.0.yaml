@@ -19,6 +19,11 @@ Parameters:
     Type: String
     Description: Name of the SQS queue to monitor
 
+  WebhookRedeliveryLogGroupName:
+    Type: String
+    Description: Log group name for webhook redelivery Lambda
+    Default: ""
+
 Resources:
   RunsOnDashboard:
     Type: AWS::CloudWatch::Dashboard
@@ -119,6 +124,47 @@ Resources:
                 "query": "SOURCE '${LogGroupName}'\n| filter level = \"error\"\n| fields @timestamp, message\n| sort @timestamp desc\n| limit 50",
                 "region": "${AWS::Region}",
                 "title": "Recent Error Messages (Latest 50)",
+                "view": "table"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 18,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${WebhookRedeliveryLogGroupName}'\n| filter metric_type = \"webhook_redelivery_summary\" and ispresent(@message)\n| stats sum(deliveries_redelivered) as TotalRedelivered, sum(deliveries_failed) as TotalFailed, sum(deliveries_scanned) as TotalScanned, sum(deliveries_ignored) as TotalIgnored by bin(5m)\n| sort @timestamp desc",
+                "region": "${AWS::Region}",
+                "title": "Webhook Redeliveries (Last 24h)",
+                "view": "table",
+                "stacked": false
+              }
+            },
+            {
+              "type": "log",
+              "x": 12,
+              "y": 18,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${WebhookRedeliveryLogGroupName}'\n| filter metric_type = \"webhook_redelivery_summary\" and ispresent(@message)\n| stats sum(deliveries_redelivered) as Redelivered by bin(5m)\n| sort @timestamp",
+                "region": "${AWS::Region}",
+                "title": "Webhook Redeliveries Over Time",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 24,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${WebhookRedeliveryLogGroupName}'\n| filter metric_type = \"webhook_redelivery_success\" and ispresent(@message)\n| fields @timestamp, delivery_id, event, action, original_status_code\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "title": "Recent Webhook Redeliveries",
                 "view": "table"
               }
             }

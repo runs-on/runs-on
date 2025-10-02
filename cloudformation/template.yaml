@@ -49,6 +49,7 @@ Metadata:
           default: "Alert and monitoring settings [optional]"
         Parameters:
           - EnableDashboard
+          - EnableWebhookRedelivery
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
@@ -430,6 +431,14 @@ Parameters:
     Default: 10
     Description: "Number of days to keep cache entries in the S3 cache bucket."
 
+  EnableWebhookRedelivery:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable webhook redelivery Lambda function to automatically retry failed GitHub webhook deliveries."
+
   CostAllocationTag:
     Type: String
     Default: "stack"
@@ -456,6 +465,7 @@ Conditions:
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
   AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
+  WebhookRedeliveryEnabled: !Equals [!Ref EnableWebhookRedelivery, "true"]
   PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
   HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Condition PrivateEnabled]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
@@ -2807,6 +2817,37 @@ Resources:
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
 
+          def format_cloudwatch_alarm(alarm):
+              """Format CloudWatch alarm as Slack blocks."""
+              state = alarm.get("NewStateValue", "UNKNOWN")
+              color = {"ALARM": "danger", "OK": "good", "INSUFFICIENT_DATA": "warning"}.get(state, "#808080")
+
+              fields = [
+                  {"type": "mrkdwn", "text": f"*Alarm:*\n{alarm.get('AlarmName', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*State:*\n{state}"},
+                  {"type": "mrkdwn", "text": f"*Region:*\n{alarm.get('Region', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*Time:*\n{alarm.get('StateChangeTime', 'N/A')}"}
+              ]
+
+              if alarm.get("AlarmDescription"):
+                  fields.insert(1, {"type": "mrkdwn", "text": f"*Description:*\n{alarm['AlarmDescription']}"})
+
+              blocks = [
+                  {
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"*CloudWatch Alarm: {state}*"}
+                  },
+                  {"type": "section", "fields": fields}
+              ]
+
+              if alarm.get("NewStateReason"):
+                  blocks.append({
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"*Reason:*\n{alarm['NewStateReason']}"}
+                  })
+
+              return {"blocks": blocks, "attachments": [{"color": color, "blocks": blocks[1:]}]}
+
           def handler(event, context):
               webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
               if not webhook_url:
@@ -2816,15 +2857,24 @@ Resources:
               records = event.get("Records", [])
               for record in records:
                   sns = record.get("Sns", {})
-                  subject = sns.get("Subject")
+                  subject = sns.get("Subject", "")
                   message = sns.get("Message", "")
 
-                  if subject:
-                      text = f"*{subject}*\n{message}"
-                  else:
-                      text = message
+                  # Try to parse message as JSON (CloudWatch alarms)
+                  try:
+                      alarm_data = json.loads(message)
+                      if "AlarmName" in alarm_data:
+                          payload = format_cloudwatch_alarm(alarm_data)
+                      else:
+                          # JSON but not an alarm, format as code block
+                          text = f"*{subject}*\n```\n{json.dumps(alarm_data, indent=2)}\n```" if subject else f"```\n{json.dumps(alarm_data, indent=2)}\n```"
+                          payload = {"text": text}
+                  except (json.JSONDecodeError, TypeError):
+                      # Plain text message
+                      text = f"*{subject}*\n{message}" if subject else message
+                      payload = {"text": text}
 
-                  data = json.dumps({"text": text}).encode("utf-8")
+                  data = json.dumps(payload).encode("utf-8")
                   request = urllib.request.Request(
                       webhook_url,
                       data=data,
@@ -2863,6 +2913,107 @@ Resources:
       TopicArn: !Ref AlertTopic
       Endpoint: !GetAtt AlertTopicSlackWebhookFunction.Arn
 
+  WebhookRedeliveryRole:
+    Condition: WebhookRedeliveryEnabled
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: WebhookRedeliveryPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:HeadObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${S3Bucket}/runs-on/db/webhook-redeliveries/*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${S3Bucket}/runs-on/app.json
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref AlertTopic
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  WebhookRedeliveryLogGroup:
+    Condition: WebhookRedeliveryEnabled
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-WebhookRedelivery"
+      RetentionInDays: 7
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  WebhookRedeliveryFunction:
+    Condition: WebhookRedeliveryEnabled
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-WebhookRedelivery"
+      Runtime: provided.al2023
+      Handler: bootstrap
+      Role: !GetAtt WebhookRedeliveryRole.Arn
+      Architectures:
+        - arm64
+      Timeout: 120
+      MemorySize: 256
+      ReservedConcurrentExecutions: 1
+      Environment:
+        Variables:
+          RUNS_ON_AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          RUNS_ON_ENV: !Ref Environment
+          RUNS_ON_STACK_NAME: !Ref AWS::StackName
+          RUNS_ON_BUCKET_CONFIG: !Ref S3Bucket
+          RUNS_ON_GITHUB_ORGANIZATION: !Ref GithubOrganization
+          RUNS_ON_GITHUB_ENTERPRISE_URL: !Ref GithubEnterpriseUrl
+          RUNS_ON_REGION: !Ref AWS::Region
+          RUNS_ON_ALERT_TOPIC_ARN: !Ref AlertTopic
+      Code:
+        S3Bucket: !Sub "runs-on-${AWS::Region}"
+        S3Key: !Sub
+          - "cloudformation/lambda/webhook-redelivery-${ImageTag}.zip"
+          - ImageTag: !FindInMap [App, Tags, ImageTag]
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  WebhookRedeliveryScheduleRule:
+    Condition: WebhookRedeliveryEnabled
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger webhook redelivery Lambda every 5 minutes"
+      ScheduleExpression: "rate(5 minutes)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt WebhookRedeliveryFunction.Arn
+          Id: "WebhookRedeliveryTarget"
+
+  WebhookRedeliverySchedulePermission:
+    Condition: WebhookRedeliveryEnabled
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebhookRedeliveryFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WebhookRedeliveryScheduleRule.Arn
+
   DashboardStack:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
@@ -2881,6 +3032,10 @@ Resources:
             - "/application"
         DashboardName: !Sub "${AWS::StackName}-Dashboard"
         QueueName: !GetAtt RunsOnQueue.QueueName
+        WebhookRedeliveryLogGroupName: !If
+          - WebhookRedeliveryEnabled
+          - !Ref WebhookRedeliveryLogGroup
+          - ""
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName

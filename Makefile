@@ -1,20 +1,24 @@
 VERSION=v2.9.0
-VERSION_DEV=$(VERSION)-dev
+VERSION_DEV=$(VERSION)-dev-blue
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/zsh
+
+# Supported AWS regions for Lambda distribution
+SUPPORTED_REGIONS=us-east-1 us-east-2 us-west-2 eu-west-1 eu-west-2 eu-west-3 eu-central-1 ap-northeast-1 ap-southeast-1 ap-southeast-2
 
 # Override any of these variables in .env.local
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-install dev-logs dev-logs-instances dev-show dev-roc \
+	dev-run dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
-	networking-stack trigger-spot-interruption copyright
+	networking-stack trigger-spot-interruption copyright \
+	buckets dev-lambdas stage-lambdas
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -32,6 +36,48 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template.yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
+
+buckets:
+	@echo "Creating S3 buckets in all supported regions..."
+	@for region in $(SUPPORTED_REGIONS); do \
+		echo "Creating bucket runs-on-$$region in $$region..."; \
+		aws s3 mb s3://runs-on-$$region --region $$region 2>/dev/null || echo "Bucket runs-on-$$region already exists"; \
+		aws s3api put-public-access-block \
+			--bucket runs-on-$$region \
+			--public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" \
+			--region $$region; \
+		aws s3api put-bucket-policy \
+			--bucket runs-on-$$region \
+			--policy '{"Version":"2012-10-17","Statement":[{"Sid":"PublicReadGetObject","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::runs-on-'$$region'/*"}]}' \
+			--region $$region; \
+	done
+	@echo "Done creating buckets"
+
+dev-lambdas:
+	@echo "Building and uploading Lambda functions (dev version) to all regions..."
+	cd server && $(MAKE) webhook-redelivery
+	cd server/dist && cp webhook-redelivery bootstrap && zip webhook-redelivery-$(VERSION_DEV).zip bootstrap && rm bootstrap
+	@for region in us-east-1 eu-west-1; do \
+		echo "Uploading to s3://runs-on-$$region/cloudformation/lambda/webhook-redelivery-$(VERSION_DEV).zip"; \
+		AWS_PROFILE=runs-on-releaser aws s3 cp \
+			server/dist/webhook-redelivery-$(VERSION_DEV).zip \
+			s3://runs-on-$$region/cloudformation/lambda/webhook-redelivery-$(VERSION_DEV).zip \
+			--region $$region; \
+	done
+	@echo "Done uploading dev Lambda functions"
+
+stage-lambdas:
+	@echo "Building and uploading Lambda functions (version $(VERSION)) to all regions..."
+	cd server && $(MAKE) webhook-redelivery
+	cd server/dist && cp webhook-redelivery bootstrap && zip webhook-redelivery-$(VERSION).zip bootstrap && rm bootstrap
+	@for region in $(SUPPORTED_REGIONS); do \
+		echo "Uploading to s3://runs-on-$$region/cloudformation/lambda/webhook-redelivery-$(VERSION).zip"; \
+		AWS_PROFILE=runs-on-releaser aws s3 cp \
+			server/dist/webhook-redelivery-$(VERSION).zip \
+			s3://runs-on-$$region/cloudformation/lambda/webhook-redelivery-$(VERSION).zip \
+			--region $$region; \
+	done
+	@echo "Done uploading stage Lambda functions"
 
 pre-release: check-clean bump
 	git checkout main && git pull
@@ -90,7 +136,7 @@ build-push: login copyright
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
 # generates a dev release
-dev: login copyright
+dev: login copyright dev-lambdas
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION_DEV) .
@@ -100,7 +146,7 @@ dev: login copyright
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
 # generates a stage release
-stage: build-push
+stage: build-push stage-lambdas
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-$(VERSION).yaml s3://runs-on/cloudformation/dashboard/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
@@ -129,6 +175,9 @@ dev-run:
 	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+
+dev-run-redelivery:
+	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify
 
 # Install with the dev template
 dev-install:
