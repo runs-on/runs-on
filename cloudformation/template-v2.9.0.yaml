@@ -2935,7 +2935,6 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                  - s3:HeadObject
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/runs-on/db/webhook-redeliveries/*
               - Effect: Allow
@@ -2973,7 +2972,7 @@ Resources:
       Architectures:
         - arm64
       Timeout: 120
-      MemorySize: 256
+      MemorySize: 128
       ReservedConcurrentExecutions: 1
       Environment:
         Variables:

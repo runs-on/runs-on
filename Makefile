@@ -1,5 +1,5 @@
 VERSION=v2.9.0
-VERSION_DEV=$(VERSION)-dev-blue
+VERSION_DEV=$(VERSION)-dev-green
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
