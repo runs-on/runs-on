@@ -2370,6 +2370,8 @@ Resources:
                 Value: !Ref RunnerLargeDiskDeviceName
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
+              - Name: RUNS_ON_QUEUE_POOL
+                Value: !Ref RunsOnQueuePool
               - Name: RUNS_ON_QUEUE_HOUSEKEEPING
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
@@ -2523,6 +2525,7 @@ Resources:
                   - sqs:GetQueueAttributes
                 Resource:
                   - !GetAtt RunsOnQueue.Arn
+                  - !GetAtt RunsOnQueuePool.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
@@ -2579,6 +2582,27 @@ Resources:
       VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
+        maxReceiveCount: 5
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueuePoolDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueuePool:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueuePoolDeadLetter.Arn
         maxReceiveCount: 5
       Tags:
         - Key: !Ref CostAllocationTag
@@ -2645,6 +2669,27 @@ Resources:
       Dimensions:
       - Name: QueueName
         Value: !GetAtt RunsOnQueue.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueuePoolOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueuePool oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueuePool.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3161,6 +3206,9 @@ Outputs:
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueuePool:
+    Description: SQS queue for the RunsOn service, used for pool management tasks
+    Value: !Ref RunsOnQueuePool
   RunsOnQueueHousekeeping:
     Description: SQS queue for the RunsOn service, used for non-critical housekeeping tasks
     Value: !Ref RunsOnQueueHousekeeping
