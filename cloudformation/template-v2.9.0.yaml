@@ -2820,7 +2820,7 @@ Resources:
           def format_cloudwatch_alarm(alarm):
               """Format CloudWatch alarm as Slack blocks."""
               state = alarm.get("NewStateValue", "UNKNOWN")
-              color = {"ALARM": "danger", "OK": "good", "INSUFFICIENT_DATA": "warning"}.get(state, "#808080")
+              state_emoji = {"ALARM": ":rotating_light:", "OK": ":white_check_mark:", "INSUFFICIENT_DATA": ":warning:"}.get(state, ":question:")
 
               fields = [
                   {"type": "mrkdwn", "text": f"*Alarm:*\n{alarm.get('AlarmName', 'N/A')}"},
@@ -2835,7 +2835,7 @@ Resources:
               blocks = [
                   {
                       "type": "section",
-                      "text": {"type": "mrkdwn", "text": f"*CloudWatch Alarm: {state}*"}
+                      "text": {"type": "mrkdwn", "text": f"{state_emoji} *CloudWatch Alarm: {state}*"}
                   },
                   {"type": "section", "fields": fields}
               ]
@@ -2846,7 +2846,7 @@ Resources:
                       "text": {"type": "mrkdwn", "text": f"*Reason:*\n{alarm['NewStateReason']}"}
                   })
 
-              return {"blocks": blocks, "attachments": [{"color": color, "blocks": blocks[1:]}]}
+              return {"blocks": blocks}
 
           def handler(event, context):
               webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
