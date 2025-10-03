@@ -2304,6 +2304,8 @@ Resources:
                 Value: !Ref CostAllocationTag
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
+              - Name: RUNS_ON_LOCKS_TABLE
+                Value: !Ref RunsOnLocksTable
               - Name: RUNS_ON_NETWORKING_STACK
                 Value: !Ref NetworkingStack
               - Name: RUNS_ON_GITHUB_ORGANIZATION
@@ -2529,6 +2531,13 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt RunsOnLocksTable.Arn
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -2634,6 +2643,25 @@ Resources:
       MessageRetentionPeriod: 7200
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 120
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  # DynamoDB table for distributed locking
+  RunsOnLocksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-locks"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: key
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -3218,6 +3246,9 @@ Outputs:
   RunsOnQueueEvents:
     Description: SQS queue for the RunsOn service, used for events from other AWS services
     Value: !Ref RunsOnQueueEvents
+  RunsOnLocksTable:
+    Description: DynamoDB table for distributed locking
+    Value: !Ref RunsOnLocksTable
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
