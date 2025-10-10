@@ -373,7 +373,8 @@ Parameters:
   RunnerConfigAutoExtendsFrom:
     Type: String
     Default: ".github-private"
-    Description: "When set, forces all repository configurations to extend from this repository (format: 'repo-name'). The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to empty string to disable. Also make sure the GitHub App has access to this repository."
+    MinLength: 1
+    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
   CostReportsEnabled:
     Type: String
