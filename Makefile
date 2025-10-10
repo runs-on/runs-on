@@ -127,12 +127,20 @@ networking-stack:
 STACK_DEV_NAME=runs-on-dev
 
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 dev-run-redelivery:
 	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify
+
+# Stream local dev logs to CloudWatch (useful for testing dashboard)
+# Run in separate terminal while dev-run is active
+dev-stream-logs:
+	@echo "📝 Streaming local dev logs to CloudWatch..."
+	@echo "   Make sure 'make dev-run' is running in another terminal"
+	@echo ""
+	RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME)-local ./scripts/stream-dev-logs-to-cloudwatch.sh
 
 # Install with the dev template
 dev-install:
@@ -212,16 +220,7 @@ stage-install:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket $(STACK_STAGE_NAME)-tmp \
-		--parameter-overrides \
-			GithubOrganization=runs-on \
-			EmailAddress=ops+stage@runs-on.com \
-			Private=false \
-			EnableEphemeralRegistry=true \
-			EnableEfs=true \
-			LicenseKey=$(LICENSE_KEY) \
-			ServerPassword=$(SERVER_PASSWORD) \
-			RunnerLargeDiskSize=120 \
-			EnableDashboard=true \
+		--parameter-overrides file://cloudformation/parameters/$(STACK_STAGE_NAME).json \
 		--capabilities CAPABILITY_IAM
 
 stage-dashboard:
