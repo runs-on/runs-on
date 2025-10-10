@@ -43,7 +43,7 @@ The pool manager will take care of spawning instances according to the matched s
 
 There are two types of pools: `hot`, and `stopped`.
 
-* `hot` instances are spawned by the pool and will stay running for up to 10 minutes to wait for a matching job. If no job comes in during that time, they will get terminated, and a new one will re-spawn. This is to ensure they are kept up to date with latest AMI definition, and also to ensure they can't stay too long online. You can expect <10s job queue time if a hot instance can be picked.
+* `hot` instances are spawned by the pool and will stay running for up to 16 hours to wait for a matching job. If no job comes in during that time, they will get terminated, and a new one will re-spawn. This is to ensure they are kept up to date with latest AMI definition, and also to ensure they can't stay too long online. You can expect <10s job queue time if a hot instance can be picked.
 
 * `stopped` instances are spawned by the pool, will warm the EBS volume and perform various tasks (preinstall, setup mountpoints, efs, etc.), and then will be stopped to avoid high costs. When a matching job comes in, the instance will be picked up and started. Timings are around 20s, and will probably be more stable than with cold-started instances.
 
@@ -70,6 +70,8 @@ Any other RunsOn label (e.g. `cpu`, `ram`, etc.) will be ignored. Only the runne
 ### Using pools for dependabot
 
 You can now use RunsOn for dependabot jobs, thanks to pools. If you define a pool named `dependabot`, then it will be used for any job that has the `dependabot` label. This includes the jobs launched by GitHub's dependabot integration. When RunsOn sees the `dependabot` label, it will auto-expand it to `runs-on/pool=dependabot` and will try to find a matching pool name in the config file. If it finds one, then it assumes that you want to use RunsOn to run dependabot jobs on self-hosted runners, and therefore will spawn a runner for that job.
+
+Caveat: since we can't add (AFAIK) labels to dependabot jobs, this means RunsOn will only process those jobs when the current stack environment is `production` (since `env=production` is implied if no `env` label provided). So make sure you have a stack configured with that environment name if you  want to process dependabot jobs.
 
 ## Schedules
 
@@ -107,7 +109,7 @@ On each convergence cycle, the pool manager performs these operations in order:
 
 1. **Categorize instances**: Group by state (hot, stopped, outdated, error, dangling, detached)
 2. **Terminate error instances**: Remove any instances in error state
-3. **Terminate dangling instances**: Remove instances that have been running >10min without starting a job
+3. **Terminate dangling instances**: Remove instances that do not have started a job but should have
 4. **Terminate outdated instances**: Remove instances with outdated spec hash (runner config or AMI changed)
    - This happens **immediately** to free quota before creating new instances
    - Safe because excludes instances with `JobStarted=true` or `DETACHED` status
