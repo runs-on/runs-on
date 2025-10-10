@@ -69,10 +69,8 @@ Metadata:
           - SpotCircuitBreaker
           - RunnerCustomTags
           - RunnerDefaultDiskSize
-          - RunnerDefaultDiskDeviceName
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
-          - RunnerLargeDiskDeviceName
           - RunnerLargeVolumeThroughput
           - RunnerMaxRuntime
           - RunnerConfigAutoExtendsFrom
@@ -338,11 +336,6 @@ Parameters:
     MinValue: 10
     Description: Disk size in GB for `disk=default` runners.
 
-  RunnerDefaultDiskDeviceName:
-    Type: String
-    Default: "/dev/xvda"
-    Description: Name of the root volume device name for the `disk=default` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
-
   RunnerDefaultVolumeThroughput:
     Type: Number
     Default: 400
@@ -350,23 +343,21 @@ Parameters:
     MaxValue: 1000
     Description: Volume throughput in MiB/s for `disk=default` runners (helps with faster boot times, but costs more).
 
+  # Deprecated parameters
+  # These are kept for backward compatibility but are no longer actively used in launch templates
+
   RunnerLargeDiskSize:
     Type: Number
     Default: 80
     MinValue: 10
-    Description: Disk size in GB for `disk=large` runners.
-
-  RunnerLargeDiskDeviceName:
-    Type: String
-    Default: "/dev/xvda"
-    Description: Name of the root volume device name for the `disk=large` runner. Only change this if you plan on using custom AMIs that have a different root volume name.
+    Description: "DEPRECATED: Disk size in GB for legacy `disk=large` label. Use volume= label instead (e.g. volume=80gb)."
 
   RunnerLargeVolumeThroughput:
     Type: Number
     Default: 750
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for `disk=large` runners (helps with faster boot times, but costs more).
+    Description: "DEPRECATED: Volume throughput in MiB/s for legacy `disk=large` runners. The disk= label is deprecated in favor of the volume= label (e.g. volume=80gb:gp3:750mbs:4000iops)."
 
   RunnerCustomTags:
     Type: CommaDelimitedList
@@ -1467,83 +1458,12 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         BlockDeviceMappings:
-          - DeviceName: !Ref RunnerDefaultDiskDeviceName
+          - DeviceName: "/dev/xvda"
             Ebs:
               VolumeSize: !Ref RunnerDefaultDiskSize
               VolumeType: gp3
               Throughput: !Ref RunnerDefaultVolumeThroughput
               Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
-        InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring:
-          !If
-            - ECInstanceDetailedMonitoringEnabled
-            - Enabled: true
-            - Ref: AWS::NoValue
-        NetworkInterfaces:
-          - DeleteOnTermination: true
-            DeviceIndex: "0"
-            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
-            Groups:
-              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
-            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
-        UserData:
-          Fn::Base64: !Sub
-            - |
-              #!/bin/bash -ex
-              date -u
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
-              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              export RUNS_ON_DEBUG="${AppDebug}"
-              export AWS_REGION="${AWS::Region}"
-              ${EfsExport}
-              ${EphemeralRegistryExport}
-              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
-            - AppTag: !FindInMap [App, Tags, ImageTag]
-              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
-
-  EC2FleetLaunchTemplateLinuxLarge:
-    Type: AWS::EC2::LaunchTemplate
-    Properties:
-      TagSpecifications:
-        - ResourceType: launch-template
-          Tags:
-            - Key: !Ref CostAllocationTag
-              Value: !Ref AWS::StackName
-      LaunchTemplateData:
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: volume
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-        IamInstanceProfile:
-          Arn: !GetAtt EC2InstanceProfile.Arn
-        EbsOptimized: "true"
-        MetadataOptions:
-          HttpTokens: required
-          HttpPutResponseHopLimit: 2
-        BlockDeviceMappings:
-          - DeviceName: !Ref RunnerLargeDiskDeviceName
-            Ebs:
-              VolumeSize: !Ref RunnerLargeDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerLargeVolumeThroughput
-              Iops: 4000
               DeleteOnTermination: true
               Encrypted: !If [HasEncryptEbs, true, false]
               KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
@@ -1666,7 +1586,7 @@ Resources:
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
               EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
-  EC2FleetLaunchTemplateWindowsLarge:
+  EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       TagSpecifications:
@@ -1695,12 +1615,12 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         BlockDeviceMappings:
-          - DeviceName: /dev/sda1
+          - DeviceName: "/dev/xvda"
             Ebs:
-              VolumeSize: !Ref RunnerLargeDiskSize
+              VolumeSize: !Ref RunnerDefaultDiskSize
               VolumeType: gp3
-              Throughput: !Ref RunnerLargeVolumeThroughput
-              Iops: 4000
+              Throughput: !Ref RunnerDefaultVolumeThroughput
+              Iops: 3000
               DeleteOnTermination: true
               Encrypted: !If [HasEncryptEbs, true, false]
               KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
@@ -1713,7 +1633,79 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
-            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
+            AssociatePublicIpAddress: false
+            Groups:
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash -ex
+              date -u
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              export RUNS_ON_DEBUG="${AppDebug}"
+              export AWS_REGION="${AWS::Region}"
+              ${EfsExport}
+              ${EphemeralRegistryExport}
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
+
+  EC2FleetLaunchTemplateWindowsPrivate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+      LaunchTemplateData:
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+          - ResourceType: volume
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+          - ResourceType: network-interface
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        EbsOptimized: "true"
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+        BlockDeviceMappings:
+          # Windows is always /dev/sda1 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RunnerDefaultDiskSize
+              VolumeType: gp3
+              Throughput: !Ref RunnerDefaultVolumeThroughput
+              Iops: 3000
+              DeleteOnTermination: true
+              Encrypted: !If [HasEncryptEbs, true, false]
+              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
+        InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            AssociatePublicIpAddress: false
             Groups:
               - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
@@ -2361,20 +2353,16 @@ Resources:
                 Value: !Ref RunnerConfigAutoExtendsFrom
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
                 Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxLarge, !GetAtt EC2FleetLaunchTemplateLinuxLarge.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
                 Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_LARGE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsLarge, !GetAtt EC2FleetLaunchTemplateWindowsLarge.LatestVersionNumber]]
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_PRIVATE
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_PRIVATE
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
-              - Name: RUNS_ON_RUNNER_DEFAULT_DISK_DEVICE_NAME
-                Value: !Ref RunnerDefaultDiskDeviceName
-              - Name: RUNS_ON_RUNNER_LARGE_DISK_DEVICE_NAME
-                Value: !Ref RunnerLargeDiskDeviceName
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_QUEUE_POOL
@@ -3132,15 +3120,15 @@ Outputs:
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
     Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
-  RunsOnLaunchTemplateLinuxLarge:
-    Description: Large Linux launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxLarge, !GetAtt EC2FleetLaunchTemplateLinuxLarge.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsDefault:
     Description: Default Windows launch template for the RunsOn service
     Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
-  RunsOnLaunchTemplateWindowsLarge:
-    Description: Large Windows launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsLarge, !GetAtt EC2FleetLaunchTemplateWindowsLarge.LatestVersionNumber]]
+  RunsOnLaunchTemplateLinuxPrivate:
+    Description: Private Linux launch template for the RunsOn service
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+  RunsOnLaunchTemplateWindowsPrivate:
+    Description: Private Windows launch template for the RunsOn service
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
