@@ -75,6 +75,7 @@ Metadata:
           - RunnerLargeDiskDeviceName
           - RunnerLargeVolumeThroughput
           - RunnerMaxRuntime
+          - RunnerConfigAutoExtendsFrom
           - AppEc2QueueSize
           - AppGithubApiStrategy
           - AppCPU
@@ -377,6 +378,11 @@ Parameters:
     Default: 720
     MinValue: 30
     Description: Maximum runtime in minutes for runners. After this time, the runner will be forcefully terminated.
+
+  RunnerConfigAutoExtendsFrom:
+    Type: String
+    Default: ".github-private"
+    Description: "When set, forces all repository configurations to extend from this repository (format: 'repo-name'). The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to empty string to disable. Also make sure the GitHub App has access to this repository."
 
   CostReportsEnabled:
     Type: String
@@ -2351,6 +2357,8 @@ Resources:
                 Value: !Ref DefaultAdmins
               - Name: RUNS_ON_RUNNER_MAX_RUNTIME
                 Value: !Ref RunnerMaxRuntime
+              - Name: RUNS_ON_RUNNER_CONFIG_AUTO_EXTENDS_FROM
+                Value: !Ref RunnerConfigAutoExtendsFrom
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
                 Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
