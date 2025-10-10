@@ -40,7 +40,6 @@ Metadata:
           - EC2InstanceCustomPolicy
           - AppCustomPolicy
           - DefaultPermissionBoundaryArn
-          - ServerPassword
           - DefaultAdmins
           - EncryptEbs
           - EnableEfs
@@ -49,6 +48,8 @@ Metadata:
           default: "Alert and monitoring settings [optional]"
         Parameters:
           - EnableDashboard
+          - OtelExporterEndpoint
+          - OtelExporterHeaders
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
@@ -420,11 +421,6 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Create a CloudWatch dashboard for monitoring RunsOn operations (number of jobs processed, rate limit status, last error messages, etc.). The dashboard will be named STACK_NAME-Dashboard.
 
-  ServerPassword:
-    Type: String
-    Default: ""
-    Description: Password for the /metrics Prometheus endpoint (https://runs-on.com/monitoring/metrics/#prometheus-metrics). If blank, the endpoint will be disabled.
-
   S3CacheExpirationInDays:
     Type: Number
     Default: 10
@@ -439,6 +435,17 @@ Parameters:
     Type: String
     Default: ""
     Description: "API key for Step Security (https://stepsecurity.io/)."
+
+  OtelExporterEndpoint:
+    Type: String
+    Default: ""
+    Description: "OTLP endpoint URL (e.g., https://otlp.grafana.com/otlp/v1/metrics). Leave empty for stdout export."
+
+  OtelExporterHeaders:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'Authorization=Bearer token123'). Leave empty if not required."
 
 Mappings:
   App:
@@ -2372,14 +2379,16 @@ Resources:
                 Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
-              - Name: RUNS_ON_SERVER_PASSWORD
-                Value: !Ref ServerPassword
               - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
                 Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
                 Value: !Ref IntegrationStepSecurityApiKey
               - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
                 Value: !Ref GithubEnterpriseUrl
+              - Name: OTEL_EXPORTER_OTLP_ENDPOINT
+                Value: !Ref OtelExporterEndpoint
+              - Name: OTEL_EXPORTER_OTLP_HEADERS
+                Value: !Ref OtelExporterHeaders
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppTag}"
             - AppTag: !FindInMap [App, Tags, ImageTag]
@@ -2528,6 +2537,13 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                 Resource: !GetAtt RunsOnLocksTable.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apprunner/RunsOnService-*"
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
