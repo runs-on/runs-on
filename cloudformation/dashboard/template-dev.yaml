@@ -296,6 +296,25 @@ Resources:
                 "title": "Recent Webhook Redeliveries",
                 "view": "table"
               }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 42,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(queue_duration_seconds)\n| stats pct(queue_duration_seconds, 90) as P90, pct(queue_duration_seconds, 50) as P50 by bin(5m)\n| sort @timestamp asc",
+                "region": "${AWS::Region}",
+                "title": "Queue Duration Percentiles (P50/P90)",
+                "view": "timeSeries",
+                "yAxis": {
+                  "left": {
+                    "min": 0,
+                    "label": "Seconds"
+                  }
+                }
+              }
             }
           ]
         }
