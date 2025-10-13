@@ -2364,6 +2364,8 @@ Resources:
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
+              - Name: RUNS_ON_RUNNER_LARGE_VOLUME_THROUGHPUT
+                Value: !Ref RunnerLargeVolumeThroughput
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
               - Name: RUNS_ON_QUEUE_POOL
