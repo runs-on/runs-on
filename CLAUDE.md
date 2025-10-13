@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 IMPORTANT:
 - always use `mise` if running go commands directly.
 - most of the time we have no need to maintain backward compatibility. Be aggressive in your refactorings. EXCEPT for the structures marshalled into the SQS queues, as they must survive upgrades.
+- Always run `make lint` in the `server/` directory, after all changes.
+- Unit tests can be run with `make test` in the `server/` directory.
 
 ### Server Development (Go)
 - `cd server && make lint` - Run golangci-lint on Go code
@@ -27,7 +29,6 @@ IMPORTANT:
 - `make test-smoke` - Run smoke tests
 - `make dev-smoke` - Run development smoke tests
 - Server end-to-end tests require a `.env` file in the `server/` directory
-- You can pass a mock stack (with mock AWS clients, etc.) using `app.Configure`
 
 ## Architecture Overview
 
