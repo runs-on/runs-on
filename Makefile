@@ -10,7 +10,7 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
+	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -133,6 +133,9 @@ dev-run:
 
 dev-run-redelivery:
 	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify
+
+dev-roc:
+	AWS_PROFILE=$(STACK_DEV_NAME) roc --stack $(STACK_DEV_NAME) $(filter-out $@,$(MAKECMDGOALS))
 
 # Stream local dev logs to CloudWatch (useful for testing dashboard)
 # Run in separate terminal while dev-run is active
