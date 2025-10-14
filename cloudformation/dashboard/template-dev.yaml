@@ -90,7 +90,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"ec2_read\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.ec2_read.tokens as tokens, rate_limiters.ec2_read.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "EC2 Read",
                 "view": "timeSeries",
@@ -108,7 +108,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"ec2_run\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.ec2_run.tokens as tokens, rate_limiters.ec2_run.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "EC2 Run",
                 "view": "timeSeries",
@@ -126,7 +126,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"ec2_terminate\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.ec2_terminate.tokens as tokens, rate_limiters.ec2_terminate.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "EC2 Terminate",
                 "view": "timeSeries",
@@ -144,7 +144,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"ec2_mutating\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.ec2_mutating.tokens as tokens, rate_limiters.ec2_mutating.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "EC2 Mutating",
                 "view": "timeSeries",
@@ -162,7 +162,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"s3\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.s3.tokens as tokens, rate_limiters.s3.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "S3 API",
                 "view": "timeSeries",
@@ -180,7 +180,7 @@ Resources:
               "width": 4,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, tokens, burst\n| filter metric_type = \"rate_limiter\" and limiter = \"github\"\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, rate_limiters.github.tokens as tokens, rate_limiters.github.burst as burst\n| stats avg(tokens) as avg_tokens, avg(burst) as avg_burst by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "GitHub API",
                 "view": "timeSeries",
@@ -211,7 +211,7 @@ Resources:
               "width": 12,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, queued, scheduled, in_progress, completed, interrupted\n| filter metric_type = \"jobs_summary\"\n| stats latest(queued) as queued, latest(scheduled) as scheduled, latest(in_progress) as in_progress, latest(completed) as completed, latest(interrupted) as interrupted by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| stats min(jobs.queued) as queued, min(jobs.scheduled) as scheduled, min(jobs.in_progress) as in_progress, min(jobs.completed) as completed by bin(1m)\n| sort bin asc",
                 "region": "${AWS::Region}",
                 "title": "Job Status Summary",
                 "view": "timeSeries"
@@ -224,23 +224,10 @@ Resources:
               "width": 12,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, org, app_environment as env, pool_name, hot, stopped, ready, warming, ready_to_stop, detached, dangling, outdated, error\n| filter metric_type = \"pool_instances\"\n| stats min(ready) as ready, min(hot) as hot, min(stopped) as stopped, min(warming) as warming, min(ready_to_stop) as ready_to_stop, min(detached) as detached, min(dangling) as dangling, min(outdated) as outdated, min(error) as error by bin(5m), env, org, pool_name\n| sort bin, env asc, org asc, pool_name asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\" and ispresent(pools.0.dangling)\n| parse @message /\\[(?<pool_data>.*)\\]/\n| parse pool_data /\"pool_name\":\"(?<pool_name>[^\"]+)\"/\n| parse pool_data /\"hot\":(?<hot>\\d+)/\n| parse pool_data /\"stopped\":(?<stopped>\\d+)/\n| parse pool_data /\"warming\":(?<warming>\\d+)/\n| parse pool_data /\"ready\":(?<ready>\\d+)/\n| parse pool_data /\"ready_to_stop\":(?<ready_to_stop>\\d+)/\n| parse pool_data /\"detached\":(?<detached>\\d+)/\n| parse pool_data /\"error\":(?<error>\\d+)/\n| parse pool_data /\"outdated\":(?<outdated>\\d+)/\n| parse pool_data /\"dangling\":(?<dangling>\\d+)/\n| stats max(hot) as hot, max(stopped) as stopped, max(warming) as warming, max(ready) as ready, max(ready_to_stop) as ready_to_stop, max(detached) as detached, max(error) as error, max(outdated) as outdated, max(dangling) as dangling by bin(1m) as t, pool_name\n| sort t asc, pool_name asc",
                 "region": "${AWS::Region}",
-                "title": "Pool Instances by State (Current)",
+                "title": "Pool Instances Over Time",
                 "view": "table"
-              }
-            },
-            {
-              "type": "log",
-              "x": 0,
-              "y": 24,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, pool_name, hot, stopped, ready\n| filter metric_type = \"pool_instances\"\n| stats latest(hot) as hot, latest(stopped) as stopped, latest(ready) as ready by pool_name, bin(5m)\n| sort @timestamp asc",
-                "region": "${AWS::Region}",
-                "title": "Pool Instances Over Time (Hot/Stopped/Ready)",
-                "view": "timeSeries"
               }
             },
             {
@@ -250,7 +237,7 @@ Resources:
               "width": 12,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, active, interruption_count\n| filter metric_type = \"spot_circuit_breaker\"\n| stats latest(active) as circuit_breaker_active, latest(interruption_count) as interruptions by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\"\n| fields @timestamp, spot_circuit_breaker.active as active, spot_circuit_breaker.interruption_count as interruption_count\n| stats latest(active) as circuit_breaker_active, latest(interruption_count) as interruptions by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "Spot Circuit Breaker Status",
                 "view": "timeSeries"
@@ -304,7 +291,7 @@ Resources:
               "width": 12,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(queue_duration_seconds)\n| stats pct(queue_duration_seconds, 90) as P90, pct(queue_duration_seconds, 50) as P50 by bin(5m)\n| sort @timestamp asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(overall_queue_duration_seconds)\n| stats pct(overall_queue_duration_seconds, 90) as P90, pct(overall_queue_duration_seconds, 50) as P50 by bin(5m)\n| sort @timestamp asc",
                 "region": "${AWS::Region}",
                 "title": "Queue Duration Percentiles (P50/P90)",
                 "view": "timeSeries",
