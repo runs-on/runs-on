@@ -2997,7 +2997,6 @@ Resources:
     Properties:
       TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.9.0.yaml"
       Parameters:
-        StackName: !Ref AWS::StackName
         LogGroupName: !Join
           - ""
           - - "/aws/apprunner/"
