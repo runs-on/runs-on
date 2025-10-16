@@ -101,6 +101,24 @@ jobs:
           cache-from: type=registry,ref=${{ env.TAG }}
           cache-to: type=registry,ref=${{ env.TAG }},mode=max,compression=zstd,compression-level=1
 
+  test-custom-volume:
+    runs-on: runs-on,runner=2cpu-linux-arm64,family=c7a,volume=92gb,env=${{ inputs.env || 'production' }}
+    steps:
+      - name: Show disk setup
+        run: |
+          sudo lsblk -l
+          sudo df -ah
+      - name: Verify /home/runner disk size is > 100GB (c7gd.medium has 118GB SSD)
+        run: |
+          size_gb=$(df -BG --output=size /home/runner | tail -1 | tr -dc '0-9')
+          echo "Detected /home/runner size: ${size_gb} GB"
+          if [ "$size_gb" -le 90 ]; then
+            echo "Error: /home/runner disk size is $size_gb GB, expected > 90 GB"
+            exit 1
+          fi
+      - name: Ensure checkout can be done
+        uses: actions/checkout@v4
+
   test-ssd-mount:
     runs-on: runs-on,runner=2cpu-linux-arm64,family=c7gd,env=${{ inputs.env || 'production' }}
     steps:
@@ -114,6 +132,14 @@ jobs:
           sudo df -ah | grep /var/lib/docker | grep /dev/md0
           sudo df -ah | grep /home/runner | grep overlay
           sudo df -ah | grep /tmp | grep overlay
+      - name: Verify /home/runner disk size is > 100GB (c7gd.medium has 118GB SSD)
+        run: |
+          size_gb=$(df -BG --output=size /home/runner | tail -1 | tr -dc '0-9')
+          echo "Detected /home/runner size: ${size_gb} GB"
+          if [ "$size_gb" -le 100 ]; then
+            echo "Error: /home/runner disk size is $size_gb GB, expected > 100 GB"
+            exit 1
+          fi
       - name: Ensure checkout can be done
         uses: actions/checkout@v4
 
