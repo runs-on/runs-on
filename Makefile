@@ -1,5 +1,5 @@
-VERSION=v2.8.9
-VERSION_DEV=$(VERSION)-dev
+VERSION=v2.9.0
+VERSION_DEV=$(VERSION)-dev-green
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -10,11 +10,12 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-install dev-logs dev-logs-instances dev-show dev-roc \
+	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
-	networking-stack trigger-spot-interruption copyright
+	networking-stack trigger-spot-interruption copyright \
+	buckets
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -126,9 +127,23 @@ networking-stack:
 STACK_DEV_NAME=runs-on-dev
 
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+
+dev-run-redelivery:
+	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify
+
+dev-roc:
+	AWS_PROFILE=$(STACK_DEV_NAME) roc --stack $(STACK_DEV_NAME) $(filter-out $@,$(MAKECMDGOALS))
+
+# Stream local dev logs to CloudWatch (useful for testing dashboard)
+# Run in separate terminal while dev-run is active
+dev-stream-logs:
+	@echo "📝 Streaming local dev logs to CloudWatch..."
+	@echo "   Make sure 'make dev-run' is running in another terminal"
+	@echo ""
+	RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME)-local ./scripts/stream-dev-logs-to-cloudwatch.sh
 
 # Install with the dev template
 dev-install:
@@ -208,16 +223,7 @@ stage-install:
 		--region=us-east-1 \
 		--template-file ./cloudformation/template-$(VERSION).yaml \
 		--s3-bucket $(STACK_STAGE_NAME)-tmp \
-		--parameter-overrides \
-			GithubOrganization=runs-on \
-			EmailAddress=ops+stage@runs-on.com \
-			Private=false \
-			EnableEphemeralRegistry=true \
-			EnableEfs=true \
-			LicenseKey=$(LICENSE_KEY) \
-			ServerPassword=$(SERVER_PASSWORD) \
-			RunnerLargeDiskSize=120 \
-			EnableDashboard=true \
+		--parameter-overrides file://cloudformation/parameters/$(STACK_STAGE_NAME).json \
 		--capabilities CAPABILITY_IAM
 
 stage-dashboard:
@@ -230,6 +236,9 @@ stage-dashboard:
 		--template-file ./cloudformation/dashboard/template-$(VERSION).yaml \
 		--capabilities CAPABILITY_IAM \
 		--stack-name $$DASHBOARD_STACK_NAME
+
+stage-roc:
+	AWS_PROFILE=runs-on-admin roc --stack $(STACK_STAGE_NAME) $(filter-out $@,$(MAKECMDGOALS))
 
 stage-redeploy:
 	AWS_PROFILE=runs-on-admin aws apprunner start-deployment \

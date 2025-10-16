@@ -4,6 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+IMPORTANT:
+- always use `mise` if running go commands directly.
+- most of the time we have no need to maintain backward compatibility. Be aggressive in your refactorings. EXCEPT for the structures marshalled into the SQS queues, as they must survive upgrades.
+- Always run `make lint` in the `server/` directory, after all changes.
+- Unit tests can be run with `make test` in the `server/` directory.
+
 ### Server Development (Go)
 - `cd server && make lint` - Run golangci-lint on Go code
 - `cd server && make test` - Run Go tests with race detection (requires .env file)
@@ -22,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing
 - `make test-smoke` - Run smoke tests
 - `make dev-smoke` - Run development smoke tests
-- Server tests require a `.env` file in the `server/` directory
+- Server end-to-end tests require a `.env` file in the `server/` directory
 
 ## Architecture Overview
 
@@ -50,21 +56,44 @@ RunsOn is a self-hosted GitHub Actions runner service that provides cheaper, fas
 - CloudWatch logging and monitoring
 - VPC networking (optional)
 
+### Pool management
+
+See @adrs/20250727-warm-pools.md
+
+RunsOn supports warm pools of pre-provisioned instances for faster job starts. Key concepts:
+- **Hot pools**: Instances stay running, ready to accept jobs immediately (<10s start time)
+- **Stopped pools**: Instances are pre-warmed then stopped, started on-demand (~20s start time)
+- **Dual-queue architecture**: Pool jobs use `RunsOnQueuePool` for batch processing, non-pool jobs use `RunsOnQueue` FIFO
+- **Batch operations**: Pool queue processor handles up to 10 jobs at once, reducing EC2 API calls
+- **Automatic overflow**: When pool capacity exhausted, jobs automatically fall back to cold-start
+
 ### Key Packages
 
 - `server/pkg/server/`: Core server logic (GitHub webhooks, EC2 fleet management, runner lifecycle)
+- `server/pkg/server/pools/`: Pool management (reconciliation, job assignment, lifecycle)
 - `server/pkg/agent/`: Agent bootstrap and runtime logic
 - `server/pkg/common/`: Shared types and utilities
 - `server/pkg/agent/cache/`: S3-based caching implementation (v1 and v2 protocols)
 
 ### Data Flow
 
+#### Standard (Cold-Start) Flow
 1. GitHub sends webhook to server on workflow job events
 2. Server parses job labels to determine runner requirements
 3. Server creates EC2 fleet request with appropriate instance types
 4. Agent bootstraps on launched instances and registers with GitHub
 5. GitHub assigns job to runner, agent executes workflow
 6. Instance terminates after job completion
+
+#### Pool-Enabled Flow
+1. GitHub sends webhook with `pool=POOL_NAME` label (or dependabot job)
+2. Server routes to `RunsOnQueuePool` if pool exists, else to `RunsOnQueue`
+3. Pool queue processor batches up to 10 jobs, groups by pool name
+4. For each pool: pick multiple instances (prioritize running > stopped)
+5. Batch-start stopped instances (up to 50 at once via EC2 API)
+6. Assign instances to jobs, upload runner config
+7. Agent executes job, instance detached from pool management
+8. If pool exhausted, overflow jobs to regular queue for cold-start
 
 ### Configuration
 

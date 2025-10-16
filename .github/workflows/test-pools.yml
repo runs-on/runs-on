@@ -1,0 +1,25 @@
+name: Test / Pools
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "env"
+        required: true
+        default: "production"
+
+permissions:
+  contents: read
+
+jobs:
+  test-pool:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - pool=m7a-stage
+          - pool=m7a-stage
+          - pool=m7a-stage
+    runs-on: runs-on=${{github.run_id}}/${{ matrix.runner }}/env=${{ inputs.env || 'production' }}
+    steps:
+      - run: echo Hello world

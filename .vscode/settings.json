@@ -6,5 +6,34 @@
     "-timeout",
     "5m"
   ],
-  "go.lintTool": "golangci-lint"
+  "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "package",
+  "go.lintFlags": [],
+  "go.toolsManagement.autoUpdate": false,
+  "go.alternateTools": {
+    "go": "${env:HOME}/.local/share/mise/installs/go/1.24/bin/go",
+    "gofmt": "${env:HOME}/.local/share/mise/installs/go/1.24/bin/gofmt",
+    "golangci-lint": "/opt/homebrew/bin/golangci-lint"
+  },
+  "go.goroot": "${env:HOME}/.local/share/mise/installs/go/1.24",
+  "go.toolsEnvVars": {
+    "GO111MODULE": "on",
+    "PATH": "${env:HOME}/.local/share/mise/installs/go/1.24/bin:/opt/homebrew/bin:${env:PATH}"
+  },
+  "gopls": {
+    "build.directoryFilters": [
+      "-tmp",
+      "-test",
+      "-TODOs",
+      "-cloudformation",
+      "-scripts",
+      "+server"
+    ],
+    "formatting.gofumpt": true
+  },
+  "go.useLanguageServer": true,
+  "terminal.integrated.env.osx": {
+    "MISE_USE_EXEC": "1"
+  },
+  "terminal.integrated.defaultProfile.osx": "zsh"
 }

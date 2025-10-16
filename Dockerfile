@@ -14,6 +14,8 @@ WORKDIR /app
 COPY server/go.* ./
 RUN go mod download
 COPY server/ ./
+# setup `mise` shim to allow running commands with `mise exec -- <command>`
+RUN echo "#!/bin/bash\nshift 2 ; exec \"\$@\"" > /usr/bin/mise && chmod +x /usr/bin/mise
 RUN --mount=type=cache,target=/root/.gocache make server
 RUN --mount=type=cache,target=/root/.gocache make agent
 

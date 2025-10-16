@@ -9,8 +9,16 @@ fi
 VERSION=$1
 STACK_NAME=$2
 VARIANT=$3
+REGION=us-east-1
+TMP_BUCKET=runs-on-tmp
 
-PARAMETERS="GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$LICENSE_KEY Environment=test"
+PARAMETERS="GithubOrganization=runs-on EmailAddress=ops+test@runs-on.com LicenseKey=$LICENSE_KEY Environment=test EnableDashboard=true"
+
+fetch_error_details() {
+  aws cloudformation describe-stack-events --stack-name $STACK_NAME --region=$REGION | jq -r '.StackEvents[] | "\(.LogicalResourceId) \(.ResourceStatus) \(.ResourceStatusReason)"'
+  echo "Investigate: assume -c $AWS_PROFILE"
+  exit 1
+}
 
 case $VARIANT in
   embedded*)
@@ -43,16 +51,17 @@ time aws cloudformation deploy \
 	--disable-rollback \
 	--no-cli-pager --no-fail-on-empty-changeset \
 	--stack-name $STACK_NAME \
-	--region=us-east-1 \
+	--region=$REGION \
 	--template-file ./cloudformation/template-$VERSION.yaml \
-	--s3-bucket runs-on-tmp \
+	--s3-bucket $TMP_BUCKET \
 	--parameter-overrides $PARAMETERS \
-	--capabilities CAPABILITY_IAM
+	--capabilities CAPABILITY_IAM \
+  || fetch_error_details
 
 
 URL=$(aws cloudformation describe-stacks \
 	--stack-name $STACK_NAME \
-	--region=us-east-1 \
+	--region=$REGION \
 	--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint'].OutputValue" \
 	--output text)
 

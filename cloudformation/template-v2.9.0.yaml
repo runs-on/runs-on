@@ -5,40 +5,55 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "App configuration [required]"
+          default: "Main configuration [required]"
         Parameters:
           - GithubOrganization
+          - GithubEnterpriseUrl
           - LicenseKey
           - EmailAddress
+          - NetworkingStack
       - Label:
-          default: "VPC configuration [optional]"
+          default: "Networking: use external stack [optional]"
+        Parameters:
+          - ExternalVpcId
+          - ExternalVpcPublicSubnetIds
+          - ExternalVpcPrivateSubnetIds
+          - ExternalVpcSecurityGroupId
+      - Label:
+          default: "Networking: use embedded stack [optional]"
         Parameters:
           - VpcCidrBlock
           - VpcCidrSubnetBits
           - VpcEndpoints
-          - Private
           - NatGatewayAvailability
           - NatGatewayElasticIPCount
-          - Ipv6Enabled
           - VpcFlowLogFormat
           - VpcFlowLogS3BucketArn
           - VpcFlowLogRetentionInDays
       - Label:
-          default: "Security settings [optional]"
+          default: "Network and Security settings [optional]"
         Parameters:
+          - Private
+          - Ipv6Enabled
           - SSHAllowed
           - SSHCidrRange
           - EC2InstanceCustomPolicy
+          - AppCustomPolicy
           - DefaultPermissionBoundaryArn
-          - ServerPassword
           - DefaultAdmins
           - EncryptEbs
+          - EnableEfs
+          - EnableEphemeralRegistry
       - Label:
           default: "Alert and monitoring settings [optional]"
         Parameters:
+          - EnableDashboard
+          - OtelExporterEndpoint
+          - OtelExporterHeaders
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
+          - AlertTopicSlackWebhookUrl
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
           - SqsQueueOldestMessageThresholdSeconds
@@ -50,23 +65,33 @@ Metadata:
           default: "Advanced app configuration [optional]"
         Parameters:
           - Environment
+          - CostAllocationTag
+          - SpotCircuitBreaker
           - RunnerCustomTags
           - RunnerDefaultDiskSize
           - RunnerDefaultVolumeThroughput
           - RunnerLargeDiskSize
           - RunnerLargeVolumeThroughput
+          - RunnerMaxRuntime
+          - RunnerConfigAutoExtendsFrom
           - AppEc2QueueSize
+          - AppGithubApiStrategy
           - AppCPU
           - AppMemory
           - AppRegistry
-          - SpotCircuitBreaker
-          - CostAllocationTag
+          - AppDebug
+          - S3CacheExpirationInDays
 
 Parameters:
   GithubOrganization:
     Type: String
-    Description: "For instance if your GitHub organization lives at github.com/my-org, then the value of this parameter should be: my-org"
+    Description: "If your GitHub organization lives at github.com/my-org, then enter: my-org. IMPORTANT: this field is case-sensitive."
     MinLength: 1
+
+  GithubEnterpriseUrl:
+    Type: String
+    Default: ""
+    Description: "Leave blank, unless you use a self-hosted GitHub Enterprise Server (GHES) instance. In that case, if your GHES instance lives at https://github.mycompany.com, then the value of this parameter should be: https://github.mycompany.com"
 
   LicenseKey:
     Type: String
@@ -76,8 +101,36 @@ Parameters:
 
   EmailAddress:
     Type: String
-    Description: Email address for cost and alert reports. You must confirm the subscription by clicking the link in the email that you will receive after creating the stack.
+    Description: Email address for cost and alert reports. You will receive a confirmation email from AWS at this address during the installation (check your spam folder if needed) so make sure to use a valid address. You must confirm it if you want to receive cost and alert reports.
     MinLength: 1
+
+  NetworkingStack:
+    Type: String
+    Default: "embedded"
+    AllowedValues:
+      - "embedded"
+      - "external"
+    Description: "Let RunsOn manage your networking stack (`embedded`), or use a stack under your control (`external`). If you select `external`, you will need to provide the VPC ID, the subnet IDs, and the security group ID, and make sure your whole networking setup is compatible with RunsOn (see https://runs-on.com/networking/embedded-vs-external/ for more details). To get started quickly, we recommend using the 'embedded' option."
+
+  ExternalVpcId:
+    Type: String
+    Description: "ID of the external VPC to reuse."
+    Default: ""
+
+  ExternalVpcPublicSubnetIds:
+    Type: CommaDelimitedList
+    Description: "List of PUBLIC subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs. You must enter `-` if you don't have any public subnets."
+    Default: ""
+
+  ExternalVpcPrivateSubnetIds:
+    Type: CommaDelimitedList
+    Description: "List of PRIVATE subnet IDs of the external VPC to reuse, comma-separated. The more subnets you have, the more RunsOn will be able to find cheap spot instances, as well as balancing the load across many AZs. You must enter `-` if you don't have any private subnets."
+    Default: ""
+
+  ExternalVpcSecurityGroupId:
+    Type: String
+    Description: "Security group ID of the external VPC to assign to the runners. Must allow outbound access to the GitHub IP ranges, EFS (if enabled), and any other service your jobs will call."
+    Default: ""
 
   Environment:
     Type: String
@@ -87,8 +140,14 @@ Parameters:
 
   AlertTopicSubscriptionHttpsEndpoint:
     Type: String
-    Description: HTTPS endpoint for cost and alert reports.
+    Description: "HTTPS endpoint for cost and alert reports."
     Default: ""
+
+  AlertTopicSlackWebhookUrl:
+    Type: String
+    Description: Slack incoming webhook URL for alert notifications.
+    Default: ""
+    NoEcho: true
 
   VpcCidrBlock:
     Type: String
@@ -97,7 +156,7 @@ Parameters:
 
   VpcCidrSubnetBits:
     Type: Number
-    Description: Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it.
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it."
     Default: 12
     MinValue: 9
     MaxValue: 16
@@ -108,7 +167,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues.
+    Description: Enable or disable IPv6 for runners. Disabling ipv6 might help with Docker Hub rate limiting issues. If enabled and reusing a VPC, ensure the VPC is IPv6 enabled.
 
   SSHAllowed:
     Type: String
@@ -162,18 +221,18 @@ Parameters:
   VpcFlowLogFormat:
     Type: String
     Default: ""
-    Description: "VPC Flow Log format. If blank, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] VPC Flow Log format. If blank, no VPC Flow Logs will be created. If set to `default`, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
 
   VpcFlowLogS3BucketArn:
     Type: String
     Default: ""
-    Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
 
   VpcFlowLogRetentionInDays:
     Type: Number
     Default: 7
     MinValue: 1
-    Description: "Retention period in days for VPC Flow Logs."
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] Retention period in days for VPC Flow Logs."
 
   DefaultPermissionBoundaryArn:
     Type: String
@@ -183,7 +242,7 @@ Parameters:
   DefaultAdmins:
     Type: String
     Default: ""
-    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: "[DEPRECATED, prefer to use SSM for admin access]. Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances."
 
   AppEc2QueueSize:
     Type: Number
@@ -195,6 +254,14 @@ Parameters:
     Type: Number
     Default: "4000"
     Description: "Trigger an alarm if the cumulative number of minutes consumed during a day is over that number."
+
+  AppGithubApiStrategy:
+    Type: String
+    Default: "normal"
+    AllowedValues:
+      - "normal"
+      - "conservative"
+    Description: "Use normal or conservative GitHub API strategy. The conservative strategy will attempt to save GitHub API tokens by not automatically de-registering runners from the GitHub API after they are no longer needed. It's more elegant to clean them up (recommended), but in any case GitHub will eventually clean them up on their side after 24h. Especially useful if you launch tens of thousands of jobs every day."
 
   AppCPU:
     Type: Number
@@ -225,6 +292,14 @@ Parameters:
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
     Description: "Docker image (public) registry for the RunsOn service."
 
+  AppDebug:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable or disable debug mode for the RunsOn stack. Enabling this will switch off the auto-shutdown of the runner instances when they are unable to bootstrap.
+
   SpotCircuitBreaker:
     Type: String
     Default: "2/15/30"
@@ -239,36 +314,64 @@ Parameters:
       - "false"
     Description: "Encrypt the EBS volumes of the runner instances. Encryption will slow the boot time of runner instances by ~10s."
 
+  EnableEfs:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable EFS shared filesystem for runners (only available with 'embedded' networking). If enabled, an EFS volume will be created and made available to runners. Runners will need appropriate permissions and tools (e.g., nfs-utils) to mount it."
+
+  EnableEphemeralRegistry:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "If enabled, create an ECR ephemeral registry that can be used as a type=registry cache backend for Docker BuildKit. The registry will be created with a 10-day lifecycle policy, and runners will automatically be granted push/pull access."
+
   RunnerDefaultDiskSize:
     Type: Number
     Default: 40
-    MinValue: 40
-    Description: Disk size in GB for default runners.
+    MinValue: 10
+    Description: Default disk size in GB.
 
   RunnerDefaultVolumeThroughput:
     Type: Number
     Default: 400
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for default runners (helps with faster boot times, but costs more).
+    Description: Default volume throughput in MiB/s (the higher the throughput, the faster the boot times, but costs more).
 
   RunnerLargeDiskSize:
     Type: Number
     Default: 80
-    MinValue: 40
-    Description: Disk size in GB for large runners.
+    MinValue: 10
+    Description: "DEPRECATED: Disk size in GB for legacy `disk=large` label. Use volume= label instead (e.g. volume=80gb)."
 
   RunnerLargeVolumeThroughput:
     Type: Number
     Default: 750
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for large runners (helps with faster boot times, but costs more).
+    Description: "DEPRECATED: Volume throughput in MiB/s for legacy `disk=large` runners. The disk= label is deprecated in favor of the volume= label (e.g. volume=80gb:gp3:750mbs:4000iops)."
 
   RunnerCustomTags:
     Type: CommaDelimitedList
     Default: ""
     Description: "Optional custom tags for the runner instances (e.g. 'key1=value1,key2=value2'). Tag keys cannot start with `runs-on`, and can only use letters (a-z, A-Z), numbers (0-9), and the following characters: + - = . , _ : @ (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions)"
+
+  RunnerMaxRuntime:
+    Type: Number
+    Default: 720
+    MinValue: 30
+    Description: Maximum runtime in minutes for runners. After this time, the runner will be forcefully terminated.
+
+  RunnerConfigAutoExtendsFrom:
+    Type: String
+    Default: ".github-private"
+    MinLength: 1
+    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
   CostReportsEnabled:
     Type: String
@@ -281,7 +384,12 @@ Parameters:
   EC2InstanceCustomPolicy:
     Type: String
     Default: ""
-    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances."
+    Description: "Optional managed IAM Policy ARN to assign to the EC2 runner instances. Can be used to give runners access to AWS resources that you manage."
+
+  AppCustomPolicy:
+    Type: String
+    Default: ""
+    Description: "Optional managed IAM Policy ARN to assign to the App runner service role. Can be used to e.g. allow access to KMS decryption keys for AMIs."
 
   ECInstanceDetailedMonitoring:
     Type: String
@@ -289,7 +397,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
+    Description: "[DEPRECATED. See https://runs-on.com/monitoring/job-metrics/#performance-metrics for better performance metrics]."
 
   Ec2LogRetentionInDays:
     Type: Number
@@ -302,36 +410,61 @@ Parameters:
     Default: 0
     Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds. Leave as 0 to disable SQS alarms.
 
-  ServerPassword:
+  EnableDashboard:
     Type: String
-    Default: ""
-    Description: Password for the /metrics Prometheus endpoint (https://runs-on.com/monitoring/metrics/#prometheus-metrics). If blank, the endpoint will be disabled.
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Create a CloudWatch dashboard for monitoring RunsOn operations (number of jobs processed, rate limit status, last error messages, etc.). The dashboard will be named STACK_NAME-Dashboard.
+
+  S3CacheExpirationInDays:
+    Type: Number
+    Default: 10
+    Description: "Number of days to keep cache entries in the S3 cache bucket."
 
   CostAllocationTag:
     Type: String
     Default: "stack"
-    Description: "Cost allocation tag to use for all the deployed resources. Updating this after creation will require deleting the stack and recreating it."
+    Description: "Cost allocation tag key to use for all the deployed resources. The value for this tag will be set to the stack name. Updating this after creation will require deleting the stack and recreating it."
 
   IntegrationStepSecurityApiKey:
     Type: String
     Default: ""
-    Description: "API key for Step Security (https://stepsecurity.io/)."
+    Description: "API key for Step Security (see https://stepsecurity.io/ for more details)."
+
+  OtelExporterEndpoint:
+    Type: String
+    Default: ""
+    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
+
+  OtelExporterHeaders:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'signoz-ingestion-key=ABCD1234'). Leave empty if not required."
 
 Mappings:
   App:
-    Image:
-      Tag: "v2.6.7"
+    Tags:
+      BootstrapTag: v0.1.12
+      ImageTag: v2.9.0
 
 Conditions:
+  EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
+  ExternalVpc: !Equals [!Ref NetworkingStack, "external"]
+  ExternalVpcPublicSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], ""]]]
+  ExternalVpcPrivateSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], ""]]]
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  HasPrivateSubnet: !Not [!Equals [!Ref Private, "false"]]
+  AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
+  PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
+  HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Condition PrivateEnabled]
   PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
+  AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
   CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
@@ -357,18 +490,23 @@ Conditions:
   CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
   CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
   CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateInterfaceEndpointEc2: !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
-  CreateInterfaceEndpointEcrApi: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
-  CreateInterfaceEndpointEcrDocker: !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]
+  CreateInterfaceEndpointEc2: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrApi: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrDocker: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
   CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
   HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, ""]]
-  HasVpcFlowLogS3BucketArn: !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]
+  HasVpcFlowLogEnabled: !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
+  HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, "default"]]
+  HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
+  CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
+  CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
+  CreateDashboard: !Equals [!Ref EnableDashboard, "true"]
 
 Resources:
   VPC:
+    Condition: EmbeddedVpc
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !Ref VpcCidrBlock
@@ -382,6 +520,7 @@ Resources:
           Value: !Sub ${AWS::StackName}-VPC
 
   VPCIPv6CidrBlock:
+    Condition: EmbeddedVpc
     Type: AWS::EC2::VPCCidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -390,6 +529,7 @@ Resources:
   # EC2.6 - VPC flow logging should be enabled in all VPCs
   VPCFlowLog:
     Type: AWS::EC2::FlowLog
+    Condition: HasVpcFlowLogEnabled
     Properties:
       ResourceType: VPC
       ResourceId: !Ref VPC
@@ -401,6 +541,7 @@ Resources:
 
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: HasVpcFlowLogEnabled
     Properties:
       RetentionInDays: !Ref VpcFlowLogRetentionInDays
 
@@ -417,6 +558,7 @@ Resources:
 
   VPCFlowLogRole:
     Type: AWS::IAM::Role
+    Condition: HasVpcFlowLogEnabled
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
@@ -441,6 +583,7 @@ Resources:
 
   PrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -451,6 +594,7 @@ Resources:
 
   PrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -461,6 +605,7 @@ Resources:
 
   PrivateSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -519,29 +664,34 @@ Resources:
 
   EgressOnlyInternetGateway:
     Type: AWS::EC2::EgressOnlyInternetGateway
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateSubnet1RouteTable
 
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateSubnet2RouteTable
 
   PrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateSubnet3RouteTable
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -568,6 +718,7 @@ Resources:
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -594,6 +745,7 @@ Resources:
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -953,6 +1105,7 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -979,6 +1132,7 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1005,6 +1159,7 @@ Resources:
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: EmbeddedVpc
     DependsOn: VPCIPv6CidrBlock
     Properties:
       VpcId: !Ref VPC
@@ -1031,6 +1186,7 @@ Resources:
 
   S3VpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       ServiceName:
@@ -1044,6 +1200,7 @@ Resources:
 
   VPCEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: EmbeddedVpc
     Properties:
       GroupDescription: Security group for VPC Endpoints (EC2 and ECR)
       VpcId: !Ref VPC
@@ -1110,6 +1267,7 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Condition: EmbeddedVpc
     Properties:
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1119,12 +1277,14 @@ Resources:
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: EmbeddedVpc
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -1135,6 +1295,7 @@ Resources:
 
   PublicRoute:
     Type: AWS::EC2::Route
+    Condition: EmbeddedVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1143,6 +1304,7 @@ Resources:
 
   PublicRouteIPv6:
     Type: AWS::EC2::Route
+    Condition: EmbeddedVpc
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
@@ -1151,25 +1313,130 @@ Resources:
 
   SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: EmbeddedVpc
     Properties:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
 
+  # --- EFS Resources ---
+  EfsFileSystem:
+    Condition: CreateEfs
+    Type: AWS::EFS::FileSystem
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      Encrypted: true
+      FileSystemTags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EFS
+
+  EfsSecurityGroup:
+    Condition: CreateEfs
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Allow NFS traffic from RunsOn EC2 instances to EFS ${AWS::StackName}"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !GetAtt SecurityGroup.GroupId
+          Description: "Allow NFS from RunsOn EC2 instances"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EFSSecurityGroup
+
+  EfsMountTarget1:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet1 # Mount in public subnet for simplicity, runners in private can still reach
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  EfsMountTarget2:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  EfsMountTarget3:
+    Condition: CreateEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet3
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+  # --- End EFS Resources ---
+
+  # --- Ephemeral Registry Resources ---
+  EphemeralRegistry:
+    Condition: CreateEphemeralRegistry
+    Type: AWS::ECR::Repository
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: RetainExceptOnCreate
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/ephemeral-registry"
+      ImageScanningConfiguration:
+        ScanOnPush: false
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire images older than 10 days",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+  # --- End Ephemeral Registry Resources ---
+
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1190,17 +1457,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
-        BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1210,82 +1466,40 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
-              #!/bin/bash -e
-              _the_end() {
-                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
-              } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
+              #!/bin/bash -ex
+              date -u
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
               export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
-            - AppVersion: !FindInMap [App, Image, Tag]
-
-  EC2FleetLaunchTemplateLinuxLarge:
-    Type: AWS::EC2::LaunchTemplate
-    Properties:
-      LaunchTemplateData:
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: volume
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-          - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-        IamInstanceProfile:
-          Arn: !GetAtt EC2InstanceProfile.Arn
-        EbsOptimized: "true"
-        MetadataOptions:
-          HttpTokens: required
-          HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
-        BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerLargeDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerLargeVolumeThroughput
-              Iops: 4000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
-        InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring:
-          !If
-            - ECInstanceDetailedMonitoringEnabled
-            - Enabled: true
-            - Ref: AWS::NoValue
-        NetworkInterfaces:
-          - DeleteOnTermination: true
-            DeviceIndex: "0"
-            Groups:
-              - !Ref SecurityGroup
-            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
-        UserData:
-          Fn::Base64: !Sub
-            - |
-              #!/bin/bash -e
-              _the_end() {
-                echo "user-data: Going to shut down in a few seconds..." && sleep 45s && shutdown -h now
-              } ; trap _the_end EXIT INT TERM
-              export RUNS_ON_BOOSTRAP_PATH="${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              b=$(mktemp) ; time curl --connect-time 3 --max-time 10 --retry 5 -s "https://$RUNS_ON_BOOSTRAP_PATH/bootstrap.sh" -o $b ; bash -ex $b
-            - AppVersion: !FindInMap [App, Image, Tag]
+              export RUNS_ON_DEBUG="${AppDebug}"
+              export AWS_REGION="${AWS::Region}"
+              ${EfsExport}
+              ${EphemeralRegistryExport}
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1306,17 +1520,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
-        BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1326,32 +1529,54 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
               <powershell>
+              Get-Date -format s
+              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
+              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:RUNS_ON_DEBUG = "${AppDebug}"
+              $env:AWS_REGION = "${AWS::Region}"
+              ${EfsEnvVar}
+              ${EphemeralRegistryExport}
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
-                powershell -File $b
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
+                if (-not (Test-Path $bootstrapBin)) {
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                }
+                Add-MpPreference -ExclusionProcess $bootstrapBin
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 45
-                Stop-Computer -Force
+                if ($env:RUNS_ON_DEBUG -ne "true") {
+                  Write-Output "user-data: Going to shut down in a few seconds..."
+                  Start-Sleep -Seconds 180
+                  Stop-Computer -Force
+                }
               }
               </powershell>
-            - AppVersion: !FindInMap [App, Image, Tag]
+              <detach>true</detach>
+              <persist>true</persist>
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
-  EC2FleetLaunchTemplateWindowsLarge:
+  EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1372,17 +1597,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-          InstanceMetadataTags: enabled
-        BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerLargeDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerLargeVolumeThroughput
-              Iops: 4000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1392,33 +1606,112 @@ Resources:
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
+            AssociatePublicIpAddress: false
             Groups:
-              - !Ref SecurityGroup
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
+            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash -ex
+              date -u
+              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
+              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
+              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              export RUNS_ON_DEBUG="${AppDebug}"
+              export AWS_REGION="${AWS::Region}"
+              ${EfsExport}
+              ${EphemeralRegistryExport}
+              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
+              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
+
+  EC2FleetLaunchTemplateWindowsPrivate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
+      LaunchTemplateData:
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+          - ResourceType: volume
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+          - ResourceType: network-interface
+            Tags:
+              - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        EbsOptimized: "true"
+        MetadataOptions:
+          HttpTokens: required
+          HttpPutResponseHopLimit: 2
+        InstanceInitiatedShutdownBehavior: "terminate"
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            DeviceIndex: "0"
+            AssociatePublicIpAddress: false
+            Groups:
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
             - |
               <powershell>
+              Get-Date -format s
+              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
+              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
+              $env:RUNS_ON_DEBUG = "${AppDebug}"
+              $env:AWS_REGION = "${AWS::Region}"
+              ${EfsEnvVar}
+              ${EphemeralRegistryExport}
+              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
-                $env:RUNS_ON_BOOSTRAP_PATH = "${S3Bucket}.s3.${AWS::Region}.amazonaws.com/agents/${AppVersion}"
-                $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-                $b = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
-                Write-Host "Downloading bootstrap.ps1 to $b"
-                Invoke-WebRequest -Uri "https://$env:RUNS_ON_BOOSTRAP_PATH/bootstrap.ps1" -OutFile $b -UseBasicParsing
-                Write-Host "Running $b"
-                powershell -File $b
+                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
+                if (-not (Test-Path $bootstrapBin)) {
+                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                }
+                Add-MpPreference -ExclusionProcess $bootstrapBin
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
-                Write-Output "user-data: Going to shut down in a few seconds..."
-                Start-Sleep -Seconds 45
-                Stop-Computer -Force
+                if ($env:RUNS_ON_DEBUG -ne "true") {
+                  Write-Output "user-data: Going to shut down in a few seconds..."
+                  Start-Sleep -Seconds 180
+                  Stop-Computer -Force
+                }
               }
               </powershell>
-            - AppVersion: !FindInMap [App, Image, Tag]
+              <detach>true</detach>
+              <persist>true</persist>
+            - AppTag: !FindInMap [App, Tags, ImageTag]
+              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: EmbeddedVpc
     Properties:
-      GroupDescription: Security group for SSH access
+      GroupDescription: Security group for SSH access and EFS egress
       VpcId:
         Ref: VPC
       SecurityGroupIngress:
@@ -1429,7 +1722,17 @@ Resources:
             FromPort: 22
             ToPort: 22
             IpProtocol: tcp
+            Description: "Allow SSH Ingress"
           - !Ref AWS::NoValue
+      SecurityGroupEgress:
+        # Default Egress Rule (Allow All IPv4)
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: "Allow all outbound IPv4 traffic"
+        # Default Egress Rule (Allow All IPv6)
+        - IpProtocol: "-1"
+          CidrIpv6: "::/0"
+          Description: "Allow all outbound IPv6 traffic"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1439,6 +1742,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
@@ -1455,11 +1763,13 @@ Resources:
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        IgnorePublicAcls: true
-        BlockPublicPolicy: true
-        RestrictPublicBuckets: true
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-config-access-logs/
@@ -1476,14 +1786,6 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowReadForAgentBinariesFromVpcEndpoint
-            Effect: Allow
-            Principal: "*"
-            Action: "s3:GetObject"
-            Resource: !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
-            Condition:
-              StringEquals:
-                aws:SourceVpce: !Ref S3VpcEndpoint
           - Sid: DenyUnencryptedConnections
             Effect: Deny
             Principal: "*"
@@ -1500,6 +1802,11 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Suspended
       LifecycleConfiguration:
@@ -1513,9 +1820,16 @@ Resources:
           - Id: ExpireCache
             Prefix: cache/
             Status: Enabled
-            ExpirationInDays: 10
+            ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
-              NoncurrentDays: 10
+              NoncurrentDays: 1
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       LoggingConfiguration:
         DestinationBucketName: !Ref S3BucketLogging
         LogFilePrefix: s3-cache-access-logs/
@@ -1548,18 +1862,30 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: RetainExceptOnCreate
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       OwnershipControls:
         Rules:
-          - ObjectOwnership: BucketOwnerPreferred
+          - ObjectOwnership: BucketOwnerEnforced
       LifecycleConfiguration:
         Rules:
           - Id: DeleteOldLogs
             Status: Enabled
             ExpirationInDays: 30
             NoncurrentVersionExpiration:
-              NoncurrentDays: 30
+              NoncurrentDays: 7
+          - Id: CleanupIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: CleanupExpiredObjectDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1583,6 +1909,39 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
+          - Sid: S3ServerAccessLogsPolicy
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: "s3:PutObject"
+            Resource:
+              - !Sub "arn:aws:s3:::${S3BucketLogging}/s3-cache-access-logs/*"
+              - !Sub "arn:aws:s3:::${S3BucketLogging}/s3-config-access-logs/*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Sub ${AWS::AccountId}
+              ArnLike:
+                aws:Sourcearn:
+                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:aws:s3:::${S3Bucket}"
+
+  EC2InstanceResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Sub "${AWS::StackName}-EC2Instances"
+      Description: "Resource group for EC2 instances belonging to this stack"
+      ResourceQuery:
+        Type: TAG_FILTERS_1_0
+        Query:
+          ResourceTypeFilters:
+            - "AWS::EC2::Instance"
+          TagFilters:
+            - Key: "runs-on-stack-name"
+              Values:
+                - !Ref AWS::StackName
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
@@ -1597,7 +1956,10 @@ Resources:
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
-        !If [CustomPolicyProvided, [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"], ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]]
+        !If 
+          - CustomPolicyProvided
+          - [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
+          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1606,7 +1968,16 @@ Resources:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: TagInstance
+        - PolicyName: ReadOnly
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeTags
+                  - ec2:DescribeAvailabilityZones
+                Resource: "*"
+        - PolicyName: CreateTags
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -1617,6 +1988,16 @@ Resources:
                 Condition:
                   StringEquals:
                     "aws:ARN": "${ec2:SourceInstanceARN}"
+        - PolicyName: CreateTagsOnVolumesAndSnapshots
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:*:snapshot/*"
         - PolicyName: SendLogs
           PolicyDocument:
             Version: "2012-10-17"
@@ -1632,7 +2013,7 @@ Resources:
                 Resource:
                 - !Sub "${EC2InstanceLogGroup.Arn}"
                 - !Sub "${EC2InstanceLogGroup.Arn}:*"
-        - PolicyName: SendMetrics
+        - PolicyName: PutMetrics
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -1642,7 +2023,19 @@ Resources:
                 Resource: "*"
                 Condition:
                   StringEquals:
-                    cloudwatch:namespace: "RunsOn/Runners"
+                    cloudwatch:namespace:
+                      - "RunsOn/Runners"
+                      - "CWAgent"
+        - PolicyName: GetMetrics
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                # can't restrict on specific namespaces unfortunately
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                Resource: "*"
         - PolicyName: EC2AccessS3BucketPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -1651,7 +2044,6 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                  - s3:DeleteObject
                   - s3:ListBucket
                   - s3:GetBucketLocation
                   - s3:ListBucketMultipartUploads
@@ -1669,6 +2061,101 @@ Resources:
                         !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3Bucket}/agents/*"
+        - PolicyName: VolumeSnapshotDescribe
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                Resource: "*"
+        - PolicyName: VolumeSnapshotCreate
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateVolume
+                  - ec2:CreateSnapshot
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+        - PolicyName: VolumeSnapshotLifecycle
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AttachVolume
+                  - ec2:DetachVolume
+                  - ec2:DeleteVolume
+                  - ec2:DeleteSnapshot
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+        - PolicyName: EnableDetailedMonitoring
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:MonitorInstances
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+        - !If
+          - CreateEfs
+          - PolicyName: EfsMountAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # Required for mounting
+                    - elasticfilesystem:ClientMount
+                    - elasticfilesystem:ClientWrite
+                    - elasticfilesystem:DescribeMountTargets
+                    # Required by efs-utils helper to find mount target IP
+                    - ec2:DescribeSubnets
+                    - ec2:DescribeNetworkInterfaces
+                  Resource: "*" # Scoping down requires knowing EFS ARN, Subnet ARNs, etc. Keep broad for simplicity.
+          - !Ref AWS::NoValue
+        - !If
+          - CreateEphemeralRegistry
+          - PolicyName: EphemeralRegistryAccess
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    # Needed for docker login
+                    - ecr:GetAuthorizationToken
+                  Resource: "*" # GetAuthorizationToken requires "*" resource
+                - Effect: Allow
+                  Action:
+                    # Pull permissions
+                    - ecr:BatchCheckLayerAvailability
+                    - ecr:GetDownloadUrlForLayer
+                    - ecr:BatchGetImage
+                    # Push permissions
+                    - ecr:InitiateLayerUpload
+                    - ecr:UploadLayerPart
+                    - ecr:CompleteLayerUpload
+                    - ecr:PutImage
+                  Resource: !GetAtt EphemeralRegistry.Arn
+          - !Ref AWS::NoValue
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1712,6 +2199,7 @@ Resources:
   SchedulerInvokeRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1750,7 +2238,8 @@ Resources:
         InstanceRoleArn: !GetAtt RunsOnServiceRole.Arn
       NetworkConfiguration:
         EgressConfiguration:
-          EgressType: DEFAULT
+          EgressType: !If [PrivateEnabled, VPC, DEFAULT]
+          VpcConnectorArn: !If [PrivateEnabled, !Ref RunsOnServiceVpcConnector, !Ref "AWS::NoValue"]
         IngressConfiguration:
           IsPubliclyAccessible: true
         IpAddressType: IPV4
@@ -1766,16 +2255,24 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
+              - Name: RUNS_ON_AWS_ACCOUNT_ID
+                Value: !Ref AWS::AccountId
               - Name: RUNS_ON_ENV
                 Value: !Ref Environment
               - Name: RUNS_ON_COST_ALLOCATION_TAG
                 Value: !Ref CostAllocationTag
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
-              - Name: RUNS_ON_ORG
+              - Name: RUNS_ON_LOCKS_TABLE
+                Value: !Ref RunsOnLocksTable
+              - Name: RUNS_ON_NETWORKING_STACK
+                Value: !Ref NetworkingStack
+              - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
-              - Name: RUNS_ON_APP_VERSION
-                Value: !FindInMap [App, Image, Tag]
+              - Name: RUNS_ON_APP_TAG
+                Value: !FindInMap [App, Tags, ImageTag]
+              - Name: RUNS_ON_BOOTSTRAP_TAG
+                Value: !FindInMap [App, Tags, BootstrapTag]
               - Name: RUNS_ON_LICENSE_KEY
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
@@ -1784,8 +2281,10 @@ Resources:
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
                 Value: !Ref S3BucketCache
+              - Name: RUNS_ON_VPC_ID
+                Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
               - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !Ref SecurityGroup
+                Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_INSTANCE_ROLE_NAME
@@ -1794,38 +2293,50 @@ Resources:
                 Value: !Ref AlertTopic
               - Name: RUNS_ON_REGION
                 Value: !Ref AWS::Region
+              - Name: RUNS_ON_SSH_ALLOWED
+                Value: !Ref SSHAllowed
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
-              - Name: RUNS_ON_PUBLIC_SUBNET1
-                Value: !Ref PublicSubnet1
-              - Name: RUNS_ON_PUBLIC_SUBNET2
-                Value: !Ref PublicSubnet2
-              - Name: RUNS_ON_PUBLIC_SUBNET3
-                Value: !Ref PublicSubnet3
-              - Name: RUNS_ON_PRIVATE_SUBNET1
-                Value: !Ref PrivateSubnet1
-              - Name: RUNS_ON_PRIVATE_SUBNET2
-                Value: !Ref PrivateSubnet2
-              - Name: RUNS_ON_PRIVATE_SUBNET3
-                Value: !Ref PrivateSubnet3
+              - Name: RUNS_ON_EBS_ENCRYPTION_KEY
+                Value: !If [HasEncryptEbs, "alias/aws/ebs", ""]
+              - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
+                Value: !Ref AppGithubApiStrategy
+              - Name: RUNS_ON_PUBLIC_SUBNET_IDS
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+                  !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+              - Name: RUNS_ON_PRIVATE_SUBNET_IDS
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+                  !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
                 Value: !Ref DefaultAdmins
+              - Name: RUNS_ON_RUNNER_MAX_RUNTIME
+                Value: !Ref RunnerMaxRuntime
+              - Name: RUNS_ON_RUNNER_CONFIG_AUTO_EXTENDS_FROM
+                Value: !Ref RunnerConfigAutoExtendsFrom
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
-                Value: !Ref EC2FleetLaunchTemplateLinuxDefault
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_LARGE
-                Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
-                Value: !Ref EC2FleetLaunchTemplateWindowsDefault
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_LARGE
-                Value: !Ref EC2FleetLaunchTemplateWindowsLarge
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_PRIVATE
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_PRIVATE
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
+              - Name: RUNS_ON_RUNNER_DEFAULT_VOLUME_THROUGHPUT
+                Value: !Ref RunnerDefaultVolumeThroughput
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
+              - Name: RUNS_ON_RUNNER_LARGE_VOLUME_THROUGHPUT
+                Value: !Ref RunnerLargeVolumeThroughput
               - Name: RUNS_ON_QUEUE
                 Value: !Ref RunsOnQueue
+              - Name: RUNS_ON_QUEUE_POOL
+                Value: !Ref RunsOnQueuePool
               - Name: RUNS_ON_QUEUE_HOUSEKEEPING
                 Value: !Ref RunsOnQueueHousekeeping
               - Name: RUNS_ON_QUEUE_TERMINATION
@@ -1834,21 +2345,37 @@ Resources:
                 Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
-              - Name: RUNS_ON_SERVER_PASSWORD
-                Value: !Ref ServerPassword
               - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
                 Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
                 Value: !Ref IntegrationStepSecurityApiKey
+              - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
+                Value: !Ref GithubEnterpriseUrl
+              - Name: OTEL_EXPORTER_OTLP_ENDPOINT
+                Value: !Ref OtelExporterEndpoint
+              - Name: OTEL_EXPORTER_OTLP_HEADERS
+                Value: !Ref OtelExporterHeaders
           ImageIdentifier: !Sub
-            - "${AppRegistry}:${AppVersion}"
-            - AppVersion: !FindInMap [App, Image, Tag]
+            - "${AppRegistry}:${AppTag}"
+            - AppTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
+
+  RunsOnServiceVpcConnector:
+    Type: AWS::AppRunner::VpcConnector
+    Condition: PrivateEnabled
+    Properties:
+      Subnets: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+      SecurityGroups: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
 
   RunsOnServiceRole:
     Type: AWS::IAM::Role
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
+      ManagedPolicyArns:
+        !If [AppCustomPolicyProvided, [!Ref AppCustomPolicy], []]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1870,13 +2397,27 @@ Resources:
                 Action:
                   - ec2:DescribeImages
                   - ec2:DescribeInstances
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeRouteTables
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                  - ec2:DescribeLaunchTemplateVersions
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
                   - cloudtrail:LookupEvents
+                  - iam:GetRole
+                  - sns:ListSubscriptionsByTopic
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                Resource: "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Condition:
+                  StringEquals:
+                    "iam:AWSServiceName": "spot.amazonaws.com"
               - Effect: Allow
                 Action:
                   - cloudformation:DescribeStacks
@@ -1910,14 +2451,25 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:TerminateInstances
-                Resource: "arn:aws:ec2:*:*:instance/*"
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
-                    "aws:ResourceTag/provider": "runs-on.com"
+                    "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+              - Effect: Allow
+                Action:
+                  - ec2:DeleteVolume
+                  - ec2:DeleteSnapshot
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:ListBucket
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
@@ -1940,9 +2492,24 @@ Resources:
                   - sqs:GetQueueAttributes
                 Resource:
                   - !GetAtt RunsOnQueue.Arn
+                  - !GetAtt RunsOnQueuePool.Arn
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt RunsOnLocksTable.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apprunner/RunsOnService-*"
 
   MinutesPerDayAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1950,6 +2517,9 @@ Resources:
       AlarmDescription: !Sub "RunsOn daily usage exceeds ${AppAlarmDailyMinutes} minutes"
       Namespace: RunsOn
       MetricName: minutesNoDimension
+      Dimensions:
+        - Name: StackName
+          Value: !Ref AWS::StackName
       Statistic: Sum
       Period: 86400 # 24h
       EvaluationPeriods: 1
@@ -1998,6 +2568,27 @@ Resources:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
 
+  RunsOnQueuePoolDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueuePool:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueuePoolDeadLetter.Arn
+        maxReceiveCount: 5
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
   RunsOnQueueHousekeeping:
     Type: AWS::SQS::Queue
     Properties:
@@ -2024,6 +2615,25 @@ Resources:
       MessageRetentionPeriod: 7200
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 120
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  # DynamoDB table for distributed locking
+  RunsOnLocksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-locks"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: key
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2059,6 +2669,27 @@ Resources:
       Dimensions:
       - Name: QueueName
         Value: !GetAtt RunsOnQueue.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref SqsQueueOldestMessageThresholdSeconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: "notBreaching"
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  RunsOnQueuePoolOldestMessageAlarm:
+    Condition: CreateSqsQueueOldestMessageAlarms
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "SQS queue RunsOnQueuePool oldest message age excedes ${SqsQueueOldestMessageThresholdSeconds} seconds."
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueuePool.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -2147,7 +2778,7 @@ Resources:
       Targets:
         - Arn: !GetAtt RunsOnQueueEvents.Arn
           Id: InstanceEvents
-          
+
   SpotInstanceEventRulePermission:
     Type: AWS::SQS::QueuePolicy
     Properties:
@@ -2188,50 +2819,237 @@ Resources:
       TopicArn: !Ref AlertTopic
       Endpoint: !Ref AlertTopicSubscriptionHttpsEndpoint
 
+  AlertTopicSlackWebhookRole:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  AlertTopicSlackWebhookFunction:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt AlertTopicSlackWebhookRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref AlertTopicSlackWebhookUrl
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import os
+          import urllib.error
+          import urllib.request
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def format_cloudwatch_alarm(alarm):
+              """Format CloudWatch alarm as Slack blocks."""
+              state = alarm.get("NewStateValue", "UNKNOWN")
+              state_emoji = {"ALARM": ":rotating_light:", "OK": ":white_check_mark:", "INSUFFICIENT_DATA": ":warning:"}.get(state, ":question:")
+
+              fields = [
+                  {"type": "mrkdwn", "text": f"*Alarm:*\n{alarm.get('AlarmName', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*State:*\n{state}"},
+                  {"type": "mrkdwn", "text": f"*Region:*\n{alarm.get('Region', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*Time:*\n{alarm.get('StateChangeTime', 'N/A')}"}
+              ]
+
+              if alarm.get("AlarmDescription"):
+                  fields.insert(1, {"type": "mrkdwn", "text": f"*Description:*\n{alarm['AlarmDescription']}"})
+
+              blocks = [
+                  {
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"{state_emoji} *CloudWatch Alarm: {state}*"}
+                  },
+                  {"type": "section", "fields": fields}
+              ]
+
+              if alarm.get("NewStateReason"):
+                  blocks.append({
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"*Reason:*\n{alarm['NewStateReason']}"}
+                  })
+
+              return {"blocks": blocks}
+
+          def handler(event, context):
+              webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
+              if not webhook_url:
+                  logger.error("Slack webhook URL is not configured")
+                  return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
+
+              records = event.get("Records", [])
+              for record in records:
+                  sns = record.get("Sns", {})
+                  subject = sns.get("Subject", "")
+                  message = sns.get("Message", "")
+
+                  # Try to parse message as JSON (CloudWatch alarms)
+                  try:
+                      alarm_data = json.loads(message)
+                      if "AlarmName" in alarm_data:
+                          payload = format_cloudwatch_alarm(alarm_data)
+                      else:
+                          # JSON but not an alarm, format as code block
+                          text = f"*{subject}*\n```\n{json.dumps(alarm_data, indent=2)}\n```" if subject else f"```\n{json.dumps(alarm_data, indent=2)}\n```"
+                          payload = {"text": text}
+                  except (json.JSONDecodeError, TypeError):
+                      # Plain text message
+                      text = f"*{subject}*\n{message}" if subject else message
+                      payload = {"text": text}
+
+                  data = json.dumps(payload).encode("utf-8")
+                  request = urllib.request.Request(
+                      webhook_url,
+                      data=data,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+
+                  try:
+                      with urllib.request.urlopen(request, timeout=5) as response:
+                          logger.info("Sent alert to Slack with status %s", response.status)
+                  except urllib.error.HTTPError as error:
+                      logger.error(
+                          "Failed to send alert to Slack: HTTP %s %s", error.code, error.reason
+                      )
+                  except Exception as error:  # noqa: BLE001
+                      logger.exception("Unexpected error sending alert to Slack: %s", error)
+
+              return {"statusCode": 200, "body": "Processed SNS records"}
+
+  AlertTopicSlackWebhookPermission:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AlertTopicSlackWebhookFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref AlertTopic
+
+  AlertTopicSlackWebhookSubscription:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::SNS::Subscription
+    DependsOn:
+      - AlertTopicSlackWebhookPermission
+    Properties:
+      Protocol: lambda
+      TopicArn: !Ref AlertTopic
+      Endpoint: !GetAtt AlertTopicSlackWebhookFunction.Arn
+
+  DashboardStack:
+    Condition: CreateDashboard
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.9.0.yaml"
+      Parameters:
+        LogGroupName: !Join
+          - ""
+          - - "/aws/apprunner/"
+            - !Select
+              - 1
+              - !Split
+                - "service/"
+                - !GetAtt RunsOnService.ServiceArn
+            - "/application"
+        DashboardName: !Sub "${AWS::StackName}-Dashboard"
+        QueueName: !GetAtt RunsOnQueue.QueueName
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
 Outputs:
+  RunsOnAwsAccountId:
+    Description: AWS Account ID
+    Value: !Ref AWS::AccountId
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
     Value: !GetAtt RunsOnService.ServiceUrl
   RunsOnService:
     Description: Link to the AppRunner service in AWS console
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/apprunner/home?region=${AWS::Region}#/services/dashboard?service_arn=${RunsOnService}"
-  RunsOnOrg:
-    Description: GitHub organization or personal account
-    Value: !Ref GithubOrganization
-  RunsOnLicenseKey:
-    Description: License key
-    Value: !Ref LicenseKey
+  RunsOnServiceLogGroupName:
+    Description: Log group for the RunsOn service
+    Value: !Join
+      - ""
+      - - "/aws/apprunner/"
+        - !Select
+          - 1
+          - !Split
+            - "service/"
+            - !GetAtt RunsOnService.ServiceArn
+        - "/application"
+  RunsOnAppTag:
+    Description: RunsOn application tag
+    Value: !FindInMap [App, Tags, ImageTag]
+  RunsOnBootstrapTag:
+    Description: RunsOn bootstrap tag
+    Value: !FindInMap [App, Tags, BootstrapTag]
+  RunsOnInstanceRoleName:
+    Description: Name of the instance role for the RunsOn service
+    Value: !Ref EC2InstanceRole
   RunsOnRegion:
     Description: AWS region
     Value: !Ref AWS::Region
   RunsOnVPCId:
     Description: VPC ID
-    Value: !Ref VPC
+    Value: !If [EmbeddedVpc, !Ref VPC, !Ref ExternalVpcId]
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
+  RunsOnPublicSubnetIds:
+    Description: Public subnet IDs
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+      !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+  RunsOnPrivateSubnetIds:
+    Description: Private subnet IDs
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+      !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
-    Value: !Ref VpcCidrBlock
+    Value: !If [EmbeddedVpc, !Ref VpcCidrBlock, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicRouteTableId:
     Description: Public Route Table ID
-    Value: !Ref PublicRouteTable
+    Value: !If [EmbeddedVpc, !Ref PublicRouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PublicRouteTableId"
   RunsOnPrivateRouteTable1Id:
     Description: Private Route Table 1 ID
-    Value: !Ref PrivateSubnet1RouteTable
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet1RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable1Id"
   RunsOnPrivateRouteTable2Id:
     Description: Private Route Table 2 ID
-    Value: !Ref PrivateSubnet2RouteTable
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet2RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable2Id"
   RunsOnPrivateRouteTable3Id:
     Description: Private Route Table 3 ID
-    Value: !Ref PrivateSubnet3RouteTable
+    Value: !If [EmbeddedVpc, !Ref PrivateSubnet3RouteTable, "-"]
     Export:
       Name: !Sub "${AWS::StackName}-PrivateRouteTable3Id"
   RunsOnEgressStaticIps:
@@ -2253,48 +3071,12 @@ Outputs:
               - !If [CreateElasticIP7, !Ref ElasticIP7, !Ref "AWS::NoValue"]
               - !If [CreateElasticIP8, !Ref ElasticIP8, !Ref "AWS::NoValue"]
       - ""
-  RunsOnPublicSubnet1:
-    Description: Public subnet 1
-    Value: !Ref PublicSubnet1
-  RunsOnPublicSubnet2:
-    Description: Public subnet 2
-    Value: !Ref PublicSubnet2
-  RunsOnPublicSubnet3:
-    Description: Public subnet 3
-    Value: !Ref PublicSubnet3
-  RunsOnPrivateSubnet1:
-    Description: Private subnet 1
-    Value: !Ref PrivateSubnet1
-  RunsOnPrivateSubnet2:
-    Description: Private subnet 2
-    Value: !Ref PrivateSubnet2
-  RunsOnPrivateSubnet3:
-    Description: Private subnet 3
-    Value: !Ref PrivateSubnet3
   RunsOnPrivate:
     Description: Private subnets enabled
     Value: !Ref Private
-  RunsOnRunnerDefaultDiskSize:
-    Description: Default disk size for runners
-    Value: !Ref RunnerDefaultDiskSize
-  RunsOnRunnerLargeDiskSize:
-    Description: Large disk size for runners
-    Value: !Ref RunnerLargeDiskSize
-  RunsOnRunnerCustomTags:
-    Description: Custom tags for runners
-    Value: !Join [",", !Ref RunnerCustomTags]
-  RunsOnInstanceProfileArn:
-    Description: Runner instance profile ARN
-    Value: !GetAtt EC2InstanceProfile.Arn
-  RunsOnInstanceProfileName:
-    Description: Runner instance profile Name
-    Value: !Ref EC2InstanceProfile
-  RunsOnInstanceRoleName:
-    Description: Runner instance role Name
-    Value: !Ref EC2InstanceRole
   RunsOnSecurityGroupId:
     Description: Security group for runners
-    Value: !Ref SecurityGroup
+    Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
   RunsOnBucketConfig:
     Description: S3 bucket for storing configuration
     Value: !Ref S3Bucket
@@ -2304,33 +3086,24 @@ Outputs:
   RunsOnTopicArn:
     Description: SNS Topic where email alerts and reports are sent
     Value: !Ref AlertTopic
-  RunsOnDefaultAdmins:
-    Description: Default GitHub usernames with SSH access to the runners
-    Value: !Ref DefaultAdmins
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateLinuxDefault
-  RunsOnLaunchTemplateLinuxLarge:
-    Description: Large Linux launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateLinuxLarge
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsDefault:
     Description: Default Windows launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateWindowsDefault
-  RunsOnLaunchTemplateWindowsLarge:
-    Description: Large Windows launch template for the RunsOn service
-    Value: !Ref EC2FleetLaunchTemplateWindowsLarge
-  RunsOnAppVersion:
-    Description: Version of the RunsOn service
-    Value: !FindInMap [App, Image, Tag]
-  RunsOnStackName:
-    Description: Name of the stack
-    Value: !Ref AWS::StackName
-  RunsOnAppEc2QueueSize:
-    Description: Size of the EC2 queue
-    Value: !Ref AppEc2QueueSize
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+  RunsOnLaunchTemplateLinuxPrivate:
+    Description: Private Linux launch template for the RunsOn service
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+  RunsOnLaunchTemplateWindowsPrivate:
+    Description: Private Windows launch template for the RunsOn service
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueuePool:
+    Description: SQS queue for the RunsOn service, used for pool management tasks
+    Value: !Ref RunsOnQueuePool
   RunsOnQueueHousekeeping:
     Description: SQS queue for the RunsOn service, used for non-critical housekeeping tasks
     Value: !Ref RunsOnQueueHousekeeping
@@ -2340,18 +3113,23 @@ Outputs:
   RunsOnQueueEvents:
     Description: SQS queue for the RunsOn service, used for events from other AWS services
     Value: !Ref RunsOnQueueEvents
-  RunsOnCostReportsEnabled:
-    Description: Enable or disable cost reports sent by email
-    Value: !Ref CostReportsEnabled
-  RunsOnServerPassword:
-    Description: Password for the RunsOn server
-    Value: !Ref ServerPassword
-  RunsOnCostAllocationTag:
-    Description: Cost allocation tag for the RunsOn service
-    Value: !Ref CostAllocationTag
+  RunsOnLocksTable:
+    Description: DynamoDB table for distributed locking
+    Value: !Ref RunsOnLocksTable
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
+  RunsOnServiceRoleArn:
+    Description: ARN of the App Runner service role
+    Value: !GetAtt RunsOnServiceRole.Arn
   RunsOnEC2InstanceLogGroupArn:
     Description: Log group ARN for the EC2 instances
     Value: !Ref EC2InstanceLogGroup
+  RunsOnEfsFileSystemId:
+    Condition: CreateEfs
+    Description: EFS File System ID (if enabled)
+    Value: !Ref EfsFileSystem
+  EphemeralRegistryUri:
+    Condition: CreateEphemeralRegistry
+    Description: ECR Repository URI for Ephemeral Registry (if enabled)
+    Value: !GetAtt EphemeralRegistry.RepositoryUri
