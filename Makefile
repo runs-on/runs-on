@@ -237,6 +237,9 @@ stage-dashboard:
 		--capabilities CAPABILITY_IAM \
 		--stack-name $$DASHBOARD_STACK_NAME
 
+stage-roc:
+	AWS_PROFILE=runs-on-admin roc --stack $(STACK_STAGE_NAME) $(filter-out $@,$(MAKECMDGOALS))
+
 stage-redeploy:
 	AWS_PROFILE=runs-on-admin aws apprunner start-deployment \
 		--region=us-east-1 \
