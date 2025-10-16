@@ -102,13 +102,13 @@ jobs:
           cache-to: type=registry,ref=${{ env.TAG }},mode=max,compression=zstd,compression-level=1
 
   test-custom-volume:
-    runs-on: runs-on,runner=2cpu-linux-x64,family=c7a,volume=92gb,env=${{ inputs.env || 'production' }}
+    runs-on: runs-on,runner=2cpu-linux-x64,family=c7a,volume=95gb,env=${{ inputs.env || 'production' }}
     steps:
       - name: Show disk setup
         run: |
           sudo lsblk -l
           sudo df -ah
-      - name: Verify /home/runner disk size is > 100GB (c7gd.medium has 118GB SSD)
+      - name: Verify /home/runner disk size is > 90GB
         run: |
           size_gb=$(df -BG --output=size /home/runner | tail -1 | tr -dc '0-9')
           echo "Detected /home/runner size: ${size_gb} GB"
