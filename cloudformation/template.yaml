@@ -1433,12 +1433,13 @@ Resources:
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1495,12 +1496,13 @@ Resources:
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1571,12 +1573,13 @@ Resources:
   EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
@@ -1633,12 +1636,13 @@ Resources:
   EC2FleetLaunchTemplateWindowsPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       LaunchTemplateData:
         TagSpecifications:
           - ResourceType: instance
