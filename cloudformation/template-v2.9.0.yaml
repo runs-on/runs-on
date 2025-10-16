@@ -140,7 +140,7 @@ Parameters:
 
   AlertTopicSubscriptionHttpsEndpoint:
     Type: String
-    Description: HTTPS endpoint for cost and alert reports.
+    Description: "HTTPS endpoint for cost and alert reports."
     Default: ""
 
   AlertTopicSlackWebhookUrl:
@@ -156,7 +156,7 @@ Parameters:
 
   VpcCidrSubnetBits:
     Type: Number
-    Description: Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it.
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] Number of bits to allocate for the subnet. For example, if you specify VpcCidrBlock to a /16 (the default), and this value to 12 (the default), you will have 4 bits, i.e. max 16 subnets in the VPC. Updating this value after creation will require deleting the stack and recreating it."
     Default: 12
     MinValue: 9
     MaxValue: 16
@@ -221,18 +221,18 @@ Parameters:
   VpcFlowLogFormat:
     Type: String
     Default: ""
-    Description: "VPC Flow Log format. If blank, no VPC Flow Logs will be created. If set to `default`, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] VPC Flow Log format. If blank, no VPC Flow Logs will be created. If set to `default`, the default format will be used. More details at https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields"
 
   VpcFlowLogS3BucketArn:
     Type: String
     Default: ""
-    Description: "ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] ARN of an S3 bucket to send VPC Flow Logs to in addition to the default CloudWatch logs group. If blank, the logs will only be sent to CloudWatch Logs."
 
   VpcFlowLogRetentionInDays:
     Type: Number
     Default: 7
     MinValue: 1
-    Description: "Retention period in days for VPC Flow Logs."
+    Description: "[DEPRECATED, use external networking if you need to fine-tune this] Retention period in days for VPC Flow Logs."
 
   DefaultPermissionBoundaryArn:
     Type: String
@@ -242,7 +242,7 @@ Parameters:
   DefaultAdmins:
     Type: String
     Default: ""
-    Description: Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: "[DEPRECATED, prefer to use SSM for admin access]. Comma-separated list of GitHub usernames that will always be granted SSH access to all the runner instances (if SSH access is enabled), in addition to any repository admins. If blank, only repository collaborators with admin permission will be able to SSH into the runner instances."
 
   AppEc2QueueSize:
     Type: Number
@@ -334,17 +334,14 @@ Parameters:
     Type: Number
     Default: 40
     MinValue: 10
-    Description: Disk size in GB for `disk=default` runners.
+    Description: Default disk size in GB.
 
   RunnerDefaultVolumeThroughput:
     Type: Number
     Default: 400
     MinValue: 125
     MaxValue: 1000
-    Description: Volume throughput in MiB/s for `disk=default` runners (helps with faster boot times, but costs more).
-
-  # Deprecated parameters
-  # These are kept for backward compatibility but are no longer actively used in launch templates
+    Description: Default volume throughput in MiB/s (the higher the throughput, the faster the boot times, but costs more).
 
   RunnerLargeDiskSize:
     Type: Number
@@ -400,7 +397,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: Enable or disable detailed monitoring for EC2 instances (can incur additional costs).
+    Description: "[DEPRECATED. See https://runs-on.com/monitoring/job-metrics/#performance-metrics for better performance metrics]."
 
   Ec2LogRetentionInDays:
     Type: Number
@@ -432,18 +429,18 @@ Parameters:
   IntegrationStepSecurityApiKey:
     Type: String
     Default: ""
-    Description: "API key for Step Security (https://stepsecurity.io/)."
+    Description: "API key for Step Security (see https://stepsecurity.io/ for more details)."
 
   OtelExporterEndpoint:
     Type: String
     Default: ""
-    Description: "OTLP endpoint URL (e.g., https://otlp.grafana.com/otlp/v1/metrics). Leave empty for stdout export."
+    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
 
   OtelExporterHeaders:
     Type: String
     Default: ""
     NoEcho: true
-    Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'Authorization=Bearer token123'). Leave empty if not required."
+    Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'signoz-ingestion-key=ABCD1234'). Leave empty if not required."
 
 Mappings:
   App:
