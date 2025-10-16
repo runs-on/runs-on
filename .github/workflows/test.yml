@@ -143,6 +143,31 @@ jobs:
       - name: Ensure checkout can be done
         uses: actions/checkout@v4
 
+
+      test-ssd-array-mount:
+        runs-on: runs-on,family=i7ie.2xlarge,env=${{ inputs.env || 'production' }}
+        steps:
+          - name: Show disk setup
+            run: |
+              sudo lsblk -l
+              sudo df -ah
+          - name: Check SSD mount
+            run: |
+              sudo df -ah | grep /mnt/ephemeral | grep /dev/md0
+              sudo df -ah | grep /var/lib/docker | grep /dev/md0
+              sudo df -ah | grep /home/runner | grep overlay
+              sudo df -ah | grep /tmp | grep overlay
+          - name: Verify /home/runner disk size is > 4000GB
+            run: |
+              size_gb=$(df -BG --output=size /home/runner | tail -1 | tr -dc '0-9')
+              echo "Detected /home/runner size: ${size_gb} GB"
+              if [ "$size_gb" -le 4000 ]; then
+                echo "Error: /home/runner disk size is $size_gb GB, expected > 4000 GB"
+                exit 1
+              fi
+          - name: Ensure checkout can be done
+            uses: actions/checkout@v4
+
   test-metal:
     runs-on: runs-on,family=c7g.metal,image=ubuntu22-full-arm64,env=${{ inputs.env || 'production' }}
     steps:
