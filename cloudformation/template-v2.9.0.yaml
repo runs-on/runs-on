@@ -1433,6 +1433,7 @@ Resources:
   EC2FleetLaunchTemplateLinuxDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1458,16 +1459,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-        BlockDeviceMappings:
-          - DeviceName: "/dev/xvda"
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1504,6 +1495,7 @@ Resources:
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1529,17 +1521,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-        BlockDeviceMappings:
-          # Windows is always /dev/sda1 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1590,6 +1571,7 @@ Resources:
   EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1615,16 +1597,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-        BlockDeviceMappings:
-          - DeviceName: "/dev/xvda"
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -1661,6 +1633,7 @@ Resources:
   EC2FleetLaunchTemplateWindowsPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1686,17 +1659,6 @@ Resources:
         MetadataOptions:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
-        BlockDeviceMappings:
-          # Windows is always /dev/sda1 - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
-          - DeviceName: /dev/sda1
-            Ebs:
-              VolumeSize: !Ref RunnerDefaultDiskSize
-              VolumeType: gp3
-              Throughput: !Ref RunnerDefaultVolumeThroughput
-              Iops: 3000
-              DeleteOnTermination: true
-              Encrypted: !If [HasEncryptEbs, true, false]
-              KmsKeyId: !If [HasEncryptEbs, alias/aws/ebs, Ref: AWS::NoValue]
         InstanceInitiatedShutdownBehavior: "terminate"
         Monitoring:
           !If
@@ -2334,6 +2296,8 @@ Resources:
                 Value: !Ref SSHAllowed
               - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
                 Value: !Ref AppEc2QueueSize
+              - Name: RUNS_ON_EBS_ENCRYPTION_KEY
+                Value: !If [HasEncryptEbs, "alias/aws/ebs", ""]
               - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
                 Value: !Ref AppGithubApiStrategy
               - Name: RUNS_ON_PUBLIC_SUBNET_IDS
@@ -2362,6 +2326,8 @@ Resources:
                 Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
+              - Name: RUNS_ON_RUNNER_DEFAULT_VOLUME_THROUGHPUT
+                Value: !Ref RunnerDefaultVolumeThroughput
               - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
                 Value: !Ref RunnerLargeDiskSize
               - Name: RUNS_ON_RUNNER_LARGE_VOLUME_THROUGHPUT
