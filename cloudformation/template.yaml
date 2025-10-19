@@ -2848,7 +2848,6 @@ Resources:
       Environment:
         Variables:
           SLACK_WEBHOOK_URL: !Ref AlertTopicSlackWebhookUrl
-          STACK_NAME: !Ref AWS::StackName
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2857,49 +2856,45 @@ Resources:
           import json
           import logging
           import os
-          import time
           import urllib.error
           import urllib.request
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
 
-          def get_alert_color(subject, state=None):
-              """Determine the color for a Slack alert based on content."""
-              if state:
-                  state_lower = state.lower()
-                  if state_lower == "alarm":
-                      return "danger"
-                  elif state_lower == "ok":
-                      return "good" 
-                  elif state_lower == "insufficient_data":
-                      return "warning"
-              
-              if subject:
-                  subject_lower = subject.lower()
-                  if any(word in subject_lower for word in ["error", "fail", "❌"]):
-                      return "danger"
-                  elif any(word in subject_lower for word in ["warn", "⚠️", "unable"]):
-                      return "warning"
-                  elif any(word in subject_lower for word in ["success", "✅", "complete"]):
-                      return "good"
-              
-              return "#439FE0"  # Default blue color
+          def format_cloudwatch_alarm(alarm):
+              """Format CloudWatch alarm as Slack blocks."""
+              state = alarm.get("NewStateValue", "UNKNOWN")
+              state_emoji = {"ALARM": ":rotating_light:", "OK": ":white_check_mark:", "INSUFFICIENT_DATA": ":warning:"}.get(state, ":question:")
 
-          def create_attachment(title, text, color, stack_name):
-              """Create a Slack attachment."""
-              return {
-                  "color": color,
-                  "title": title,
-                  "text": text,
-                  "footer": stack_name,
-                  "ts": int(time.time())
-              }
+              fields = [
+                  {"type": "mrkdwn", "text": f"*Alarm:*\n{alarm.get('AlarmName', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*State:*\n{state}"},
+                  {"type": "mrkdwn", "text": f"*Region:*\n{alarm.get('Region', 'N/A')}"},
+                  {"type": "mrkdwn", "text": f"*Time:*\n{alarm.get('StateChangeTime', 'N/A')}"}
+              ]
+
+              if alarm.get("AlarmDescription"):
+                  fields.insert(1, {"type": "mrkdwn", "text": f"*Description:*\n{alarm['AlarmDescription']}"})
+
+              blocks = [
+                  {
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"{state_emoji} *CloudWatch Alarm: {state}*"}
+                  },
+                  {"type": "section", "fields": fields}
+              ]
+
+              if alarm.get("NewStateReason"):
+                  blocks.append({
+                      "type": "section",
+                      "text": {"type": "mrkdwn", "text": f"*Reason:*\n{alarm['NewStateReason']}"}
+                  })
+
+              return {"blocks": blocks}
 
           def handler(event, context):
               webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
-              stack_name = os.environ.get("STACK_NAME", "RunsOn")
-              
               if not webhook_url:
                   logger.error("Slack webhook URL is not configured")
                   return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
@@ -2910,34 +2905,19 @@ Resources:
                   subject = sns.get("Subject", "")
                   message = sns.get("Message", "")
 
-                  # Base payload with username and icon
-                  payload = {
-                      "username": stack_name,
-                      "icon_url": "https://runs-on.com/_astro/logo.RRHY1ids.png"
-                  }
-
                   # Try to parse message as JSON (CloudWatch alarms)
                   try:
                       alarm_data = json.loads(message)
                       if "AlarmName" in alarm_data:
-                          # CloudWatch alarm formatting
-                          state = alarm_data.get("NewStateValue", "UNKNOWN")
-                          state_emoji = {"ALARM": ":rotating_light:", "OK": ":white_check_mark:", "INSUFFICIENT_DATA": ":warning:"}.get(state, ":question:")
-                          title = f"{state_emoji} CloudWatch Alarm: {state}"
-                          text = f"*Alarm:* {alarm_data.get('AlarmName', 'N/A')}\n*Reason:* {alarm_data.get('NewStateReason', 'N/A')}"
-                          color = get_alert_color(None, state)
+                          payload = format_cloudwatch_alarm(alarm_data)
                       else:
                           # JSON but not an alarm, format as code block
-                          title = subject if subject else "JSON Message"
-                          text = f"```\n{json.dumps(alarm_data, indent=2)}\n```"
-                          color = get_alert_color(subject)
+                          text = f"*{subject}*\n```\n{json.dumps(alarm_data, indent=2)}\n```" if subject else f"```\n{json.dumps(alarm_data, indent=2)}\n```"
+                          payload = {"text": text}
                   except (json.JSONDecodeError, TypeError):
                       # Plain text message
-                      title = subject if subject else "Alert"
-                      text = message
-                      color = get_alert_color(subject)
-
-                  payload["attachments"] = [create_attachment(title, text, color, stack_name)]
+                      text = f"*{subject}*\n{message}" if subject else message
+                      payload = {"text": text}
 
                   data = json.dumps(payload).encode("utf-8")
                   request = urllib.request.Request(
