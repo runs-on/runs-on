@@ -2982,7 +2982,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.9.1.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-dev.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
