@@ -445,7 +445,7 @@ Parameters:
 Mappings:
   App:
     Tags:
-      BootstrapTag: v0.1.12
+      BootstrapTag: v0.1.17
       ImageTag: v2.9.2
 
 Conditions:
@@ -1484,7 +1484,7 @@ Resources:
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --save /runs-on/agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1551,7 +1551,7 @@ Resources:
                   curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1624,7 +1624,7 @@ Resources:
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --save /runs-on/agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1691,7 +1691,7 @@ Resources:
                   curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."

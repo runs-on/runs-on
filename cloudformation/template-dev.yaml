@@ -1694,7 +1694,7 @@ Resources:
                   Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1862,7 +1862,7 @@ Resources:
                   Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
