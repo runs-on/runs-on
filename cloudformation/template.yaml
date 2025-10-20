@@ -2465,6 +2465,8 @@ Resources:
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
                 Value: !Join [",", !Ref RunnerCustomTags]
+              - Name: RUNS_ON_EC2_INSTANCE_LOG_GROUP_ARN
+                Value: !Ref EC2InstanceLogGroup
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
