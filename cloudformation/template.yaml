@@ -2607,7 +2607,6 @@ Resources:
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
-                  - cloudtrail:LookupEvents
                   - iam:GetRole
                   - sns:ListSubscriptionsByTopic
                 Resource: "*"
