@@ -445,8 +445,8 @@ Parameters:
 Mappings:
   App:
     Tags:
-      BootstrapTag: v0.1.12
-      ImageTag: v2.9.2-dev-green
+      BootstrapTag: v0.1.17
+      ImageTag: v2.10.0-dev-green
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1484,7 +1484,7 @@ Resources:
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --save /runs-on/agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1551,7 +1551,7 @@ Resources:
                   curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -1624,7 +1624,7 @@ Resources:
               ${EphemeralRegistryExport}
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
+              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --save /runs-on/agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, ImageTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
@@ -1691,7 +1691,7 @@ Resources:
                   curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --save C:\\runs-on\\agent --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
               } finally {
                 if ($env:RUNS_ON_DEBUG -ne "true") {
                   Write-Output "user-data: Going to shut down in a few seconds..."
@@ -2277,6 +2277,8 @@ Resources:
                 Value: !Ref LicenseKey
               - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
                 Value: !Join [",", !Ref RunnerCustomTags]
+              - Name: RUNS_ON_EC2_INSTANCE_LOG_GROUP_ARN
+                Value: !Ref EC2InstanceLogGroup
               - Name: RUNS_ON_BUCKET_CONFIG
                 Value: !Ref S3Bucket
               - Name: RUNS_ON_BUCKET_CACHE
@@ -2407,7 +2409,6 @@ Resources:
                   - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
-                  - cloudtrail:LookupEvents
                   - iam:GetRole
                   - sns:ListSubscriptionsByTopic
                 Resource: "*"
