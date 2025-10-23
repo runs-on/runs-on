@@ -19,7 +19,7 @@ runners:
 pools:
   small-x64:
     # If you have multiple RunsOn stacks, you can specify the environment this pool belongs to
-    environment: dev
+    env: dev
     runner: small-x64
     timezone: "Europe/Paris"
     schedule:
@@ -70,8 +70,6 @@ Any other RunsOn label (e.g. `cpu`, `ram`, etc.) will be ignored. Only the runne
 ### Using pools for dependabot
 
 You can now use RunsOn for dependabot jobs, thanks to pools. If you define a pool named `dependabot`, then it will be used for any job that has the `dependabot` label. This includes the jobs launched by GitHub's dependabot integration. When RunsOn sees the `dependabot` label, it will auto-expand it to `runs-on/pool=dependabot` and will try to find a matching pool name in the config file. If it finds one, then it assumes that you want to use RunsOn to run dependabot jobs on self-hosted runners, and therefore will spawn a runner for that job.
-
-Caveat: since we can't add (AFAIK) labels to dependabot jobs, this means RunsOn will only process those jobs when the current stack environment is `production` (since `env=production` is implied if no `env` label provided). So make sure you have a stack configured with that environment name if you  want to process dependabot jobs.
 
 ## Schedules
 
