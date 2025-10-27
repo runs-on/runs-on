@@ -271,7 +271,7 @@ Parameters:
       - 1024
       - 2048
       - 4096
-    Default: 256
+    Default: 512
     Description: CPU units for RunsOn service (256 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppMemory:
@@ -284,7 +284,7 @@ Parameters:
       - 4096
       - 6144
       - 8192
-    Default: 512
+    Default: 1024
     Description: Memory in MB for RunsOn service (512 or higher). You might only need to change this if you have 10k+ jobs per day.
 
   AppRegistry:
