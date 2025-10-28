@@ -446,7 +446,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.9.2-dev-green
+      ImageTag: v2.9.3-dev-green
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1544,11 +1544,23 @@ Resources:
               $env:AWS_REGION = "${AWS::Region}"
               ${EfsEnvVar}
               ${EphemeralRegistryExport}
+              # Enable and start SSM Agent service
+              try {
+                Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
+                Start-Service -Name "AmazonSSMAgent" -ErrorAction SilentlyContinue
+                Write-Output "SSM Agent service enabled and started"
+              } catch {
+                Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
+              }
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                  # Enable TLS 1.2 for Windows Server 2016 compatibility
+                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                  # Disable progress bar for much faster downloads (can be 100x faster)
+                  $ProgressPreference = 'SilentlyContinue'
+                  Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
                 & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
@@ -1684,11 +1696,23 @@ Resources:
               $env:AWS_REGION = "${AWS::Region}"
               ${EfsEnvVar}
               ${EphemeralRegistryExport}
+              # Enable and start SSM Agent service
+              try {
+                Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
+                Start-Service -Name "AmazonSSMAgent" -ErrorAction SilentlyContinue
+                Write-Output "SSM Agent service enabled and started"
+              } catch {
+                Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
+              }
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
-                  curl.exe -fSLo $bootstrapBin "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                  # Enable TLS 1.2 for Windows Server 2016 compatibility
+                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                  # Disable progress bar for much faster downloads (can be 100x faster)
+                  $ProgressPreference = 'SilentlyContinue'
+                  Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
                 & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
