@@ -446,7 +446,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.9.3-dev-green
+      ImageTag: v2.9.4-dev-green
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2497,6 +2497,11 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}
                   - Fn::Sub: arn:aws:s3:::${S3Bucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${S3Bucket}/runs-on/db/*
               - Effect: Allow
                 Action:
                   - s3:PutObject
