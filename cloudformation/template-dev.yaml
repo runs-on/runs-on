@@ -2289,6 +2289,8 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_LOCKS_TABLE
                 Value: !Ref RunsOnLocksTable
+              - Name: RUNS_ON_WORKFLOW_JOBS_TABLE
+                Value: !Ref RunsOnWorkflowJobsTable
               - Name: RUNS_ON_NETWORKING_STACK
                 Value: !Ref NetworkingStack
               - Name: RUNS_ON_GITHUB_ORGANIZATION
@@ -2534,6 +2536,16 @@ Resources:
                 Resource: !GetAtt RunsOnLocksTable.Arn
               - Effect: Allow
                 Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt RunsOnWorkflowJobsTable.Arn
+                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/*"
+              - Effect: Allow
+                Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
@@ -2662,6 +2674,34 @@ Resources:
           KeyType: HASH
       TimeToLiveSpecification:
         AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  # DynamoDB table for workflow job tracking
+  RunsOnWorkflowJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-workflow-jobs"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: N
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
         Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
@@ -3165,6 +3205,9 @@ Outputs:
   RunsOnLocksTable:
     Description: DynamoDB table for distributed locking
     Value: !Ref RunsOnLocksTable
+  RunsOnWorkflowJobsTable:
+    Description: DynamoDB table for workflow job tracking
+    Value: !Ref RunsOnWorkflowJobsTable
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService
