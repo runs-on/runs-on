@@ -12,6 +12,7 @@ Metadata:
           - LicenseKey
           - EmailAddress
           - NetworkingStack
+          - Environment
       - Label:
           default: "Networking: use external stack [optional]"
         Parameters:
@@ -50,6 +51,7 @@ Metadata:
           - EnableDashboard
           - OtelExporterEndpoint
           - OtelExporterHeaders
+          - ServerPassword
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
@@ -64,7 +66,6 @@ Metadata:
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
-          - Environment
           - CostAllocationTag
           - SpotCircuitBreaker
           - RunnerCustomTags
@@ -371,7 +372,7 @@ Parameters:
     Type: String
     Default: ".github-private"
     MinLength: 1
-    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
+    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from `<repo-name>/.github/runs-on.yml`. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
   CostReportsEnabled:
     Type: String
@@ -441,6 +442,12 @@ Parameters:
     Default: ""
     NoEcho: true
     Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'signoz-ingestion-key=ABCD1234'). Leave empty if not required."
+
+  ServerPassword:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: "Password for the /metrics Prometheus endpoint. If blank, the endpoint will be disabled. Access with username 'admin' and this password via HTTP Basic Auth."
 
 Mappings:
   App:
@@ -2371,6 +2378,8 @@ Resources:
                 Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
+              - Name: RUNS_ON_SERVER_PASSWORD
+                Value: !Ref ServerPassword
               - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
                 Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
