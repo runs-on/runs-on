@@ -435,7 +435,7 @@ Parameters:
   OtelExporterEndpoint:
     Type: String
     Default: ""
-    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
+    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443, or https://otlp-gateway-prod-eu-west-0.grafana.net/otlp). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
 
   OtelExporterHeaders:
     Type: String
