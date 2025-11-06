@@ -12,6 +12,7 @@ Metadata:
           - LicenseKey
           - EmailAddress
           - NetworkingStack
+          - Environment
       - Label:
           default: "Networking: use external stack [optional]"
         Parameters:
@@ -50,6 +51,7 @@ Metadata:
           - EnableDashboard
           - OtelExporterEndpoint
           - OtelExporterHeaders
+          - ServerPassword
           - AppAlarmDailyMinutes
           - CostReportsEnabled
           - AlertTopicSubscriptionHttpsEndpoint
@@ -64,7 +66,6 @@ Metadata:
       - Label:
           default: "Advanced app configuration [optional]"
         Parameters:
-          - Environment
           - CostAllocationTag
           - SpotCircuitBreaker
           - RunnerCustomTags
@@ -371,7 +372,7 @@ Parameters:
     Type: String
     Default: ".github-private"
     MinLength: 1
-    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from <repo-name>/.github/runs-on.yml. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
+    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from `<repo-name>/.github/runs-on.yml`. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
   CostReportsEnabled:
     Type: String
@@ -434,7 +435,7 @@ Parameters:
   OtelExporterEndpoint:
     Type: String
     Default: ""
-    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
+    Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443, or https://otlp-gateway-prod-eu-west-0.grafana.net/otlp). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
 
   OtelExporterHeaders:
     Type: String
@@ -442,11 +443,17 @@ Parameters:
     NoEcho: true
     Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'signoz-ingestion-key=ABCD1234'). Leave empty if not required."
 
+  ServerPassword:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: "Password for the /metrics Prometheus endpoint. If blank, the endpoint will be disabled. Access with username 'admin' and this password via HTTP Basic Auth."
+
 Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.9.4
+      ImageTag: v2.10.0
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2289,6 +2296,8 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_LOCKS_TABLE
                 Value: !Ref RunsOnLocksTable
+              - Name: RUNS_ON_WORKFLOW_JOBS_TABLE
+                Value: !Ref RunsOnWorkflowJobsTable
               - Name: RUNS_ON_NETWORKING_STACK
                 Value: !Ref NetworkingStack
               - Name: RUNS_ON_GITHUB_ORGANIZATION
@@ -2367,8 +2376,14 @@ Resources:
                 Value: !Ref RunsOnQueueTermination
               - Name: RUNS_ON_QUEUE_EVENTS
                 Value: !Ref RunsOnQueueEvents
+              - Name: RUNS_ON_QUEUE_JOBS
+                Value: !Ref RunsOnQueueJobs
+              - Name: RUNS_ON_QUEUE_GITHUB
+                Value: !Ref RunsOnQueueGitHub
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
+              - Name: RUNS_ON_SERVER_PASSWORD
+                Value: !Ref ServerPassword
               - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
                 Value: !Ref SpotCircuitBreaker
               - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
@@ -2525,6 +2540,8 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+                  - !GetAtt RunsOnQueueJobs.Arn
+                  - !GetAtt RunsOnQueueGitHub.Arn
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
@@ -2532,6 +2549,17 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                 Resource: !GetAtt RunsOnLocksTable.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt RunsOnWorkflowJobsTable.Arn
+                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/*"
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -2593,6 +2621,54 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
         maxReceiveCount: 5
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueJobsDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      FifoQueue: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueJobs:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 120 # 2 minutes for scheduling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueueJobsDeadLetter.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueGitHubDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      FifoQueue: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueGitHub:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 60 # GitHub API calls + S3 uploads
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueueGitHubDeadLetter.Arn
+        maxReceiveCount: 3
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2662,6 +2738,55 @@ Resources:
           KeyType: HASH
       TimeToLiveSpecification:
         AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  # DynamoDB table for workflow job tracking
+  RunsOnWorkflowJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-workflow-jobs"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: N
+        - AttributeName: next_check_partition
+          AttributeType: S
+        - AttributeName: next_check_at_unix
+          AttributeType: N
+        - AttributeName: created_at_date
+          AttributeType: S
+        - AttributeName: created_at_unix
+          AttributeType: N
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: next-check-index
+          KeySchema:
+            - AttributeName: next_check_partition
+              KeyType: HASH
+            - AttributeName: next_check_at_unix
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: daily-activity-index
+          KeySchema:
+            - AttributeName: created_at_date
+              KeyType: HASH
+            - AttributeName: created_at_unix
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - installation_id
+              - org_name
+              - repo_name
+              - job_id
+      TimeToLiveSpecification:
+        AttributeName: ttl
         Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
@@ -3011,7 +3136,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.9.4.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.10.0.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
@@ -3150,6 +3275,12 @@ Outputs:
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueueJobs:
+    Description: SQS FIFO queue for workflow job scheduling
+    Value: !Ref RunsOnQueueJobs
+  RunsOnQueueGitHub:
+    Description: SQS FIFO queue for GitHub registration tasks
+    Value: !Ref RunsOnQueueGitHub
   RunsOnQueuePool:
     Description: SQS queue for the RunsOn service, used for pool management tasks
     Value: !Ref RunsOnQueuePool
@@ -3165,6 +3296,9 @@ Outputs:
   RunsOnLocksTable:
     Description: DynamoDB table for distributed locking
     Value: !Ref RunsOnLocksTable
+  RunsOnWorkflowJobsTable:
+    Description: DynamoDB table for workflow job tracking
+    Value: !Ref RunsOnWorkflowJobsTable
   RunsOnServiceArn:
     Description: ARN of the App Runner service
     Value: !Ref RunsOnService

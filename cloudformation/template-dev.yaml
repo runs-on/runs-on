@@ -453,7 +453,7 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.9.4-dev-green
+      ImageTag: v2.10.0-dev-green
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2378,6 +2378,8 @@ Resources:
                 Value: !Ref RunsOnQueueEvents
               - Name: RUNS_ON_QUEUE_JOBS
                 Value: !Ref RunsOnQueueJobs
+              - Name: RUNS_ON_QUEUE_GITHUB
+                Value: !Ref RunsOnQueueGitHub
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -2539,6 +2541,7 @@ Resources:
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
                   - !GetAtt RunsOnQueueJobs.Arn
+                  - !GetAtt RunsOnQueueGitHub.Arn
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
@@ -2550,6 +2553,7 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
                   - dynamodb:UpdateItem
                   - dynamodb:Query
                   - dynamodb:Scan
@@ -2640,6 +2644,30 @@ Resources:
       VisibilityTimeout: 120 # 2 minutes for scheduling
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueJobsDeadLetter.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueGitHubDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      FifoQueue: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueGitHub:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 60 # GitHub API calls + S3 uploads
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueueGitHubDeadLetter.Arn
         maxReceiveCount: 3
       Tags:
         - Key: !Ref CostAllocationTag
@@ -3250,6 +3278,9 @@ Outputs:
   RunsOnQueueJobs:
     Description: SQS FIFO queue for workflow job scheduling
     Value: !Ref RunsOnQueueJobs
+  RunsOnQueueGitHub:
+    Description: SQS FIFO queue for GitHub registration tasks
+    Value: !Ref RunsOnQueueGitHub
   RunsOnQueuePool:
     Description: SQS queue for the RunsOn service, used for pool management tasks
     Value: !Ref RunsOnQueuePool

@@ -1,4 +1,4 @@
-VERSION=v2.9.4
+VERSION=v2.10.0
 VERSION_DEV=$(VERSION)-dev-green
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
@@ -10,7 +10,7 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show \
+	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-get-job \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -182,6 +182,16 @@ dev-show:
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps' || OutputKey=='RunsOnServiceRoleArn'].[OutputKey,OutputValue]"
+
+dev-get-job:
+	@JOB_ID=$(filter-out $@,$(MAKECMDGOALS)) && \
+	AWS_PROFILE=$(STACK_DEV_NAME) aws dynamodb get-item \
+		--table-name $(STACK_DEV_NAME)-workflow-jobs \
+		--key "{\"job_id\":{\"N\":\"$$JOB_ID\"}}" \
+		--region us-east-1 | jq .
+
+%:
+	@:
 
 STACK_TEST_NAME=runs-on-test
 
