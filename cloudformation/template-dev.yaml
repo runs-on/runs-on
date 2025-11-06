@@ -2376,6 +2376,8 @@ Resources:
                 Value: !Ref RunsOnQueueTermination
               - Name: RUNS_ON_QUEUE_EVENTS
                 Value: !Ref RunsOnQueueEvents
+              - Name: RUNS_ON_QUEUE_JOBS
+                Value: !Ref RunsOnQueueJobs
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -2536,6 +2538,7 @@ Resources:
                   - !GetAtt RunsOnQueueHousekeeping.Arn
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
+                  - !GetAtt RunsOnQueueJobs.Arn
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
@@ -2614,6 +2617,30 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
         maxReceiveCount: 5
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueJobsDeadLetter:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 259200 # 3 days
+      FifoQueue: true
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+
+  RunsOnQueueJobs:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 86400 # 24h
+      ReceiveMessageWaitTimeSeconds: 10
+      VisibilityTimeout: 120 # 2 minutes for scheduling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt RunsOnQueueJobsDeadLetter.Arn
+        maxReceiveCount: 3
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2697,18 +2724,39 @@ Resources:
       AttributeDefinitions:
         - AttributeName: job_id
           AttributeType: N
-        - AttributeName: status
+        - AttributeName: next_check_partition
           AttributeType: S
+        - AttributeName: next_check_at_unix
+          AttributeType: N
+        - AttributeName: created_at_date
+          AttributeType: S
+        - AttributeName: created_at_unix
+          AttributeType: N
       KeySchema:
         - AttributeName: job_id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: status-index
+        - IndexName: next-check-index
           KeySchema:
-            - AttributeName: status
+            - AttributeName: next_check_partition
               KeyType: HASH
+            - AttributeName: next_check_at_unix
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
+        - IndexName: daily-activity-index
+          KeySchema:
+            - AttributeName: created_at_date
+              KeyType: HASH
+            - AttributeName: created_at_unix
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - installation_id
+              - org_name
+              - repo_name
+              - job_id
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
@@ -3199,6 +3247,9 @@ Outputs:
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
+  RunsOnQueueJobs:
+    Description: SQS FIFO queue for workflow job scheduling
+    Value: !Ref RunsOnQueueJobs
   RunsOnQueuePool:
     Description: SQS queue for the RunsOn service, used for pool management tasks
     Value: !Ref RunsOnQueuePool

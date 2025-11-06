@@ -10,7 +10,7 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
+	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -170,9 +170,6 @@ dev-dashboard:
 
 dev-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
-
-dev-roc:
-	AWS_PROFILE=$(STACK_DEV_NAME) roc --stack $(STACK_DEV_NAME) $(filter-out $@,$(MAKECMDGOALS))
 
 dev-logs:
 	AWS_PROFILE=$(STACK_DEV_NAME) awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-ySUxJ70TuNgS/a166e506939748c484687f5799eacbf4/application -i 2 -w -s 10m --timestamp
