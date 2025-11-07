@@ -248,7 +248,7 @@ Resources:
             {
               "type": "log",
               "x": 0,
-              "y": 30,
+              "y": 24,
               "width": 12,
               "height": 6,
               "properties": {
@@ -261,7 +261,7 @@ Resources:
             {
               "type": "log",
               "x": 12,
-              "y": 30,
+              "y": 24,
               "width": 12,
               "height": 6,
               "properties": {
