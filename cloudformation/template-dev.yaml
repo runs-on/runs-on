@@ -310,7 +310,7 @@ Parameters:
       - "debug"
       - "info"
       - "warn"
-    Description: Log level for the RunsOn server. Options: trace (most verbose), debug, info (default), warn (least verbose).
+    Description: "Log level for the RunsOn server. Options: trace (most verbose), debug, info (default), warn (least verbose)."
 
   SpotCircuitBreaker:
     Type: String
