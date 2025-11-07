@@ -10,7 +10,7 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-get-job \
+	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -130,6 +130,9 @@ dev-run:
 	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
+
+dev-warns:
+	cd server && grep -vE '"level":"info|debug"' tmp/dev.log
 
 dev-run-redelivery:
 	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify

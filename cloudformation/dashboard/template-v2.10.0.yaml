@@ -73,7 +73,7 @@ Resources:
               "width": 6,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(overall_queue_duration_seconds)\n| | stats pct(internal_queue_duration_seconds, 90) as internal_P90, pct(internal_queue_duration_seconds, 50) as internal_P50, pct(overall_queue_duration_seconds, 90) as overall_P90, pct(overall_queue_duration_seconds, 50) as overall_P50 by bin(1m) as t\n| sort t asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(overall_queue_duration_seconds)\n| stats pct(internal_queue_duration_seconds, 90) as internal_P90, pct(internal_queue_duration_seconds, 50) as internal_P50, pct(overall_queue_duration_seconds, 90) as overall_P90, pct(overall_queue_duration_seconds, 50) as overall_P50 by bin(1m) as t\n| sort t asc",
                 "region": "${AWS::Region}",
                 "title": "Internal/Overall Queue Duration Percentiles (P50/P90)",
                 "view": "timeSeries",
