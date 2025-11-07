@@ -73,7 +73,7 @@ Resources:
               "width": 6,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(overall_queue_duration_seconds)\n| stats pct(internal_queue_duration_seconds, 90) as internal_P90, pct(internal_queue_duration_seconds, 50) as internal_P50, pct(overall_queue_duration_seconds, 90) as overall_P90, pct(overall_queue_duration_seconds, 50) as overall_P50 by bin(1m) as t\n| sort t asc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"job_event\" and ispresent(overall_queue_duration_seconds)\n| | stats pct(internal_queue_duration_seconds, 90) as internal_P90, pct(internal_queue_duration_seconds, 50) as internal_P50, pct(overall_queue_duration_seconds, 90) as overall_P90, pct(overall_queue_duration_seconds, 50) as overall_P50 by bin(1m) as t\n| sort t asc",
                 "region": "${AWS::Region}",
                 "title": "Internal/Overall Queue Duration Percentiles (P50/P90)",
                 "view": "timeSeries",
@@ -242,33 +242,6 @@ Resources:
                 "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\" and ispresent(pools.0.dangling)\n| parse @message /\\[(?<pool_data>.*)\\]/\n| parse pool_data /\"pool_name\":\"(?<pool_name>[^\"]+)\"/\n| parse pool_data /\"hot\":(?<hot>\\d+)/\n| parse pool_data /\"stopped\":(?<stopped>\\d+)/\n| parse pool_data /\"warming\":(?<warming>\\d+)/\n| parse pool_data /\"ready\":(?<ready>\\d+)/\n| parse pool_data /\"ready_to_stop\":(?<ready_to_stop>\\d+)/\n| parse pool_data /\"detached\":(?<detached>\\d+)/\n| parse pool_data /\"error\":(?<error>\\d+)/\n| parse pool_data /\"outdated\":(?<outdated>\\d+)/\n| parse pool_data /\"dangling\":(?<dangling>\\d+)/\n| stats max(hot) as max_hot, max(stopped) as max_stopped, max(warming) as max_warming, max(ready) as max_ready, max(ready_to_stop) as max_ready_to_stop, max(detached) as max_detached, max(error) as max_error, max(outdated) as max_outdated, max(dangling) as max_dangling by bin(5m) as t, pool_name\n| sort t desc, pool_name asc",
                 "region": "${AWS::Region}",
                 "title": "Pool Instances Over Time",
-                "view": "table"
-              }
-            },
-            {
-              "type": "log",
-              "x": 0,
-              "y": 24,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| fields @timestamp, deliveries_redelivered, deliveries_failed, deliveries_scanned, deliveries_ignored\n| filter metric_type = \"webhook_redelivery_summary\" and ispresent(@message)\n| stats sum(deliveries_redelivered) as TotalRedelivered, sum(deliveries_failed) as TotalFailed, sum(deliveries_scanned) as TotalScanned, sum(deliveries_ignored) as TotalIgnored by bin(5m) as t\n| sort t desc",
-                "region": "${AWS::Region}",
-                "title": "Webhook Redeliveries (Last 24h)",
-                "view": "table",
-                "stacked": false
-              }
-            },
-            {
-              "type": "log",
-              "x": 12,
-              "y": 24,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"webhook_redelivery_success\" and ispresent(@message)\n| fields @timestamp, delivery_id, event, action, original_status_code\n| sort @timestamp desc\n| limit 20",
-                "region": "${AWS::Region}",
-                "title": "Recent Webhook Redeliveries",
                 "view": "table"
               }
             },
