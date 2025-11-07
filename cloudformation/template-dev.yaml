@@ -81,6 +81,7 @@ Metadata:
           - AppMemory
           - AppRegistry
           - AppDebug
+          - LoggerLevel
           - S3CacheExpirationInDays
 
 Parameters:
@@ -300,6 +301,16 @@ Parameters:
       - "true"
       - "false"
     Description: Enable or disable debug mode for the RunsOn stack. Enabling this will switch off the auto-shutdown of the runner instances when they are unable to bootstrap.
+
+  LoggerLevel:
+    Type: String
+    Default: "info"
+    AllowedValues:
+      - "trace"
+      - "debug"
+      - "info"
+      - "warn"
+    Description: Log level for the RunsOn server. Options: trace (most verbose), debug, info (default), warn (least verbose).
 
   SpotCircuitBreaker:
     Type: String
@@ -2394,6 +2405,8 @@ Resources:
                 Value: !Ref OtelExporterEndpoint
               - Name: OTEL_EXPORTER_OTLP_HEADERS
                 Value: !Ref OtelExporterHeaders
+              - Name: RUNS_ON_LOGGER_LEVEL
+                Value: !Ref LoggerLevel
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppTag}"
             - AppTag: !FindInMap [App, Tags, ImageTag]
@@ -2784,7 +2797,6 @@ Resources:
               - installation_id
               - org_name
               - repo_name
-              - job_id
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
