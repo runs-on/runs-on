@@ -81,6 +81,7 @@ Metadata:
           - AppMemory
           - AppRegistry
           - AppDebug
+          - LoggerLevel
           - S3CacheExpirationInDays
 
 Parameters:
@@ -300,6 +301,16 @@ Parameters:
       - "true"
       - "false"
     Description: Enable or disable debug mode for the RunsOn stack. Enabling this will switch off the auto-shutdown of the runner instances when they are unable to bootstrap.
+
+  LoggerLevel:
+    Type: String
+    Default: "info"
+    AllowedValues:
+      - "trace"
+      - "debug"
+      - "info"
+      - "warn"
+    Description: "Log level for the RunsOn server. Options: trace (most verbose), debug, info (default), warn (least verbose)."
 
   SpotCircuitBreaker:
     Type: String
@@ -2379,7 +2390,7 @@ Resources:
               - Name: RUNS_ON_QUEUE_JOBS
                 Value: !Ref RunsOnQueueJobs
               - Name: RUNS_ON_QUEUE_GITHUB
-                Value: !Ref RunsOnQueueGitHub
+                Value: !Ref RunsOnQueueGithub
               - Name: RUNS_ON_COST_REPORTS_ENABLED
                 Value: !Ref CostReportsEnabled
               - Name: RUNS_ON_SERVER_PASSWORD
@@ -2394,6 +2405,8 @@ Resources:
                 Value: !Ref OtelExporterEndpoint
               - Name: OTEL_EXPORTER_OTLP_HEADERS
                 Value: !Ref OtelExporterHeaders
+              - Name: RUNS_ON_LOGGER_LEVEL
+                Value: !Ref LoggerLevel
           ImageIdentifier: !Sub
             - "${AppRegistry}:${AppTag}"
             - AppTag: !FindInMap [App, Tags, ImageTag]
@@ -2541,7 +2554,7 @@ Resources:
                   - !GetAtt RunsOnQueueTermination.Arn
                   - !GetAtt RunsOnQueueEvents.Arn
                   - !GetAtt RunsOnQueueJobs.Arn
-                  - !GetAtt RunsOnQueueGitHub.Arn
+                  - !GetAtt RunsOnQueueGithub.Arn
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
@@ -2649,7 +2662,7 @@ Resources:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
 
-  RunsOnQueueGitHubDeadLetter:
+  RunsOnQueueGithubDeadLetter:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 259200 # 3 days
@@ -2658,7 +2671,7 @@ Resources:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
 
-  RunsOnQueueGitHub:
+  RunsOnQueueGithub:
     Type: AWS::SQS::Queue
     Properties:
       FifoQueue: true
@@ -2667,7 +2680,7 @@ Resources:
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 60 # GitHub API calls + S3 uploads
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt RunsOnQueueGitHubDeadLetter.Arn
+        deadLetterTargetArn: !GetAtt RunsOnQueueGithubDeadLetter.Arn
         maxReceiveCount: 3
       Tags:
         - Key: !Ref CostAllocationTag
@@ -2784,7 +2797,6 @@ Resources:
               - installation_id
               - org_name
               - repo_name
-              - job_id
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
@@ -3278,9 +3290,9 @@ Outputs:
   RunsOnQueueJobs:
     Description: SQS FIFO queue for workflow job scheduling
     Value: !Ref RunsOnQueueJobs
-  RunsOnQueueGitHub:
+  RunsOnQueueGithub:
     Description: SQS FIFO queue for GitHub registration tasks
-    Value: !Ref RunsOnQueueGitHub
+    Value: !Ref RunsOnQueueGithub
   RunsOnQueuePool:
     Description: SQS queue for the RunsOn service, used for pool management tasks
     Value: !Ref RunsOnQueuePool
