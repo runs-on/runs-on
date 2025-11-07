@@ -2797,6 +2797,7 @@ Resources:
               - installation_id
               - org_name
               - repo_name
+              - job_id
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
