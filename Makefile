@@ -1,5 +1,5 @@
-VERSION=v2.9.3
-VERSION_DEV=$(VERSION)-dev-green
+VERSION=v2.10.0
+VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -9,8 +9,8 @@ SHELL:=/bin/zsh
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
-.PHONY: bump check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-run-redelivery dev-install dev-logs dev-logs-instances dev-show dev-roc \
+.PHONY: check tag login build-push dev stage promote cf \
+	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -34,7 +34,8 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-pre-release: check-clean bump
+pre-release: check-clean
+	./scripts/set-bootstrap-tag.sh
 	git checkout main && git pull
 	cd server && make pre-release && git checkout main && git pull
 
@@ -54,14 +55,6 @@ branch:
 	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
 	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
 
-bump:
-	./scripts/set-bootstrap-tag.sh
-	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template-$(VERSION).yaml
-	sed -i.bak 's|dashboard/template-dev.yaml|dashboard/template-$(VERSION).yaml|' cloudformation/template-$(VERSION).yaml
-	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
-	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
-	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
@@ -83,28 +76,33 @@ login:
 copyright:
 	cd server && make copyright
 
-build-push: login copyright
+build-push: login copyright bootstrap-tag
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
+bootstrap-tag:
+	./scripts/set-bootstrap-tag.sh
+
 # generates a dev release
 dev: login copyright
+	./scripts/set-bootstrap-tag.sh
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION_DEV) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION_DEV)"
+	./scripts/prepare-template.sh dev $(REGISTRY):$(VERSION_DEV) $(VERSION_DEV)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
 # generates a stage release
 stage: build-push
+	./scripts/prepare-template.sh stage $(REGISTRY):$(VERSION) $(VERSION)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-$(VERSION).yaml s3://runs-on/cloudformation/dashboard/
-	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 sync ./cloudformation/networking/ s3://runs-on/cloudformation/networking/
 
 # promotes the stage release as latest production version
@@ -131,8 +129,8 @@ dev-run:
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
-dev-run-redelivery:
-	cd server && RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) AWS_PROFILE=$(STACK_DEV_NAME) go run ./cmd/webhook-redelivery --always-notify
+dev-warns:
+	cd server && grep -vE '"level":"info|debug"' tmp/dev.log
 
 dev-roc:
 	AWS_PROFILE=$(STACK_DEV_NAME) roc --stack $(STACK_DEV_NAME) $(filter-out $@,$(MAKECMDGOALS))
@@ -171,9 +169,6 @@ dev-dashboard:
 dev-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
 
-dev-roc:
-	AWS_PROFILE=$(STACK_DEV_NAME) roc --stack $(STACK_DEV_NAME) $(filter-out $@,$(MAKECMDGOALS))
-
 dev-logs:
 	AWS_PROFILE=$(STACK_DEV_NAME) awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-ySUxJ70TuNgS/a166e506939748c484687f5799eacbf4/application -i 2 -w -s 10m --timestamp
 
@@ -185,6 +180,41 @@ dev-show:
 		--stack-name $(STACK_DEV_NAME) \
 		--region=us-east-1 \
 		--query "Stacks[0].Outputs[?OutputKey=='RunsOnEntryPoint' || OutputKey=='RunsOnService' || OutputKey=='RunsOnPrivate' || OutputKey=='RunsOnEgressStaticIps' || OutputKey=='RunsOnServiceRoleArn'].[OutputKey,OutputValue]"
+
+dev-get-job:
+	@JOB_ID=$(filter-out $@,$(MAKECMDGOALS)) && \
+	AWS_PROFILE=$(STACK_DEV_NAME) aws dynamodb get-item \
+		--table-name $(STACK_DEV_NAME)-workflow-jobs \
+		--key "{\"job_id\":{\"N\":\"$$JOB_ID\"}}" \
+		--region us-east-1 | jq .
+
+dev-get-instance:
+	@INSTANCE_ID=$(filter-out $@,$(MAKECMDGOALS)) && \
+	INSTANCE_DATA=$$(AWS_PROFILE=$(STACK_DEV_NAME) aws ec2 describe-instances \
+		--instance-ids $$INSTANCE_ID \
+		--region us-east-1) && \
+	VOLUME_IDS=$$(echo $$INSTANCE_DATA | jq -r '.Reservations[0].Instances[0].BlockDeviceMappings[]?.Ebs.VolumeId // empty' | grep -v '^$$' | tr '\n' ' ') && \
+	echo $$INSTANCE_DATA | jq -r ' \
+		.Reservations[0].Instances[0] | \
+		"Status: " + .State.Name, \
+		"", \
+		"Storage:", \
+		(if .BlockDeviceMappings then (.BlockDeviceMappings | sort_by(.DeviceName) | .[] | \
+			"  " + .DeviceName + ": " + (if .Ebs.VolumeId then .Ebs.VolumeId else "ephemeral" end)) else "  (no block devices)" end), \
+		"" \
+	' && \
+	if [ -n "$$VOLUME_IDS" ]; then \
+		echo "Volume details:" && \
+		AWS_PROFILE=$(STACK_DEV_NAME) aws ec2 describe-volumes \
+			--volume-ids $$VOLUME_IDS \
+			--region us-east-1 | jq -r '.Volumes[] | "  \(.VolumeId): \(.Size)GB \(.VolumeType) (\(.State))"'; \
+	fi && \
+	echo "" && \
+	echo "Tags (sorted by key):" && \
+	echo $$INSTANCE_DATA | jq -r '.Reservations[0].Instances[0].Tags | sort_by(.Key) | .[] | "  " + .Key + " = " + .Value'
+
+%:
+	@:
 
 STACK_TEST_NAME=runs-on-test
 
