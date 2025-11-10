@@ -464,7 +464,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      ImageTag: v2.10.0-dev-green
+      AppTag: v2.10.0-dev-green
+      ImageTag: v2.10.0-dev-green@sha256:159442c08b55ad840a741ee4683a8b21dcb717cf32d3f24e010041bcf4e9950b
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1503,7 +1504,7 @@ Resources:
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
-            - AppTag: !FindInMap [App, Tags, ImageTag]
+            - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
               EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
@@ -1592,7 +1593,7 @@ Resources:
               </powershell>
               <detach>true</detach>
               <persist>true</persist>
-            - AppTag: !FindInMap [App, Tags, ImageTag]
+            - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
               EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
@@ -1655,7 +1656,7 @@ Resources:
               _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
               test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
-            - AppTag: !FindInMap [App, Tags, ImageTag]
+            - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
               EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
@@ -1744,7 +1745,7 @@ Resources:
               </powershell>
               <detach>true</detach>
               <persist>true</persist>
-            - AppTag: !FindInMap [App, Tags, ImageTag]
+            - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
               EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
@@ -2314,7 +2315,7 @@ Resources:
               - Name: RUNS_ON_GITHUB_ORGANIZATION
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_TAG
-                Value: !FindInMap [App, Tags, ImageTag]
+                Value: !FindInMap [App, Tags, AppTag]
               - Name: RUNS_ON_BOOTSTRAP_TAG
                 Value: !FindInMap [App, Tags, BootstrapTag]
               - Name: RUNS_ON_LICENSE_KEY
@@ -2408,8 +2409,8 @@ Resources:
               - Name: RUNS_ON_LOGGER_LEVEL
                 Value: !Ref LoggerLevel
           ImageIdentifier: !Sub
-            - "${AppRegistry}:${AppTag}"
-            - AppTag: !FindInMap [App, Tags, ImageTag]
+            - "${AppRegistry}:${ImageTag}"
+            - ImageTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
 
   RunsOnServiceVpcConnector:
@@ -3189,7 +3190,7 @@ Outputs:
         - "/application"
   RunsOnAppTag:
     Description: RunsOn application tag
-    Value: !FindInMap [App, Tags, ImageTag]
+    Value: !FindInMap [App, Tags, AppTag]
   RunsOnBootstrapTag:
     Description: RunsOn bootstrap tag
     Value: !FindInMap [App, Tags, BootstrapTag]
