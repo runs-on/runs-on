@@ -10,7 +10,7 @@ SHELL:=/bin/zsh
 include .env.local
 
 .PHONY: check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-warns \
+	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -187,6 +187,31 @@ dev-get-job:
 		--table-name $(STACK_DEV_NAME)-workflow-jobs \
 		--key "{\"job_id\":{\"N\":\"$$JOB_ID\"}}" \
 		--region us-east-1 | jq .
+
+dev-get-instance:
+	@INSTANCE_ID=$(filter-out $@,$(MAKECMDGOALS)) && \
+	INSTANCE_DATA=$$(AWS_PROFILE=$(STACK_DEV_NAME) aws ec2 describe-instances \
+		--instance-ids $$INSTANCE_ID \
+		--region us-east-1) && \
+	VOLUME_IDS=$$(echo $$INSTANCE_DATA | jq -r '.Reservations[0].Instances[0].BlockDeviceMappings[]?.Ebs.VolumeId // empty' | grep -v '^$$' | tr '\n' ' ') && \
+	echo $$INSTANCE_DATA | jq -r ' \
+		.Reservations[0].Instances[0] | \
+		"Status: " + .State.Name, \
+		"", \
+		"Storage:", \
+		(if .BlockDeviceMappings then (.BlockDeviceMappings | sort_by(.DeviceName) | .[] | \
+			"  " + .DeviceName + ": " + (if .Ebs.VolumeId then .Ebs.VolumeId else "ephemeral" end)) else "  (no block devices)" end), \
+		"" \
+	' && \
+	if [ -n "$$VOLUME_IDS" ]; then \
+		echo "Volume details:" && \
+		AWS_PROFILE=$(STACK_DEV_NAME) aws ec2 describe-volumes \
+			--volume-ids $$VOLUME_IDS \
+			--region us-east-1 | jq -r '.Volumes[] | "  \(.VolumeId): \(.Size)GB \(.VolumeType) (\(.State))"'; \
+	fi && \
+	echo "" && \
+	echo "Tags (sorted by key):" && \
+	echo $$INSTANCE_DATA | jq -r '.Reservations[0].Instances[0].Tags | sort_by(.Key) | .[] | "  " + .Key + " = " + .Value'
 
 %:
 	@:
