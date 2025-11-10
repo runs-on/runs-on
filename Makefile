@@ -9,7 +9,7 @@ SHELL:=/bin/zsh
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
 include .env.local
 
-.PHONY: bump check tag login build-push dev stage promote cf \
+.PHONY: check tag login build-push dev stage promote cf \
 	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
@@ -34,7 +34,8 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-pre-release: check-clean bump
+pre-release: check-clean
+	./scripts/set-bootstrap-tag.sh
 	git checkout main && git pull
 	cd server && make pre-release && git checkout main && git pull
 
@@ -54,14 +55,6 @@ branch:
 	git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH)
 	cd server && ( git checkout $(FEATURE_BRANCH) 2>/dev/null || git checkout -b $(FEATURE_BRANCH) )
 
-bump:
-	./scripts/set-bootstrap-tag.sh
-	cp cloudformation/template-dev.yaml cloudformation/template-$(VERSION).yaml
-	cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template-$(VERSION).yaml
-	sed -i.bak 's|dashboard/template-dev.yaml|dashboard/template-$(VERSION).yaml|' cloudformation/template-$(VERSION).yaml
-	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION_DEV)|' cloudformation/template-dev.yaml
-	sed -i.bak 's|ImageTag: v.*|ImageTag: $(VERSION)|' cloudformation/template-$(VERSION).yaml
-	cp cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
@@ -83,28 +76,33 @@ login:
 copyright:
 	cd server && make copyright
 
-build-push: login copyright
+build-push: login copyright bootstrap-tag
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
 
+bootstrap-tag:
+	./scripts/set-bootstrap-tag.sh
+
 # generates a dev release
 dev: login copyright
+	./scripts/set-bootstrap-tag.sh
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION_DEV) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION_DEV)"
+	./scripts/prepare-template.sh dev $(REGISTRY):$(VERSION_DEV) $(VERSION_DEV)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
 # generates a stage release
 stage: build-push
+	./scripts/prepare-template.sh stage $(REGISTRY):$(VERSION) $(VERSION)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-$(VERSION).yaml s3://runs-on/cloudformation/dashboard/
-	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/vpc-peering.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 sync ./cloudformation/networking/ s3://runs-on/cloudformation/networking/
 
 # promotes the stage release as latest production version
