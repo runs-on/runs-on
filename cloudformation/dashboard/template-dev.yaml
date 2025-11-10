@@ -92,7 +92,7 @@ Resources:
               "width": 8,
               "height": 6,
               "properties": {
-                "query": "SOURCE '${LogGroupName}'\n| filter message like /Finalizing runner/\n| stats count() as Count by job_conclusion\n| sort Count desc",
+                "query": "SOURCE '${LogGroupName}'\n| filter metric_type = \"snapshot\" and ispresent(jobs_conclusion)\n| fields @timestamp, jobs_conclusion.success as success, jobs_conclusion.failure as failure, jobs_conclusion.cancelled as cancelled, jobs_conclusion.skipped as skipped\n| stats max(success) as success, max(failure) as failure, max(cancelled) as cancelled, max(skipped) as skipped by bin(5m) as t\n| sort t asc",
                 "region": "${AWS::Region}",
                 "title": "Completed Jobs by Conclusion",
                 "view": "stackedArea"
