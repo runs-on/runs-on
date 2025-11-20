@@ -1,9 +1,11 @@
-VERSION=v2.10.0
+VERSION=v2.10.1
 VERSION_DEV=$(VERSION)-dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
 SHELL:=/bin/zsh
+# Custom docker tag when pushing non-official builds
+VERSION_CUSTOM=$(VERSION)-custom-$(shell date -u +%Y%m%d%H%M%S)
 
 # Override any of these variables in .env.local
 # For instance if you want to push to your own registry, set REGISTRY=public.ecr.aws/your/repo/path
@@ -77,11 +79,13 @@ copyright:
 	cd server && make copyright
 
 build-push: login copyright bootstrap-tag
-	docker buildx build --push \
-		--platform linux/amd64 \
-		-t $(REGISTRY):$(VERSION) .
+	docker buildx build --push --platform linux/amd64 -t $(REGISTRY):$(VERSION) .
 	@echo ""
 	@echo "Pushed to $(REGISTRY):$(VERSION)"
+
+build-push-custom: login copyright bootstrap-tag
+	@echo "Building and pushing to $(REGISTRY):$(VERSION_CUSTOM)"
+	docker buildx build --push --platform linux/amd64 -t $(REGISTRY):$(VERSION_CUSTOM) .
 
 bootstrap-tag:
 	./scripts/set-bootstrap-tag.sh
