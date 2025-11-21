@@ -1,7 +1,7 @@
 # Release checklist
 
 - [ ] No dangling commits
-- [ ] `make bump` doesn't add any changes
+- [ ] `make dev` && `make stage`
 - [ ] Deployed latest version to dev (`make dev-install`)
 - [ ] Launched concurrency test
 - [ ] Deployed latest version to stage (`make stage-install`)
