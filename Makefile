@@ -1,5 +1,5 @@
 VERSION=v2.10.1
-VERSION_DEV=$(VERSION)-dev
+VERSION_DEV=dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
 REGISTRY=public.ecr.aws/c5h5o9k1/runs-on/runs-on
@@ -61,7 +61,7 @@ branch:
 check:
 	if [[ ! "$(VERSION)" =~ "$(MAJOR_VERSION)" ]] ; then echo "Error in MAJOR_VERSION vs VERSION" ; exit 1 ; fi
 	if ! git diff --exit-code :^Makefile :^cloudformation/* :^server &>/dev/null ; then echo "You have pending changes. Commit them first" ; exit 1 ; fi
-	if ! grep -q "$(VERSION)" cloudformation/template-$(VERSION).yaml ; then echo "Invalid version in template" ; exit 1 ; fi
+	if ! grep -q "$(VERSION)" cloudformation/template.yaml ; then echo "Invalid version in template" ; exit 1 ; fi
 
 tag:
 	git tag -m "$(VERSION)" "$(VERSION)" ;
@@ -105,13 +105,12 @@ dev: login copyright
 # generates a stage release
 stage: build-push
 	./scripts/prepare-template.sh stage $(REGISTRY):$(VERSION) $(VERSION)
-	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-$(VERSION).yaml s3://runs-on/cloudformation/
-	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-$(VERSION).yaml s3://runs-on/cloudformation/dashboard/
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/template-$(VERSION).yaml
+	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template.yaml s3://runs-on/cloudformation/dashboard/template-$(VERSION).yaml
 	AWS_PROFILE=runs-on-releaser aws s3 sync ./cloudformation/networking/ s3://runs-on/cloudformation/networking/
 
 # promotes the stage release as latest production version
 promote:
-	diff cloudformation/template-$(VERSION).yaml cloudformation/template.yaml
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/
 
 # make trigger-spot-interruption INSTANCE_ID1 INSTANCE_ID2
@@ -255,7 +254,7 @@ stage-install:
 		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name $(STACK_STAGE_NAME) \
 		--region=us-east-1 \
-		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--template-file ./cloudformation/template.yaml \
 		--s3-bucket $(STACK_STAGE_NAME)-tmp \
 		--parameter-overrides file://cloudformation/parameters/$(STACK_STAGE_NAME).json \
 		--capabilities CAPABILITY_IAM
@@ -267,7 +266,7 @@ stage-dashboard:
 	AWS_PROFILE=runs-on-admin aws cloudformation deploy \
 		--region=us-east-1 \
 		--no-disable-rollback --no-cli-pager --no-fail-on-empty-changeset \
-		--template-file ./cloudformation/dashboard/template-$(VERSION).yaml \
+		--template-file ./cloudformation/dashboard/template.yaml \
 		--capabilities CAPABILITY_IAM \
 		--stack-name $$DASHBOARD_STACK_NAME
 
@@ -302,7 +301,7 @@ demo-install:
 		--no-cli-pager --fail-on-empty-changeset \
 		--stack-name $(STACK_DEMO_NAME) \
 		--region=us-east-1 \
-		--template-file ./cloudformation/template-$(VERSION).yaml \
+		--template-file ./cloudformation/template.yaml \
 		--s3-bucket $(STACK_DEMO_NAME)-tmp \
 		--parameter-overrides \
 			GithubOrganization=runs-on-demo \

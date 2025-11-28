@@ -28,38 +28,37 @@ fi
 if [ "$MODE" = "dev" ]; then
     # Dev mode: update template-dev.yaml
     echo "Updating template-dev.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
-    # Update AppTag (version only, no SHA)
-    sed -i.bak "s|AppTag: v.*|AppTag: $VERSION_TAG|" cloudformation/template-dev.yaml
-    # Update ImageTag (version with SHA digest)
-    sed -i.bak "s|ImageTag: v.*|ImageTag: $IMAGE_TAG|" cloudformation/template-dev.yaml
+    # Update AppTag (match any value - v.* or dev, but skip lines with !FindInMap)
+    sed -i.bak "/!FindInMap/!s|AppTag: .*|AppTag: $VERSION_TAG|" cloudformation/template-dev.yaml
+    # Update ImageTag (match any value - v.* or dev, with or without SHA, but skip lines with !FindInMap)
+    sed -i.bak "/!FindInMap/!s|ImageTag: .*|ImageTag: $IMAGE_TAG|" cloudformation/template-dev.yaml
     rm -f cloudformation/template-dev.yaml.bak
 
 elif [ "$MODE" = "stage" ]; then
-    # Stage mode: create versioned templates and update them
-    echo "Creating versioned templates..."
+    # Stage mode: create template.yaml from template-dev.yaml
+    echo "Creating template.yaml from template-dev.yaml..."
     
-    # Copy template-dev.yaml to versioned template
-    cp cloudformation/template-dev.yaml "cloudformation/template-${VERSION_TAG}.yaml"
+    # Copy template-dev.yaml to template.yaml
+    cp cloudformation/template-dev.yaml cloudformation/template.yaml
     
-    # Copy dashboard template-dev.yaml to versioned dashboard template
-    cp cloudformation/dashboard/template-dev.yaml "cloudformation/dashboard/template-${VERSION_TAG}.yaml"
+    # Copy dashboard template-dev.yaml to dashboard/template.yaml
+    cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template.yaml
     
-    # Update dashboard reference in versioned template
-    sed -i.bak "s|dashboard/template-dev.yaml|dashboard/template-${VERSION_TAG}.yaml|" "cloudformation/template-${VERSION_TAG}.yaml"
-    rm -f "cloudformation/template-${VERSION_TAG}.yaml.bak"
-    
-    # Update AppTag and ImageTag in versioned template
-    echo "Updating template-${VERSION_TAG}.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
-    sed -i.bak "s|AppTag: v.*|AppTag: $VERSION_TAG|" "cloudformation/template-${VERSION_TAG}.yaml"
-    sed -i.bak "s|ImageTag: v.*|ImageTag: $IMAGE_TAG|" "cloudformation/template-${VERSION_TAG}.yaml"
-    rm -f "cloudformation/template-${VERSION_TAG}.yaml.bak"
-    
-    # Copy versioned template to template.yaml and update its AppTag and ImageTag
-    cp "cloudformation/template-${VERSION_TAG}.yaml" cloudformation/template.yaml
-    echo "Updating template.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
-    sed -i.bak "s|AppTag: v.*|AppTag: $VERSION_TAG|" cloudformation/template.yaml
-    sed -i.bak "s|ImageTag: v.*|ImageTag: $IMAGE_TAG|" cloudformation/template.yaml
+    # Update dashboard reference in template.yaml
+    sed -i.bak "s|dashboard/template-dev.yaml|dashboard/template.yaml|" cloudformation/template.yaml
     rm -f cloudformation/template.yaml.bak
+    
+    # Update AppTag and ImageTag in template.yaml (skip lines with !FindInMap)
+    echo "Updating template.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
+    sed -i.bak "/!FindInMap/!s|AppTag: .*|AppTag: $VERSION_TAG|" cloudformation/template.yaml
+    sed -i.bak "/!FindInMap/!s|ImageTag: .*|ImageTag: $IMAGE_TAG|" cloudformation/template.yaml
+    rm -f cloudformation/template.yaml.bak
+    
+    # Update AppTag and ImageTag in dashboard/template.yaml (skip lines with !FindInMap)
+    echo "Updating dashboard/template.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
+    sed -i.bak "/!FindInMap/!s|AppTag: .*|AppTag: $VERSION_TAG|" cloudformation/dashboard/template.yaml
+    sed -i.bak "/!FindInMap/!s|ImageTag: .*|ImageTag: $IMAGE_TAG|" cloudformation/dashboard/template.yaml
+    rm -f cloudformation/dashboard/template.yaml.bak
 
 else
     echo "Error: Invalid mode '$MODE'. Must be 'dev' or 'stage'"
