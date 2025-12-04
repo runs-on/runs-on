@@ -57,12 +57,47 @@ async function getFileContent() {
     console.log('GitHub App installation found for org:', org);
     console.log('Installation ID:', installation.id);
     
+    async function tryToRegisterRunner(repo) {
+      try {
+        const jitResponse = await octokitWithToken.request(
+          'POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig',
+          {
+            owner: repo.owner.login,
+            repo: repo.name,
+            name: 'jitconfig-test-runner',
+            runner_group_id: 1,
+            labels: ['delete_me_do_not_use_me'],
+            work_folder: '_work',
+          }
+        );
+        try {
+          await octokitWithToken.request(
+            'DELETE /repos/{owner}/{repo}/actions/runners/{runnerId}',
+            {
+              owner: repo.owner.login,
+              repo: repo.name,
+              runnerId: jitResponse.data.runner.id
+            }
+          )
+        } catch (deleteRunnerError) {
+          console.warn(`failed to delete runner ${jitResponse.data.runner.id} on ${repo.full_name}`, deleteRunnerError);
+        }
+        return null;
+      } catch (registerRunnerError) {
+        return registerRunnerError.response.data;
+      }
+    }
+
     try {
       const repos = await octokitWithToken.paginate(octokitWithToken.rest.apps.listReposAccessibleToInstallation);
       console.log('Accessible repositories:');
-      repos.forEach(repo => {
+      for (const repo of repos) {
         console.log(`- ${repo.full_name}`);
-      });
+        const registerRunnerError = await tryToRegisterRunner(repo);
+        if (registerRunnerError !== null) {
+          console.error(`⚠️ could not register self hosted runner for ${repo.full_name}:\n${JSON.stringify(registerRunnerError, null, 2)}`);
+        }
+      }
     } catch (repoError) {
       console.log('Could not list accessible repositories:', repoError.message);
     }
