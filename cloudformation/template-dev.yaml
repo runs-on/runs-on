@@ -2621,10 +2621,6 @@ Resources:
                     "iam:AWSServiceName": "spot.amazonaws.com"
               - Effect: Allow
                 Action:
-                  - cloudformation:DescribeStacks
-                Resource: !Ref AWS::StackId
-              - Effect: Allow
-                Action:
                   - ec2:CreateFleet
                   - ec2:DeleteFleets
                 Resource: "*"
