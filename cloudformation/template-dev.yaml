@@ -2565,10 +2565,8 @@ Resources:
     Properties:
       Subnets: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
       SecurityGroups: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
-      Tags:
+      Tags: # note: adding a new tag requires a full replacement
         - Key: !Ref CostAllocationTag
-          Value: !Ref AWS::StackName
-        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnServiceRole:
@@ -2806,7 +2804,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       FifoQueue: true
-      ContentBasedDeduplication: true
+      ContentBasedDeduplication: false
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120 # 2 minutes for scheduling
@@ -2834,7 +2832,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       FifoQueue: true
-      ContentBasedDeduplication: true
+      ContentBasedDeduplication: false
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120 # GitHub API calls + S3 uploads
