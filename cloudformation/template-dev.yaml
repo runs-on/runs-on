@@ -465,7 +465,23 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: dev
-      ImageTag: dev@sha256:3bf3c45e554ce0d9b88f683477d65ffb1e03264afe44547f99c79bab283ea7e5
+      ImageTag: dev@sha256:8924d3436f5b16751f4b74f97c61831adc818104e6413ac4bc9ee283b071218c
+
+  GoMemLimit:
+    "512":
+      Value: "460MiB"
+    "1024":
+      Value: "921MiB"
+    "2048":
+      Value: "1843MiB"
+    "3072":
+      Value: "2764MiB"
+    "4096":
+      Value: "3686MiB"
+    "6144":
+      Value: "5529MiB"
+    "8192":
+      Value: "7372MiB"
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2462,6 +2478,8 @@ Resources:
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
+              - Name: GOMEMLIMIT
+                Value: !FindInMap [GoMemLimit, !Ref AppMemory, Value]
               - Name: RUNS_ON_BOOTSTRAP_TAG
                 Value: !FindInMap [App, Tags, BootstrapTag]
               - Name: RUNS_ON_LICENSE_KEY
