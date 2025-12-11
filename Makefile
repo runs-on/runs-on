@@ -12,7 +12,7 @@ VERSION_CUSTOM=$(VERSION)-custom-$(shell date -u +%Y%m%d%H%M%S)
 include .env.local
 
 .PHONY: check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
+	dev-env dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -127,9 +127,13 @@ networking-stack:
 
 STACK_DEV_NAME=runs-on-dev
 
+dev-env:
+	AWS_PROFILE=$(STACK_DEV_NAME) ./scripts/fetch-apprunner-env.sh $(STACK_DEV_NAME) server/.env
+
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
+		AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_LOCAL_DEV=true \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 dev-warns:
