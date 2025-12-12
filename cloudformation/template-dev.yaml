@@ -2434,10 +2434,6 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
-        - Key: runs-on-stack-name
-          Value: !Ref AWS::StackName
-        - Key: runs-on-resource
-          Value: apprunner-service
       InstanceConfiguration:
         Cpu: !Ref AppCPU
         Memory: !Ref AppMemory
