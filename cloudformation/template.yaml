@@ -464,8 +464,24 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v2.10.1
-      ImageTag: v2.10.1@sha256:090676db3eacc4e033c987576e461781f788e531fe8f77e38c7465c551ade37c
+      AppTag: v2.11.0
+      ImageTag: v2.11.0@sha256:fc41e81aa75327c9d8aceff826b2b833daed59b47c819d3e5e0fe937fab2b1e8
+
+  GoMemLimit:
+    "512":
+      Value: "460MiB"
+    "1024":
+      Value: "921MiB"
+    "2048":
+      Value: "1843MiB"
+    "3072":
+      Value: "2764MiB"
+    "4096":
+      Value: "3686MiB"
+    "6144":
+      Value: "5529MiB"
+    "8192":
+      Value: "7372MiB"
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -534,6 +550,8 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-VPC
@@ -608,6 +626,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1RouteTable
 
@@ -619,6 +639,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2RouteTable
 
@@ -629,6 +651,8 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet3RouteTable
@@ -732,6 +756,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
 
@@ -758,6 +784,8 @@ Resources:
             - 64
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
@@ -786,6 +814,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet3
 
@@ -808,6 +838,8 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
@@ -832,6 +864,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway2
 
@@ -855,6 +889,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway3
 
@@ -865,6 +901,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP1
@@ -877,6 +915,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP2
 
@@ -887,6 +927,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP3
@@ -899,6 +941,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP4
 
@@ -909,6 +953,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP5
@@ -921,6 +967,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP6
 
@@ -931,6 +979,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP7
@@ -943,6 +993,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP8
 
@@ -953,6 +1005,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP1B
@@ -965,6 +1019,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP2B
 
@@ -975,6 +1031,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP3B
@@ -987,6 +1045,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP4B
 
@@ -997,6 +1057,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP5B
@@ -1009,6 +1071,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP6B
 
@@ -1019,6 +1083,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP7B
@@ -1031,6 +1097,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP8B
 
@@ -1041,6 +1109,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP1C
@@ -1053,6 +1123,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP2C
 
@@ -1063,6 +1135,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP3C
@@ -1075,6 +1149,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP4C
 
@@ -1085,6 +1161,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP5C
@@ -1097,6 +1175,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP6C
 
@@ -1108,6 +1188,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP7C
 
@@ -1118,6 +1200,8 @@ Resources:
       Domain: vpc
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-ElasticIP8C
@@ -1146,6 +1230,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet1
 
@@ -1173,6 +1259,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2
 
@@ -1199,6 +1287,8 @@ Resources:
             - 64
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet3
@@ -1235,6 +1325,8 @@ Resources:
           Description: "Allow all outbound traffic"
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   # EC2.10 - Amazon EC2 should be configured to use VPC endpoints that are created for the Amazon EC2 service
@@ -1291,6 +1383,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-InternetGateway
 
@@ -1308,6 +1402,8 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicRouteTable
@@ -1362,6 +1458,8 @@ Resources:
       FileSystemTags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-EFS
 
@@ -1379,6 +1477,8 @@ Resources:
           Description: "Allow NFS from RunsOn EC2 instances"
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
         - Key: Name
           Value: !Sub ${AWS::StackName}-EFSSecurityGroup
@@ -1444,6 +1544,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
   # --- End Ephemeral Registry Resources ---
 
   EC2FleetLaunchTemplateLinuxDefault:
@@ -1454,6 +1556,8 @@ Resources:
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       LaunchTemplateData:
@@ -1462,13 +1566,19 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -1517,6 +1627,8 @@ Resources:
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       LaunchTemplateData:
@@ -1525,13 +1637,19 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -1606,6 +1724,8 @@ Resources:
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       LaunchTemplateData:
@@ -1614,13 +1734,19 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -1669,6 +1795,8 @@ Resources:
           Tags:
             - Key: !Ref CostAllocationTag
               Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       LaunchTemplateData:
@@ -1677,13 +1805,19 @@ Resources:
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
+                Value: !Ref AWS::StackName
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
+                Value: !Ref AWS::StackName
+              - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
@@ -1779,6 +1913,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -1819,6 +1955,10 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: runs-on-resource
+          Value: config-bucket
         - Key: "runs-on/purpose"
           Value: "config"
 
@@ -1879,6 +2019,10 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: runs-on-resource
+          Value: cache-bucket
         - Key: "runs-on/purpose"
           Value: "cache"
 
@@ -1932,6 +2076,10 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: runs-on-resource
+          Value: logging-bucket
         - Key: "runs-on/purpose"
           Value: "s3-access-logs"
 
@@ -1985,6 +2133,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
@@ -1993,6 +2143,10 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: runs-on-resource
+          Value: ec2-log-group
 
   EC2InstanceRole:
     Type: AWS::IAM::Role
@@ -2087,6 +2241,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:DeleteObject
                   - s3:ListBucket
                   - s3:GetBucketLocation
                   - s3:ListBucketMultipartUploads
@@ -2202,6 +2357,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -2268,6 +2425,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnService:
     Type: AWS::AppRunner::Service
@@ -2275,6 +2434,10 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: runs-on-resource
+          Value: apprunner-service
       InstanceConfiguration:
         Cpu: !Ref AppCPU
         Memory: !Ref AppMemory
@@ -2316,6 +2479,8 @@ Resources:
                 Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
+              - Name: GOMEMLIMIT
+                Value: !FindInMap [GoMemLimit, !Ref AppMemory, Value]
               - Name: RUNS_ON_BOOTSTRAP_TAG
                 Value: !FindInMap [App, Tags, BootstrapTag]
               - Name: RUNS_ON_LICENSE_KEY
@@ -2419,7 +2584,7 @@ Resources:
     Properties:
       Subnets: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
       SecurityGroups: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
-      Tags:
+      Tags: # note: adding a new tag requires a full replacement
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
 
@@ -2431,6 +2596,8 @@ Resources:
         !If [AppCustomPolicyProvided, [!Ref AppCustomPolicy], []]
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -2471,10 +2638,6 @@ Resources:
                 Condition:
                   StringEquals:
                     "iam:AWSServiceName": "spot.amazonaws.com"
-              - Effect: Allow
-                Action:
-                  - cloudformation:DescribeStacks
-                Resource: !Ref AWS::StackId
               - Effect: Allow
                 Action:
                   - ec2:CreateFleet
@@ -2638,6 +2801,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnQueueJobsDeadLetter:
     Type: AWS::SQS::Queue
@@ -2646,6 +2811,8 @@ Resources:
       FifoQueue: true
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnQueueJobs:
@@ -2662,6 +2829,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnQueueGithubDeadLetter:
     Type: AWS::SQS::Queue
@@ -2671,6 +2840,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnQueueGithub:
     Type: AWS::SQS::Queue
@@ -2679,12 +2850,14 @@ Resources:
       ContentBasedDeduplication: false
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
-      VisibilityTimeout: 60 # GitHub API calls + S3 uploads
+      VisibilityTimeout: 120 # GitHub API calls + S3 uploads
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueGithubDeadLetter.Arn
         maxReceiveCount: 3
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnQueuePoolDeadLetter:
@@ -2693,6 +2866,8 @@ Resources:
       MessageRetentionPeriod: 259200 # 3 days
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnQueuePool:
@@ -2707,6 +2882,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnQueueHousekeeping:
     Type: AWS::SQS::Queue
@@ -2716,6 +2893,8 @@ Resources:
       VisibilityTimeout: 120
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnQueueTermination:
@@ -2727,6 +2906,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnQueueEvents:
     Type: AWS::SQS::Queue
@@ -2736,6 +2917,8 @@ Resources:
       VisibilityTimeout: 120
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   # DynamoDB table for distributed locking
@@ -2755,6 +2938,8 @@ Resources:
         Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   # DynamoDB table for workflow job tracking
@@ -2804,6 +2989,8 @@ Resources:
         Enabled: true
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
   RunsOnQueueDeadLetterOldestMessageAlarm:
@@ -2970,6 +3157,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
       DisplayName: RunsOn Alerts
 
   AlertTopicSubscription:
@@ -3003,6 +3192,8 @@ Resources:
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   AlertTopicSlackWebhookFunction:
     Condition: AlertTopicSlackWebhookProvided
@@ -3019,6 +3210,8 @@ Resources:
           STACK_NAME: !Ref AWS::StackName
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
       Code:
         ZipFile: |
@@ -3150,7 +3343,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.10.1.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.11.0.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
@@ -3165,6 +3358,8 @@ Resources:
         QueueName: !GetAtt RunsOnQueue.QueueName
       Tags:
         - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
 
 Outputs:
