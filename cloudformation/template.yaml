@@ -465,7 +465,7 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: v2.11.0
-      ImageTag: v2.11.0@sha256:032697fd4385bd78b85fe220302baa95d374464d67c714422e645bbcc545b77e
+      ImageTag: v2.11.0@sha256:e7e26863576758759a3f829a3434fc9968cdc66fe09318b423a1e141d4e951ca
 
   GoMemLimit:
     "512":
