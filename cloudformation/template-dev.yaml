@@ -2486,6 +2486,33 @@ Resources:
                 Value: !FindInMap [App, Tags, AppTag]
               - Name: GOMEMLIMIT
                 Value: !FindInMap [GoMemLimit, !Ref AppMemory, Value]
+              # Hash of restart-required config - forces App Runner restart when these change
+              - Name: RUNS_ON_CONFIG_HASH
+                Value: !Sub
+                  - "${Hash}"
+                  - Hash: !Join
+                      - "|"
+                      - - !Ref OtelExporterEndpoint
+                        - !Ref OtelExporterHeaders
+                        - !Ref OtelLogsEnabled
+                        - !Ref RunsOnQueue
+                        - !Ref RunsOnQueuePool
+                        - !Ref RunsOnQueueHousekeeping
+                        - !Ref RunsOnQueueTermination
+                        - !Ref RunsOnQueueEvents
+                        - !Ref RunsOnQueueJobs
+                        - !Ref RunsOnQueueGithub
+                        - !Ref RunsOnLocksTable
+                        - !Ref RunsOnWorkflowJobsTable
+                        - !Ref S3Bucket
+                        - !Ref S3BucketCache
+                        - !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
+                        - !If [ExternalVpc, !Join [",", !Ref ExternalVpcPublicSubnetIds], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+                        - !If [ExternalVpc, !Join [",", !Ref ExternalVpcPrivateSubnetIds], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+                        - !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
+                        - !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+                        - !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+                        - !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
               # All other configuration is now loaded from SSM Parameter Store at /${AWS::StackName}/config/*
           ImageIdentifier: !Sub
             - "${AppRegistry}:${ImageTag}"
