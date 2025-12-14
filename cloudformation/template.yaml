@@ -473,8 +473,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v2.11.0-ssm-3
-      ImageTag: v2.11.0-ssm-3@sha256:72b8abfc8007a558019ac7b3775d3878c4fb136db0304e70f88adbe01387de15
+      AppTag: v2.11.0
+      ImageTag: v2.11.0
 
   GoMemLimit:
     "512":
