@@ -500,6 +500,13 @@ Conditions:
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
+  HasDefaultAdmins: !Not [!Equals [!Ref DefaultAdmins, ""]]
+  HasServerPassword: !Not [!Equals [!Ref ServerPassword, ""]]
+  HasRunnerCustomTags: !Not [!Equals [!Join [",", !Ref RunnerCustomTags], ""]]
+  HasIntegrationStepSecurity: !Not [!Equals [!Ref IntegrationStepSecurityApiKey, ""]]
+  HasGithubEnterpriseUrl: !Not [!Equals [!Ref GithubEnterpriseUrl, ""]]
+  HasOtelExporterEndpoint: !Not [!Equals [!Ref OtelExporterEndpoint, ""]]
+  HasOtelExporterHeaders: !Not [!Equals [!Ref OtelExporterHeaders, ""]]
   ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
   CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
   CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
@@ -2457,122 +2464,346 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
+              # Bootstrap environment variables - minimal set needed to locate SSM config
               - Name: RUNS_ON_AWS_ACCOUNT_ID
                 Value: !Ref AWS::AccountId
-              - Name: RUNS_ON_ENV
-                Value: !Ref Environment
-              - Name: RUNS_ON_COST_ALLOCATION_TAG
-                Value: !Ref CostAllocationTag
+              - Name: RUNS_ON_REGION
+                Value: !Ref AWS::Region
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
-              - Name: RUNS_ON_LOCKS_TABLE
-                Value: !Ref RunsOnLocksTable
-              - Name: RUNS_ON_WORKFLOW_JOBS_TABLE
-                Value: !Ref RunsOnWorkflowJobsTable
-              - Name: RUNS_ON_NETWORKING_STACK
-                Value: !Ref NetworkingStack
-              - Name: RUNS_ON_GITHUB_ORGANIZATION
-                Value: !Ref GithubOrganization
+              - Name: RUNS_ON_ENV
+                Value: !Ref Environment
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
               - Name: GOMEMLIMIT
                 Value: !FindInMap [GoMemLimit, !Ref AppMemory, Value]
-              - Name: RUNS_ON_BOOTSTRAP_TAG
-                Value: !FindInMap [App, Tags, BootstrapTag]
-              - Name: RUNS_ON_LICENSE_KEY
-                Value: !Ref LicenseKey
-              - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
-                Value: !Join [",", !Ref RunnerCustomTags]
-              - Name: RUNS_ON_BUCKET_CONFIG
-                Value: !Ref S3Bucket
-              - Name: RUNS_ON_BUCKET_CACHE
-                Value: !Ref S3BucketCache
-              - Name: RUNS_ON_VPC_ID
-                Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
-              - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
-              - Name: RUNS_ON_INSTANCE_PROFILE_ARN
-                Value: !GetAtt EC2InstanceProfile.Arn
-              - Name: RUNS_ON_INSTANCE_ROLE_NAME
-                Value: !Ref EC2InstanceRole
-              - Name: RUNS_ON_TOPIC_ARN
-                Value: !Ref AlertTopic
-              - Name: RUNS_ON_REGION
-                Value: !Ref AWS::Region
-              - Name: RUNS_ON_SSH_ALLOWED
-                Value: !Ref SSHAllowed
-              - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
-                Value: !Ref AppEc2QueueSize
-              - Name: RUNS_ON_EBS_ENCRYPTION_KEY
-                Value: !If [HasEncryptEbs, "alias/aws/ebs", ""]
-              - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
-                Value: !Ref AppGithubApiStrategy
-              - Name: RUNS_ON_PUBLIC_SUBNET_IDS
-                Value: !If [ExternalVpc,
-                  !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
-                  !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
-              - Name: RUNS_ON_PRIVATE_SUBNET_IDS
-                Value: !If [ExternalVpc,
-                  !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
-                  !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
-              - Name: RUNS_ON_PRIVATE
-                Value: !Ref Private
-              - Name: RUNS_ON_DEFAULT_ADMINS
-                Value: !Ref DefaultAdmins
-              - Name: RUNS_ON_RUNNER_MAX_RUNTIME
-                Value: !Ref RunnerMaxRuntime
-              - Name: RUNS_ON_RUNNER_CONFIG_AUTO_EXTENDS_FROM
-                Value: !Ref RunnerConfigAutoExtendsFrom
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_PRIVATE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_PRIVATE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
-              - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
-                Value: !Ref RunnerDefaultDiskSize
-              - Name: RUNS_ON_RUNNER_DEFAULT_VOLUME_THROUGHPUT
-                Value: !Ref RunnerDefaultVolumeThroughput
-              - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
-                Value: !Ref RunnerLargeDiskSize
-              - Name: RUNS_ON_RUNNER_LARGE_VOLUME_THROUGHPUT
-                Value: !Ref RunnerLargeVolumeThroughput
-              - Name: RUNS_ON_QUEUE
-                Value: !Ref RunsOnQueue
-              - Name: RUNS_ON_QUEUE_POOL
-                Value: !Ref RunsOnQueuePool
-              - Name: RUNS_ON_QUEUE_HOUSEKEEPING
-                Value: !Ref RunsOnQueueHousekeeping
-              - Name: RUNS_ON_QUEUE_TERMINATION
-                Value: !Ref RunsOnQueueTermination
-              - Name: RUNS_ON_QUEUE_EVENTS
-                Value: !Ref RunsOnQueueEvents
-              - Name: RUNS_ON_QUEUE_JOBS
-                Value: !Ref RunsOnQueueJobs
-              - Name: RUNS_ON_QUEUE_GITHUB
-                Value: !Ref RunsOnQueueGithub
-              - Name: RUNS_ON_COST_REPORTS_ENABLED
-                Value: !Ref CostReportsEnabled
-              - Name: RUNS_ON_SERVER_PASSWORD
-                Value: !Ref ServerPassword
-              - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
-                Value: !Ref SpotCircuitBreaker
-              - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
-                Value: !Ref IntegrationStepSecurityApiKey
-              - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
-                Value: !Ref GithubEnterpriseUrl
-              - Name: OTEL_EXPORTER_OTLP_ENDPOINT
-                Value: !Ref OtelExporterEndpoint
-              - Name: OTEL_EXPORTER_OTLP_HEADERS
-                Value: !Ref OtelExporterHeaders
-              - Name: RUNS_ON_LOGGER_LEVEL
-                Value: !Ref LoggerLevel
+              # All other configuration is now loaded from SSM Parameter Store at /${AWS::StackName}/config/*
           ImageIdentifier: !Sub
             - "${AppRegistry}:${ImageTag}"
             - ImageTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
+
+  # SSM Parameters for server configuration
+  # Parameter names match Go struct field names exactly (e.g., "GithubOrganization")
+  # The server loads them directly into struct fields - simple and clean!
+  SSMParamCostAllocationTag:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/CostAllocationTag"
+      Type: String
+      Value: !Ref CostAllocationTag
+
+  SSMParamLocksTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LocksTable"
+      Type: String
+      Value: !Ref RunsOnLocksTable
+
+  SSMParamWorkflowJobsTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/WorkflowJobsTable"
+      Type: String
+      Value: !Ref RunsOnWorkflowJobsTable
+
+  SSMParamNetworkingStack:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/NetworkingStack"
+      Type: String
+      Value: !Ref NetworkingStack
+
+  SSMParamGithubOrganization:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/GithubOrganization"
+      Type: String
+      Value: !Ref GithubOrganization
+
+  SSMParamLicenseKey:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LicenseKey"
+      Type: String
+      Value: !Ref LicenseKey
+
+  SSMParamRunnerCustomTags:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerCustomTags"
+      Type: String
+      Value: !If [HasRunnerCustomTags, !Join [",", !Ref RunnerCustomTags], "-"]
+
+  SSMParamBucketConfig:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/BucketConfig"
+      Type: String
+      Value: !Ref S3Bucket
+
+  SSMParamBucketCache:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/BucketCache"
+      Type: String
+      Value: !Ref S3BucketCache
+
+  SSMParamVPCId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/VPCId"
+      Type: String
+      Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
+
+  SSMParamInstanceRoleName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/InstanceRoleName"
+      Type: String
+      Value: !Ref EC2InstanceRole
+
+  SSMParamTopicArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/TopicArn"
+      Type: String
+      Value: !Ref AlertTopic
+
+  SSMParamSshAllowed:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/SshAllowed"
+      Type: String
+      Value: !Ref SSHAllowed
+
+  SSMParamAppEc2QueueSize:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/AppEc2QueueSize"
+      Type: String
+      Value: !Ref AppEc2QueueSize
+
+  SSMParamEbsEncryptionKey:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/EbsEncryptionKey"
+      Type: String
+      Value: !If [HasEncryptEbs, "alias/aws/ebs", "-"]
+
+  SSMParamAppGithubApiStrategy:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/AppGithubApiStrategy"
+      Type: String
+      Value: !Ref AppGithubApiStrategy
+
+  SSMParamPublicSubnetIds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/PublicSubnetIds"
+      Type: String
+      Value: !If [ExternalVpc,
+        !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+        !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+
+  SSMParamPrivateSubnetIds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/PrivateSubnetIds"
+      Type: String
+      Value: !If [ExternalVpc,
+        !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+        !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+
+  SSMParamPrivate:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/Private"
+      Type: String
+      Value: !Ref Private
+
+  SSMParamDefaultAdmins:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/DefaultAdmins"
+      Type: String
+      Value: !If [HasDefaultAdmins, !Ref DefaultAdmins, "-"]
+
+  SSMParamRunnerMaxRuntime:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerMaxRuntime"
+      Type: String
+      Value: !Ref RunnerMaxRuntime
+
+  SSMParamRunnerConfigAutoExtendsFrom:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerConfigAutoExtendsFrom"
+      Type: String
+      Value: !Ref RunnerConfigAutoExtendsFrom
+
+  SSMParamLaunchTemplateLinuxDefault:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LaunchTemplateLinuxDefault"
+      Type: String
+      Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
+
+  SSMParamLaunchTemplateWindowsDefault:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LaunchTemplateWindowsDefault"
+      Type: String
+      Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+
+  SSMParamLaunchTemplateLinuxPrivate:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LaunchTemplateLinuxPrivate"
+      Type: String
+      Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+
+  SSMParamLaunchTemplateWindowsPrivate:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/LaunchTemplateWindowsPrivate"
+      Type: String
+      Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
+
+  SSMParamRunnerDefaultDiskSize:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerDefaultDiskSize"
+      Type: String
+      Value: !Ref RunnerDefaultDiskSize
+
+  SSMParamRunnerDefaultVolumeThroughput:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerDefaultVolumeThroughput"
+      Type: String
+      Value: !Ref RunnerDefaultVolumeThroughput
+
+  SSMParamRunnerLargeDiskSize:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerLargeDiskSize"
+      Type: String
+      Value: !Ref RunnerLargeDiskSize
+
+  SSMParamRunnerLargeVolumeThroughput:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/RunnerLargeVolumeThroughput"
+      Type: String
+      Value: !Ref RunnerLargeVolumeThroughput
+
+  SSMParamQueue:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/Queue"
+      Type: String
+      Value: !Ref RunsOnQueue
+
+  SSMParamQueuePool:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueuePool"
+      Type: String
+      Value: !Ref RunsOnQueuePool
+
+  SSMParamQueueHousekeeping:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueueHousekeeping"
+      Type: String
+      Value: !Ref RunsOnQueueHousekeeping
+
+  SSMParamQueueTermination:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueueTermination"
+      Type: String
+      Value: !Ref RunsOnQueueTermination
+
+  SSMParamQueueEvents:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueueEvents"
+      Type: String
+      Value: !Ref RunsOnQueueEvents
+
+  SSMParamQueueJobs:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueueJobs"
+      Type: String
+      Value: !Ref RunsOnQueueJobs
+
+  SSMParamQueueGithub:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/QueueGithub"
+      Type: String
+      Value: !Ref RunsOnQueueGithub
+
+  SSMParamCostReportsEnabled:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/CostReportsEnabled"
+      Type: String
+      Value: !Ref CostReportsEnabled
+
+  SSMParamServerPassword:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/ServerPassword"
+      Type: String
+      Value: !If [HasServerPassword, !Ref ServerPassword, "-"]
+
+  SSMParamSpotCircuitBreaker:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/SpotCircuitBreaker"
+      Type: String
+      Value: !Ref SpotCircuitBreaker
+
+  SSMParamIntegrationStepSecurityApiKey:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/IntegrationStepSecurityApiKey"
+      Type: String
+      Value: !If [HasIntegrationStepSecurity, !Ref IntegrationStepSecurityApiKey, "-"]
+
+  SSMParamGithubEnterpriseUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/GithubEnterpriseUrl"
+      Type: String
+      Value: !If [HasGithubEnterpriseUrl, !Ref GithubEnterpriseUrl, "-"]
+
+  SSMParamOtelExporterEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/OtelExporterEndpoint"
+      Type: String
+      Value: !If [HasOtelExporterEndpoint, !Ref OtelExporterEndpoint, "-"]
+
+  SSMParamOtelExporterHeaders:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/OtelExporterHeaders"
+      Type: String
+      Value: !If [HasOtelExporterHeaders, !Ref OtelExporterHeaders, "-"]
+
+  SSMParamOtelLogsEnabled:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/config/OtelLogsEnabled"
+      Type: String
+      Value: "false"
 
   RunsOnServiceVpcConnector:
     Type: AWS::AppRunner::VpcConnector
@@ -2656,6 +2887,7 @@ Resources:
                   - ssm:PutParameter
                   - ssm:GetParameter
                   - ssm:GetParameters
+                  - ssm:GetParametersByPath
                   - ssm:DeleteParameter
                   - ssm:DeleteParameters
                 Resource:
