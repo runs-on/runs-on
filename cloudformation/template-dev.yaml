@@ -2686,6 +2686,16 @@ Resources:
                 Resource: !Ref AlertTopic
               - Effect: Allow
                 Action:
+                  - logs:DescribeLogGroups
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                Resource:
+                  - !Sub "${EC2InstanceLogGroup.Arn}"
+                  - !Sub "${EC2InstanceLogGroup.Arn}:*"
+              - Effect: Allow
+                Action:
                   - sqs:SendMessage
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
