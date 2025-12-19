@@ -35,6 +35,12 @@ Port changes from `cloudformation/template.yaml` and `cloudformation/dashboard/t
    ```
    This runs format check, validation, and linting.
 
+6. **Verify version sync**:
+   ```bash
+   make tf-check
+   ```
+   This verifies that `app_tag`, `app_image`, and `bootstrap_tag` in Terraform match the CloudFormation template.
+
 ## Module Mapping
 
 | CloudFormation Section | Terraform Location |
@@ -60,7 +66,7 @@ Always check the `Mappings.App.Tags` section in `cloudformation/template.yaml` a
 | CloudFormation Mapping | Terraform Variable |
 |----------------------|-------------------|
 | `Mappings.App.Tags.AppTag` | `variable "app_tag" { default = "..." }` |
-| `Mappings.App.Tags.ImageTag` | `variable "app_image" { default = "public.ecr.aws/c5h5o9k1/runs-on/runs-on:..." }` |
+| `Mappings.App.Tags.ImageTag` | `variable "app_image" { default = "public.ecr.aws/c5h5o9k1/runs-on/runs-on:...@sha256:..." }` |
 | `Mappings.App.Tags.BootstrapTag` | `variable "bootstrap_tag" { default = "..." }` |
 
 For `app_image`, use the full image reference including the SHA256 digest (e.g., `v2.11.0@sha256:...`).

@@ -17,7 +17,7 @@ include .env.local
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
 	networking-stack trigger-spot-interruption copyright \
-	buckets tf-sync
+	buckets tf-check tf-sync
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -325,6 +325,40 @@ demo-show:
 
 demo-logs:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-3RYH6bpqKHoj/2795a05779a8454ba27a897ee856bfe8/application -i 2 -w -s 120m --timestamp
+
+tf-check:
+	@echo "Checking Terraform variables against CloudFormation template..."
+	@CF_APP_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'AppTag:' | awk '{print $$2}') && \
+	CF_IMAGE_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'ImageTag:' | awk '{print $$2}') && \
+	CF_BOOTSTRAP_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'BootstrapTag:' | awk '{print $$2}') && \
+	TF_APP_TAG=$$(grep -A5 'variable "app_tag"' terraform/variables.tf | grep 'default' | sed 's/.*"\(.*\)"/\1/') && \
+	TF_IMAGE=$$(grep -A5 'variable "app_image"' terraform/variables.tf | grep 'default' | sed 's/.*runs-on:\(.*\)"/\1/') && \
+	TF_BOOTSTRAP_TAG=$$(grep -A5 'variable "bootstrap_tag"' terraform/variables.tf | grep 'default' | sed 's/.*"\(.*\)"/\1/') && \
+	ERRORS=0 && \
+	if [ "$$CF_APP_TAG" != "$$TF_APP_TAG" ]; then \
+		echo "❌ app_tag mismatch: CF=$$CF_APP_TAG TF=$$TF_APP_TAG"; \
+		ERRORS=1; \
+	else \
+		echo "✓ app_tag: $$CF_APP_TAG"; \
+	fi && \
+	if [ "$$CF_IMAGE_TAG" != "$$TF_IMAGE" ]; then \
+		echo "❌ app_image mismatch: CF=$$CF_IMAGE_TAG TF=$$TF_IMAGE"; \
+		ERRORS=1; \
+	else \
+		echo "✓ app_image: $$CF_IMAGE_TAG"; \
+	fi && \
+	if [ "$$CF_BOOTSTRAP_TAG" != "$$TF_BOOTSTRAP_TAG" ]; then \
+		echo "❌ bootstrap_tag mismatch: CF=$$CF_BOOTSTRAP_TAG TF=$$TF_BOOTSTRAP_TAG"; \
+		ERRORS=1; \
+	else \
+		echo "✓ bootstrap_tag: $$CF_BOOTSTRAP_TAG"; \
+	fi && \
+	if [ $$ERRORS -eq 1 ]; then \
+		echo "" && echo "Run 'make tf-sync' to sync Terraform with CloudFormation."; \
+		exit 1; \
+	else \
+		echo "" && echo "All Terraform variables match CloudFormation."; \
+	fi
 
 tf-sync:
 	claude --print "/sync-terraform"
