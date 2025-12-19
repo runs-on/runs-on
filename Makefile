@@ -17,7 +17,7 @@ include .env.local
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
 	networking-stack trigger-spot-interruption copyright \
-	buckets
+	buckets tf-sync
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -36,12 +36,7 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-pre-release: check-clean
-	./scripts/set-bootstrap-tag.sh
-	git checkout main && git pull
-	cd server && make pre-release && git checkout main && git pull
-
-check-clean:
+pre-release:
 	@if ! git diff-index --quiet HEAD --; then \
 		echo "Error: You have uncommitted changes. Commit or stash them first."; \
 		git status --short; \
@@ -330,3 +325,6 @@ demo-show:
 
 demo-logs:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-3RYH6bpqKHoj/2795a05779a8454ba27a897ee856bfe8/application -i 2 -w -s 120m --timestamp
+
+tf-sync:
+	claude --print "/sync-terraform"
