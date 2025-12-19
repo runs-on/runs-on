@@ -361,4 +361,4 @@ tf-check:
 	fi
 
 tf-sync:
-	claude --print "/sync-terraform"
+	claude --model sonnet --print "/sync-terraform"

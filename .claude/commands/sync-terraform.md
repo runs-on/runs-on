@@ -71,6 +71,10 @@ Always check the `Mappings.App.Tags` section in `cloudformation/template.yaml` a
 
 For `app_image`, use the full image reference including the SHA256 digest (e.g., `v2.11.0@sha256:...`).
 
+## README sync
+
+Make sure to keep the examples up to date with the latest version of the module, e.g. in `terraform/README.md`, `terraform/test/README.md`.
+
 ## Notes
 
 - Preserve Terraform naming conventions (snake_case for variables)
