@@ -465,8 +465,7 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: dev
-      ImageTag: dev@sha256:5c1a94c74c3fe8a011951cd0ac8e074723556c9a904487627a5685b610bdc88f
-
+      ImageTag: dev@sha256:3e93221183140963fb2e28458ad3c721a843dd7cf33f489f60cbfec368373522
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2684,16 +2683,6 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource: !Ref AlertTopic
-              - Effect: Allow
-                Action:
-                  - logs:DescribeLogGroups
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - logs:GetLogEvents
-                Resource:
-                  - !Sub "${EC2InstanceLogGroup.Arn}"
-                  - !Sub "${EC2InstanceLogGroup.Arn}:*"
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
