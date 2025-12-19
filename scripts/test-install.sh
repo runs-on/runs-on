@@ -52,7 +52,7 @@ time aws cloudformation deploy \
 	--no-cli-pager --no-fail-on-empty-changeset \
 	--stack-name $STACK_NAME \
 	--region=$REGION \
-	--template-file ./cloudformation/template-$VERSION.yaml \
+	--template-file ./cloudformation/template.yaml \
 	--s3-bucket $TMP_BUCKET \
 	--parameter-overrides $PARAMETERS \
 	--capabilities CAPABILITY_IAM \
