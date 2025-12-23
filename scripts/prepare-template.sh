@@ -41,11 +41,11 @@ elif [ "$MODE" = "stage" ]; then
     # Copy template-dev.yaml to template.yaml
     cp cloudformation/template-dev.yaml cloudformation/template.yaml
     
-    # Copy dashboard template-dev.yaml to dashboard/template.yaml
+    # Copy dashboard template-dev.yaml to dashboard/template.yaml (will be renamed to template-$(VERSION_TAG).yaml on release)
     cp cloudformation/dashboard/template-dev.yaml cloudformation/dashboard/template.yaml
     
     # Update dashboard reference in template.yaml
-    sed -i.bak "s|dashboard/template-dev.yaml|dashboard/template.yaml|" cloudformation/template.yaml
+    sed -i.bak "s|dashboard/template-dev.yaml|dashboard/template-$VERSION_TAG.yaml|" cloudformation/template.yaml
     rm -f cloudformation/template.yaml.bak
     
     # Update AppTag and ImageTag in template.yaml (skip lines with !FindInMap)
@@ -53,13 +53,6 @@ elif [ "$MODE" = "stage" ]; then
     sed -i.bak "/!FindInMap/!s|AppTag: .*|AppTag: $VERSION_TAG|" cloudformation/template.yaml
     sed -i.bak "/!FindInMap/!s|ImageTag: .*|ImageTag: $IMAGE_TAG|" cloudformation/template.yaml
     rm -f cloudformation/template.yaml.bak
-    
-    # Update AppTag and ImageTag in dashboard/template.yaml (skip lines with !FindInMap)
-    echo "Updating dashboard/template.yaml with AppTag: $VERSION_TAG and ImageTag: $IMAGE_TAG"
-    sed -i.bak "/!FindInMap/!s|AppTag: .*|AppTag: $VERSION_TAG|" cloudformation/dashboard/template.yaml
-    sed -i.bak "/!FindInMap/!s|ImageTag: .*|ImageTag: $IMAGE_TAG|" cloudformation/dashboard/template.yaml
-    rm -f cloudformation/dashboard/template.yaml.bak
-
 else
     echo "Error: Invalid mode '$MODE'. Must be 'dev' or 'stage'"
     exit 1

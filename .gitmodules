@@ -2,3 +2,7 @@
 	path = server
 	url = git@github.com:runs-on/server
 	branch = main
+[submodule "terraform"]
+	path = terraform
+	url = git@github.com:runs-on/terraform-aws-runs-on
+	branch = main

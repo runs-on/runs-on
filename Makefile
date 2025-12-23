@@ -1,4 +1,4 @@
-VERSION=v2.10.1
+VERSION=v2.11.0
 VERSION_DEV=dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
@@ -12,12 +12,12 @@ VERSION_CUSTOM=$(VERSION)-custom-$(shell date -u +%Y%m%d%H%M%S)
 include .env.local
 
 .PHONY: check tag login build-push dev stage promote cf \
-	dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
+	dev-env dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
 	networking-stack trigger-spot-interruption copyright \
-	buckets
+	buckets tf-check tf-sync
 
 ssm-install:
 	curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac_arm64/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip"
@@ -36,12 +36,7 @@ show:
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-$(VERSION).yaml"
 	@echo "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/template-dev.yaml"
 
-pre-release: check-clean
-	./scripts/set-bootstrap-tag.sh
-	git checkout main && git pull
-	cd server && make pre-release && git checkout main && git pull
-
-check-clean:
+pre-release:
 	@if ! git diff-index --quiet HEAD --; then \
 		echo "Error: You have uncommitted changes. Commit or stash them first."; \
 		git status --short; \
@@ -127,9 +122,13 @@ networking-stack:
 
 STACK_DEV_NAME=runs-on-dev
 
+dev-env:
+	AWS_PROFILE=$(STACK_DEV_NAME) ./scripts/fetch-apprunner-env.sh $(STACK_DEV_NAME) server/.env
+
 dev-run:
-	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_APP_TAG=$(VERSION_DEV) \
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && env $$(cat .env | grep -v '#') \
 		$(if $(filter fast,$(MAKECMDGOALS)),RUNS_ON_REFRESH_AGENTS=false) \
+		AWS_PROFILE=$(STACK_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_DEV_NAME) RUNS_ON_LOCAL_DEV=true \
 		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 dev-warns:
@@ -326,3 +325,40 @@ demo-show:
 
 demo-logs:
 	AWS_PROFILE=runs-on-admin awslogs get --aws-region us-east-1 /aws/apprunner/RunsOnService-3RYH6bpqKHoj/2795a05779a8454ba27a897ee856bfe8/application -i 2 -w -s 120m --timestamp
+
+tf-check:
+	@echo "Checking Terraform variables against CloudFormation template..."
+	@CF_APP_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'AppTag:' | awk '{print $$2}') && \
+	CF_IMAGE_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'ImageTag:' | awk '{print $$2}') && \
+	CF_BOOTSTRAP_TAG=$$(grep -A3 'Tags:' cloudformation/template.yaml | grep 'BootstrapTag:' | awk '{print $$2}') && \
+	TF_APP_TAG=$$(grep -A5 'variable "app_tag"' terraform/variables.tf | grep 'default' | sed 's/.*"\(.*\)"/\1/') && \
+	TF_IMAGE=$$(grep -A5 'variable "app_image"' terraform/variables.tf | grep 'default' | sed 's/.*runs-on:\(.*\)"/\1/') && \
+	TF_BOOTSTRAP_TAG=$$(grep -A5 'variable "bootstrap_tag"' terraform/variables.tf | grep 'default' | sed 's/.*"\(.*\)"/\1/') && \
+	ERRORS=0 && \
+	if [ "$$CF_APP_TAG" != "$$TF_APP_TAG" ]; then \
+		echo "❌ app_tag mismatch: CF=$$CF_APP_TAG TF=$$TF_APP_TAG"; \
+		ERRORS=1; \
+	else \
+		echo "✓ app_tag: $$CF_APP_TAG"; \
+	fi && \
+	if [ "$$CF_IMAGE_TAG" != "$$TF_IMAGE" ]; then \
+		echo "❌ app_image mismatch: CF=$$CF_IMAGE_TAG TF=$$TF_IMAGE"; \
+		ERRORS=1; \
+	else \
+		echo "✓ app_image: $$CF_IMAGE_TAG"; \
+	fi && \
+	if [ "$$CF_BOOTSTRAP_TAG" != "$$TF_BOOTSTRAP_TAG" ]; then \
+		echo "❌ bootstrap_tag mismatch: CF=$$CF_BOOTSTRAP_TAG TF=$$TF_BOOTSTRAP_TAG"; \
+		ERRORS=1; \
+	else \
+		echo "✓ bootstrap_tag: $$CF_BOOTSTRAP_TAG"; \
+	fi && \
+	if [ $$ERRORS -eq 1 ]; then \
+		echo "" && echo "Run 'make tf-sync' to sync Terraform with CloudFormation."; \
+		exit 1; \
+	else \
+		echo "" && echo "All Terraform variables match CloudFormation."; \
+	fi
+
+tf-sync:
+	claude --model sonnet --print "/sync-terraform"

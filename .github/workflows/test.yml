@@ -102,7 +102,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.TAG }},mode=max,compression=zstd,compression-level=1
 
   test-custom-volume:
-    runs-on: runs-on,runner=2cpu-linux-x64,family=c7a,volume=95gb,env=${{ inputs.env || 'production' }}
+    runs-on: runs-on,runner=2cpu-linux-x64,family=c7a,volume=95gb:io2:2000iops,env=${{ inputs.env || 'production' }}
     steps:
       - name: Show disk setup
         run: |
