@@ -216,8 +216,8 @@ Parameters:
     Type: String
     Default: SingleAZ
     AllowedValues:
-      - SingleAZ
-      - MultiAZ
+    - SingleAZ
+    - MultiAZ
     Description: "Create either a single NAT Gateway (SingleAZ) for all 3 availability zones, or a NAT Gateway per Availability Zone (MultiAZ). Only applies if Private mode is enabled. Each gateway incurs ~$32.4/month, plus bandwidth costs."
 
   VpcFlowLogFormat:
@@ -470,150 +470,53 @@ Mappings:
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
   ExternalVpc: !Equals [!Ref NetworkingStack, "external"]
-  ExternalVpcPublicSubnetIdsProvided:
-    !And [
-      !Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], "-"]],
-      !Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], ""]],
-    ]
-  ExternalVpcPrivateSubnetIdsProvided:
-    !And [
-      !Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"]],
-      !Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], ""]],
-    ]
+  ExternalVpcPublicSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPublicSubnetIds], ""]]]
+  ExternalVpcPrivateSubnetIdsProvided: !And [!Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"]], !Not [!Equals [!Join [",", !Ref ExternalVpcPrivateSubnetIds], ""]]]
   EmailProvided: !Not [!Equals [!Ref EmailAddress, ""]]
   CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AlertTopicSubscriptionHttpsProvided:
     !Not [!Equals [!Ref AlertTopicSubscriptionHttpsEndpoint, ""]]
-  AlertTopicSlackWebhookProvided:
-    !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
+  AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
   PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
   HasPrivateSubnet: !And [!Condition EmbeddedVpc, !Condition PrivateEnabled]
-  PrivateSubnetIsMultiAZ:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Equals [!Ref NatGatewayAvailability, "MultiAZ"],
-    ]
+  PrivateSubnetIsMultiAZ: !And [!Condition HasPrivateSubnet, !Equals [!Ref NatGatewayAvailability, "MultiAZ"]]
   HasEncryptEbs: !Equals [!Ref EncryptEbs, "true"]
   IsPrivateOnly: !Equals [!Ref Private, "only"]
   CustomPolicyProvided: !Not [!Equals [!Ref EC2InstanceCustomPolicy, ""]]
   AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
-  ECInstanceDetailedMonitoringEnabled:
-    !Equals ["true", !Ref ECInstanceDetailedMonitoring]
-  CreateElasticIP1:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]],
-    ]
-  CreateElasticIP2:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP1,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]],
-    ]
-  CreateElasticIP3:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP2,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 2]],
-    ]
-  CreateElasticIP4:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP3,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 3]],
-    ]
-  CreateElasticIP5:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP4,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 4]],
-    ]
-  CreateElasticIP6:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP5,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 5]],
-    ]
-  CreateElasticIP7:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP6,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 6]],
-    ]
-  CreateElasticIP8:
-    !And [
-      !Condition HasPrivateSubnet,
-      !Condition CreateElasticIP7,
-      !Not [!Equals [!Ref NatGatewayElasticIPCount, 7]],
-    ]
-  CreateElasticIP1B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
-  CreateElasticIP2B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
-  CreateElasticIP3B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
-  CreateElasticIP4B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
-  CreateElasticIP5B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
-  CreateElasticIP6B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
-  CreateElasticIP7B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
-  CreateElasticIP8B:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateElasticIP1C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
-  CreateElasticIP2C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
-  CreateElasticIP3C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
-  CreateElasticIP4C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
-  CreateElasticIP5C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
-  CreateElasticIP6C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
-  CreateElasticIP7C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
-  CreateElasticIP8C:
-    !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
-  CreateInterfaceEndpointEc2:
-    !And [
-      !Condition EmbeddedVpc,
-      !Or [
-        !Equals [!Ref VpcEndpoints, "EC2"],
-        !Equals [!Ref VpcEndpoints, "EC2+ECR"],
-      ],
-    ]
-  CreateInterfaceEndpointEcrApi:
-    !And [
-      !Condition EmbeddedVpc,
-      !Or [
-        !Equals [!Ref VpcEndpoints, "ECR"],
-        !Equals [!Ref VpcEndpoints, "EC2+ECR"],
-      ],
-    ]
-  CreateInterfaceEndpointEcrDocker:
-    !And [
-      !Condition EmbeddedVpc,
-      !Or [
-        !Equals [!Ref VpcEndpoints, "ECR"],
-        !Equals [!Ref VpcEndpoints, "EC2+ECR"],
-      ],
-    ]
-  CreateSqsQueueOldestMessageAlarms:
-    !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
-  HasDefaultPermissionBoundaryArn:
-    !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
-  HasVpcFlowLogEnabled:
-    !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
+  ECInstanceDetailedMonitoringEnabled: !Equals ["true", !Ref ECInstanceDetailedMonitoring]
+  CreateElasticIP1: !And [!Condition HasPrivateSubnet, !Not [!Equals [!Ref NatGatewayElasticIPCount, 0]]]
+  CreateElasticIP2: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP1, !Not [!Equals [!Ref NatGatewayElasticIPCount, 1]]]
+  CreateElasticIP3: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP2, !Not [!Equals [!Ref NatGatewayElasticIPCount, 2]]]
+  CreateElasticIP4: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP3, !Not [!Equals [!Ref NatGatewayElasticIPCount, 3]]]
+  CreateElasticIP5: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP4, !Not [!Equals [!Ref NatGatewayElasticIPCount, 4]]]
+  CreateElasticIP6: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP5, !Not [!Equals [!Ref NatGatewayElasticIPCount, 5]]]
+  CreateElasticIP7: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP6, !Not [!Equals [!Ref NatGatewayElasticIPCount, 6]]]
+  CreateElasticIP8: !And [!Condition HasPrivateSubnet, !Condition CreateElasticIP7, !Not [!Equals [!Ref NatGatewayElasticIPCount, 7]]]
+  CreateElasticIP1B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
+  CreateElasticIP2B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
+  CreateElasticIP3B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
+  CreateElasticIP4B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
+  CreateElasticIP5B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
+  CreateElasticIP6B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
+  CreateElasticIP7B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
+  CreateElasticIP8B: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  CreateElasticIP1C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP1]
+  CreateElasticIP2C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP2]
+  CreateElasticIP3C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP3]
+  CreateElasticIP4C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP4]
+  CreateElasticIP5C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP5]
+  CreateElasticIP6C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP6]
+  CreateElasticIP7C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP7]
+  CreateElasticIP8C: !And [!Condition PrivateSubnetIsMultiAZ, !Condition CreateElasticIP8]
+  CreateInterfaceEndpointEc2: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "EC2"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrApi: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateInterfaceEndpointEcrDocker: !And [!Condition EmbeddedVpc, !Or [!Equals [!Ref VpcEndpoints, "ECR"], !Equals [!Ref VpcEndpoints, "EC2+ECR"]]]
+  CreateSqsQueueOldestMessageAlarms: !Not [!Equals [!Ref SqsQueueOldestMessageThresholdSeconds, 0]]
+  HasDefaultPermissionBoundaryArn: !Not [!Equals [!Ref DefaultPermissionBoundaryArn, ""]]
+  HasVpcFlowLogEnabled: !And [!Condition EmbeddedVpc, !Not [!Equals [!Ref VpcFlowLogFormat, ""]]]
   HasVpcFlowLogFormat: !Not [!Equals [!Ref VpcFlowLogFormat, "default"]]
-  HasVpcFlowLogS3BucketArn:
-    !And [
-      !Condition HasVpcFlowLogEnabled,
-      !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]],
-    ]
+  HasVpcFlowLogS3BucketArn: !And [!Condition HasVpcFlowLogEnabled, !Not [!Equals [!Ref VpcFlowLogS3BucketArn, ""]]]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
   CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
@@ -655,8 +558,7 @@ Resources:
       DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
       LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref VPCFlowLogGroup
-      LogFormat:
-        !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
+      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
 
   VPCFlowLogGroup:
     Type: AWS::Logs::LogGroup
@@ -673,21 +575,15 @@ Resources:
       TrafficType: ALL
       LogDestinationType: s3
       LogDestination: !Ref VpcFlowLogS3BucketArn
-      LogFormat:
-        !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
+      LogFormat: !If [HasVpcFlowLogFormat, !Ref VpcFlowLogFormat, !Ref "AWS::NoValue"]
 
   VPCFlowLogRole:
     Type: AWS::IAM::Role
     Condition: HasVpcFlowLogEnabled
     Properties:
-      PermissionsBoundary:
-        !If [
-          HasDefaultPermissionBoundaryArn,
-          !Ref DefaultPermissionBoundaryArn,
-          !Ref "AWS::NoValue",
-        ]
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
@@ -696,7 +592,7 @@ Resources:
       Policies:
         - PolicyName: allow-flow-logs
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
@@ -767,12 +663,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet2RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        !If [
-          PrivateSubnetIsMultiAZ,
-          !Ref PrivateSubnetGateway2,
-          !Ref PrivateSubnetGateway1,
-        ]
+      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway2, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet2RouteIPv6:
     Condition: HasPrivateSubnet
@@ -788,12 +679,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        !If [
-          PrivateSubnetIsMultiAZ,
-          !Ref PrivateSubnetGateway3,
-          !Ref PrivateSubnetGateway1,
-        ]
+      NatGatewayId: !If [PrivateSubnetIsMultiAZ, !Ref PrivateSubnetGateway3, !Ref PrivateSubnetGateway1]
 
   PrivateSubnet3RouteIPv6:
     Condition: HasPrivateSubnet
@@ -837,24 +723,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          8,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [8, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 0
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -870,24 +752,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          9,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [9, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 1
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -903,24 +781,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          10,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: false
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 2
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -938,41 +812,13 @@ Resources:
         - !GetAtt ElasticIP1.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [
-            CreateElasticIP2,
-            !GetAtt ElasticIP2.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP3,
-            !GetAtt ElasticIP3.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP4,
-            !GetAtt ElasticIP4.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP5,
-            !GetAtt ElasticIP5.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP6,
-            !GetAtt ElasticIP6.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP7,
-            !GetAtt ElasticIP7.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP8,
-            !GetAtt ElasticIP8.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
+        - !If [CreateElasticIP2, !GetAtt ElasticIP2.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3, !GetAtt ElasticIP3.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4, !GetAtt ElasticIP4.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5, !GetAtt ElasticIP5.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6, !GetAtt ElasticIP6.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7, !GetAtt ElasticIP7.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8, !GetAtt ElasticIP8.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: !Ref CostAllocationTag
@@ -991,41 +837,13 @@ Resources:
         - !GetAtt ElasticIP1B.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [
-            CreateElasticIP2B,
-            !GetAtt ElasticIP2B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP3B,
-            !GetAtt ElasticIP3B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP4B,
-            !GetAtt ElasticIP4B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP5B,
-            !GetAtt ElasticIP5B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP6B,
-            !GetAtt ElasticIP6B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP7B,
-            !GetAtt ElasticIP7B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP8B,
-            !GetAtt ElasticIP8B.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
+        - !If [CreateElasticIP2B, !GetAtt ElasticIP2B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3B, !GetAtt ElasticIP3B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4B, !GetAtt ElasticIP4B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5B, !GetAtt ElasticIP5B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6B, !GetAtt ElasticIP6B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7B, !GetAtt ElasticIP7B.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8B, !GetAtt ElasticIP8B.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet2
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1044,41 +862,13 @@ Resources:
         - !GetAtt ElasticIP1C.AllocationId
         - !Ref AWS::NoValue
       SecondaryAllocationIds:
-        - !If [
-            CreateElasticIP2C,
-            !GetAtt ElasticIP2C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP3C,
-            !GetAtt ElasticIP3C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP4C,
-            !GetAtt ElasticIP4C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP5C,
-            !GetAtt ElasticIP5C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP6C,
-            !GetAtt ElasticIP6C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP7C,
-            !GetAtt ElasticIP7C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
-        - !If [
-            CreateElasticIP8C,
-            !GetAtt ElasticIP8C.AllocationId,
-            !Ref "AWS::NoValue",
-          ]
+        - !If [CreateElasticIP2C, !GetAtt ElasticIP2C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP3C, !GetAtt ElasticIP3C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP4C, !GetAtt ElasticIP4C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP5C, !GetAtt ElasticIP5C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP6C, !GetAtt ElasticIP6C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP7C, !GetAtt ElasticIP7C.AllocationId, !Ref "AWS::NoValue"]
+        - !If [CreateElasticIP8C, !GetAtt ElasticIP8C.AllocationId, !Ref "AWS::NoValue"]
       SubnetId: !Ref PublicSubnet3
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1407,24 +1197,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [0, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          0,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [0, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 3
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1440,24 +1226,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [1, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          1,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [1, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 4
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1473,24 +1255,20 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select [2, !GetAZs ""]
-      CidrBlock:
-        !Select [
-          2,
-          !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits],
-        ]
+      CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, !Ref VpcCidrSubnetBits]]
       MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
       AssignIpv6AddressOnCreation: true
       Ipv6CidrBlock:
         Fn::Select:
           - 5
           - Fn::Cidr:
-              - Fn::Select:
-                  - 0
-                  - Fn::GetAtt:
-                      - VPC
-                      - Ipv6CidrBlocks
-              - 256
-              - 64
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1793,20 +1571,17 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring: !If
-          - ECInstanceDetailedMonitoringEnabled
-          - Enabled: true
-          - Ref: AWS::NoValue
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
-              - !If [
-                  ExternalVpc,
-                  !Ref ExternalVpcSecurityGroupId,
-                  !Ref SecurityGroup,
-                ]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1825,18 +1600,8 @@ Resources:
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsExport:
-                !If [
-                  CreateEfs,
-                  !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"',
-                  "",
-                ]
-              EphemeralRegistryExport:
-                !If [
-                  CreateEphemeralRegistry,
-                  !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"',
-                  "",
-                ]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1877,20 +1642,17 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring: !If
-          - ECInstanceDetailedMonitoringEnabled
-          - Enabled: true
-          - Ref: AWS::NoValue
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             AssociatePublicIpAddress: !If [IsPrivateOnly, false, true]
             Groups:
-              - !If [
-                  ExternalVpc,
-                  !Ref ExternalVpcSecurityGroupId,
-                  !Ref SecurityGroup,
-                ]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -1935,18 +1697,8 @@ Resources:
               <persist>true</persist>
             - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsEnvVar:
-                !If [
-                  CreateEfs,
-                  !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"',
-                  "",
-                ]
-              EphemeralRegistryExport:
-                !If [
-                  CreateEphemeralRegistry,
-                  !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"',
-                  "",
-                ]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
@@ -1987,20 +1739,17 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring: !If
-          - ECInstanceDetailedMonitoringEnabled
-          - Enabled: true
-          - Ref: AWS::NoValue
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             AssociatePublicIpAddress: false
             Groups:
-              - !If [
-                  ExternalVpc,
-                  !Ref ExternalVpcSecurityGroupId,
-                  !Ref SecurityGroup,
-                ]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -2019,18 +1768,8 @@ Resources:
               chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
             - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsExport:
-                !If [
-                  CreateEfs,
-                  !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"',
-                  "",
-                ]
-              EphemeralRegistryExport:
-                !If [
-                  CreateEphemeralRegistry,
-                  !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"',
-                  "",
-                ]
+              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsPrivate:
     Type: AWS::EC2::LaunchTemplate
@@ -2071,20 +1810,17 @@ Resources:
           HttpTokens: required
           HttpPutResponseHopLimit: 2
         InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring: !If
-          - ECInstanceDetailedMonitoringEnabled
-          - Enabled: true
-          - Ref: AWS::NoValue
+        Monitoring:
+          !If
+            - ECInstanceDetailedMonitoringEnabled
+            - Enabled: true
+            - Ref: AWS::NoValue
         NetworkInterfaces:
           - DeleteOnTermination: true
             DeviceIndex: "0"
             AssociatePublicIpAddress: false
             Groups:
-              - !If [
-                  ExternalVpc,
-                  !Ref ExternalVpcSecurityGroupId,
-                  !Ref SecurityGroup,
-                ]
+              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
@@ -2129,18 +1865,8 @@ Resources:
               <persist>true</persist>
             - AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsEnvVar:
-                !If [
-                  CreateEfs,
-                  !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"',
-                  "",
-                ]
-              EphemeralRegistryExport:
-                !If [
-                  CreateEphemeralRegistry,
-                  !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"',
-                  "",
-                ]
+              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -2409,23 +2135,12 @@ Resources:
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        !If [
-          HasDefaultPermissionBoundaryArn,
-          !Ref DefaultPermissionBoundaryArn,
-          !Ref "AWS::NoValue",
-        ]
-      ManagedPolicyArns: !If
-        - CustomPolicyProvided
-        - [
-            !Ref EC2InstanceCustomPolicy,
-            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-            "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess",
-          ]
-        - [
-            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-            "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess",
-          ]
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
+      ManagedPolicyArns:
+        !If 
+          - CustomPolicyProvided
+          - [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
+          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -2477,8 +2192,8 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:CreateLogGroup"
                 Resource:
-                  - !Sub "${EC2InstanceLogGroup.Arn}"
-                  - !Sub "${EC2InstanceLogGroup.Arn}:*"
+                - !Sub "${EC2InstanceLogGroup.Arn}"
+                - !Sub "${EC2InstanceLogGroup.Arn}:*"
         - PolicyName: PutMetrics
           PolicyDocument:
             Version: "2012-10-17"
@@ -2668,12 +2383,7 @@ Resources:
   SchedulerInvokeRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        !If [
-          HasDefaultPermissionBoundaryArn,
-          !Ref DefaultPermissionBoundaryArn,
-          !Ref "AWS::NoValue",
-        ]
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -2715,12 +2425,7 @@ Resources:
       NetworkConfiguration:
         EgressConfiguration:
           EgressType: !If [PrivateEnabled, VPC, DEFAULT]
-          VpcConnectorArn:
-            !If [
-              PrivateEnabled,
-              !Ref RunsOnServiceVpcConnector,
-              !Ref "AWS::NoValue",
-            ]
+          VpcConnectorArn: !If [PrivateEnabled, !Ref RunsOnServiceVpcConnector, !Ref "AWS::NoValue"]
         IngressConfiguration:
           IsPubliclyAccessible: true
         IpAddressType: IPV4
@@ -2767,12 +2472,7 @@ Resources:
               - Name: RUNS_ON_VPC_ID
                 Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
               - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value:
-                  !If [
-                    ExternalVpc,
-                    !Ref ExternalVpcSecurityGroupId,
-                    !Ref SecurityGroup,
-                  ]
+                Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
               - Name: RUNS_ON_INSTANCE_PROFILE_ARN
                 Value: !GetAtt EC2InstanceProfile.Arn
               - Name: RUNS_ON_INSTANCE_ROLE_NAME
@@ -2790,41 +2490,13 @@ Resources:
               - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
                 Value: !Ref AppGithubApiStrategy
               - Name: RUNS_ON_PUBLIC_SUBNET_IDS
-                Value:
-                  !If [
-                    ExternalVpc,
-                    !If [
-                      ExternalVpcPublicSubnetIdsProvided,
-                      !Join [",", !Ref ExternalVpcPublicSubnetIds],
-                      "-",
-                    ],
-                    !Join [
-                      ",",
-                      [
-                        !Ref PublicSubnet1,
-                        !Ref PublicSubnet2,
-                        !Ref PublicSubnet3,
-                      ],
-                    ],
-                  ]
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+                  !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
               - Name: RUNS_ON_PRIVATE_SUBNET_IDS
-                Value:
-                  !If [
-                    ExternalVpc,
-                    !If [
-                      ExternalVpcPrivateSubnetIdsProvided,
-                      !Join [",", !Ref ExternalVpcPrivateSubnetIds],
-                      "-",
-                    ],
-                    !Join [
-                      ",",
-                      [
-                        !Ref PrivateSubnet1,
-                        !Ref PrivateSubnet2,
-                        !Ref PrivateSubnet3,
-                      ],
-                    ],
-                  ]
+                Value: !If [ExternalVpc,
+                  !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+                  !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
               - Name: RUNS_ON_PRIVATE
                 Value: !Ref Private
               - Name: RUNS_ON_DEFAULT_ADMINS
@@ -2834,41 +2506,13 @@ Resources:
               - Name: RUNS_ON_RUNNER_CONFIG_AUTO_EXTENDS_FROM
                 Value: !Ref RunnerConfigAutoExtendsFrom
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
-                Value:
-                  !Join [
-                    ":",
-                    [
-                      !Ref EC2FleetLaunchTemplateLinuxDefault,
-                      !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber,
-                    ],
-                  ]
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
-                Value:
-                  !Join [
-                    ":",
-                    [
-                      !Ref EC2FleetLaunchTemplateWindowsDefault,
-                      !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber,
-                    ],
-                  ]
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_PRIVATE
-                Value:
-                  !Join [
-                    ":",
-                    [
-                      !Ref EC2FleetLaunchTemplateLinuxPrivate,
-                      !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber,
-                    ],
-                  ]
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
               - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_PRIVATE
-                Value:
-                  !Join [
-                    ":",
-                    [
-                      !Ref EC2FleetLaunchTemplateWindowsPrivate,
-                      !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber,
-                    ],
-                  ]
+                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
               - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
                 Value: !Ref RunnerDefaultDiskSize
               - Name: RUNS_ON_RUNNER_DEFAULT_VOLUME_THROUGHPUT
@@ -2916,18 +2560,8 @@ Resources:
     Type: AWS::AppRunner::VpcConnector
     Condition: PrivateEnabled
     Properties:
-      Subnets:
-        !If [
-          ExternalVpc,
-          !Ref ExternalVpcPrivateSubnetIds,
-          [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3],
-        ]
-      SecurityGroups:
-        !If [
-          ExternalVpc,
-          [!Ref ExternalVpcSecurityGroupId],
-          [!Ref SecurityGroup],
-        ]
+      Subnets: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+      SecurityGroups: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
       Tags: # note: adding a new tag requires a full replacement
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2935,12 +2569,7 @@ Resources:
   RunsOnServiceRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary:
-        !If [
-          HasDefaultPermissionBoundaryArn,
-          !Ref DefaultPermissionBoundaryArn,
-          !Ref "AWS::NoValue",
-        ]
+      PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
         !If [AppCustomPolicyProvided, [!Ref AppCustomPolicy], []]
       Tags:
@@ -3350,8 +2979,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueueDeadLetter.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueDeadLetter.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3371,8 +3000,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueue.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueue.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3392,8 +3021,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueuePool.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueuePool.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3413,8 +3042,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueueHousekeeping.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueHousekeeping.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3434,8 +3063,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueueTermination.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueTermination.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3455,8 +3084,8 @@ Resources:
       Namespace: AWS/SQS
       MetricName: ApproximateAgeOfOldestMessage
       Dimensions:
-        - Name: QueueName
-          Value: !GetAtt RunsOnQueueEvents.QueueName
+      - Name: QueueName
+        Value: !GetAtt RunsOnQueueEvents.QueueName
       Statistic: Maximum
       Period: 60
       EvaluationPeriods: 1
@@ -3581,10 +3210,10 @@ Resources:
                   if state_lower == "alarm":
                       return "danger"
                   elif state_lower == "ok":
-                      return "good"
+                      return "good" 
                   elif state_lower == "insufficient_data":
                       return "warning"
-
+              
               if subject:
                   subject_lower = subject.lower()
                   if any(word in subject_lower for word in ["error", "fail", "❌"]):
@@ -3593,7 +3222,7 @@ Resources:
                       return "warning"
                   elif any(word in subject_lower for word in ["success", "✅", "complete"]):
                       return "good"
-
+              
               return "#439FE0"  # Default blue color
 
           def create_attachment(title, text, color, stack_name):
@@ -3609,7 +3238,7 @@ Resources:
           def handler(event, context):
               webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
               stack_name = os.environ.get("STACK_NAME", "RunsOn")
-
+              
               if not webhook_url:
                   logger.error("Slack webhook URL is not configured")
                   return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
@@ -3751,34 +3380,14 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VPCId"
   RunsOnPublicSubnetIds:
     Description: Public subnet IDs
-    Value:
-      !If [
-        ExternalVpc,
-        !If [
-          ExternalVpcPublicSubnetIdsProvided,
-          !Join [",", !Ref ExternalVpcPublicSubnetIds],
-          "-",
-        ],
-        !Join [
-          ",",
-          [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3],
-        ],
-      ]
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+      !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
   RunsOnPrivateSubnetIds:
     Description: Private subnet IDs
-    Value:
-      !If [
-        ExternalVpc,
-        !If [
-          ExternalVpcPrivateSubnetIdsProvided,
-          !Join [",", !Ref ExternalVpcPrivateSubnetIds],
-          "-",
-        ],
-        !Join [
-          ",",
-          [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3],
-        ],
-      ]
+    Value: !If [ExternalVpc,
+      !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+      !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
   RunsOnVpcCidrBlock:
     Description: VPC CIDR block
     Value: !If [EmbeddedVpc, !Ref VpcCidrBlock, "-"]
@@ -3828,8 +3437,7 @@ Outputs:
     Value: !Ref Private
   RunsOnSecurityGroupId:
     Description: Security group for runners
-    Value:
-      !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
+    Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
   RunsOnBucketConfig:
     Description: S3 bucket for storing configuration
     Value: !Ref S3Bucket
@@ -3841,44 +3449,16 @@ Outputs:
     Value: !Ref AlertTopic
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
-    Value:
-      !Join [
-        ":",
-        [
-          !Ref EC2FleetLaunchTemplateLinuxDefault,
-          !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber,
-        ],
-      ]
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsDefault:
     Description: Default Windows launch template for the RunsOn service
-    Value:
-      !Join [
-        ":",
-        [
-          !Ref EC2FleetLaunchTemplateWindowsDefault,
-          !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber,
-        ],
-      ]
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
   RunsOnLaunchTemplateLinuxPrivate:
     Description: Private Linux launch template for the RunsOn service
-    Value:
-      !Join [
-        ":",
-        [
-          !Ref EC2FleetLaunchTemplateLinuxPrivate,
-          !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber,
-        ],
-      ]
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
   RunsOnLaunchTemplateWindowsPrivate:
     Description: Private Windows launch template for the RunsOn service
-    Value:
-      !Join [
-        ":",
-        [
-          !Ref EC2FleetLaunchTemplateWindowsPrivate,
-          !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber,
-        ],
-      ]
+    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
