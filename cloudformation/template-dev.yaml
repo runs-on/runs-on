@@ -352,7 +352,7 @@ Parameters:
     Type: Number
     Default: 400
     MinValue: 125
-    MaxValue: 1000
+    MaxValue: 2000
     Description: Default volume throughput in MiB/s (the higher the throughput, the faster the boot times, but costs more).
 
   RunnerLargeDiskSize:
@@ -365,7 +365,7 @@ Parameters:
     Type: Number
     Default: 750
     MinValue: 125
-    MaxValue: 1000
+    MaxValue: 2000
     Description: "DEPRECATED: Volume throughput in MiB/s for legacy `disk=large` runners. The disk= label is deprecated in favor of the volume= label (e.g. volume=80gb:gp3:750mbs:4000iops)."
 
   RunnerCustomTags:
