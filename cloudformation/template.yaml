@@ -59,6 +59,7 @@ Metadata:
           - ECInstanceDetailedMonitoring
           - Ec2LogRetentionInDays
           - SqsQueueOldestMessageThresholdSeconds
+          - SqsKmsKeyId
       - Label:
           default: "Integrations [optional]"
         Parameters:
@@ -422,6 +423,11 @@ Parameters:
     Default: 0
     Description: Trigger an alarm per sqs queue if the oldest message in that queue is older than this time in seconds. Leave as 0 to disable SQS alarms.
 
+  SqsKmsKeyId:
+    Type: String
+    Default: ""
+    Description: "Optional KMS key ID or ARN for SQS queue encryption. If blank, uses SQS-managed encryption (SSE-SQS). If provided, uses customer-managed KMS key (SSE-KMS) for enhanced control and audit trails."
+
   EnableDashboard:
     Type: String
     Default: "false"
@@ -522,6 +528,7 @@ Conditions:
   CreateEfs: !And [!Condition EmbeddedVpc, !Equals [!Ref EnableEfs, "true"]] # EFS only supported for Embedded VPC for now
   CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
   CreateDashboard: !Equals [!Ref EnableDashboard, "true"]
+  HasSqsKmsKey: !Not [!Equals [!Ref SqsKmsKeyId, ""]]
 
 Resources:
   VPC:
@@ -2748,6 +2755,8 @@ Resources:
     Properties:
       FifoQueue: true
       MessageRetentionPeriod: 259200 # 3 days
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
 
   RunsOnQueueDeadLetterPolicy:
     Type: AWS::SQS::QueuePolicy
@@ -2773,6 +2782,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120 # AWS recommends 6 times the max processing time
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueDeadLetter.Arn
         maxReceiveCount: 5
@@ -2787,6 +2798,8 @@ Resources:
     Properties:
       MessageRetentionPeriod: 259200 # 3 days
       FifoQueue: true
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2801,6 +2814,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120 # 2 minutes for scheduling
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueJobsDeadLetter.Arn
         maxReceiveCount: 3
@@ -2815,6 +2830,8 @@ Resources:
     Properties:
       MessageRetentionPeriod: 259200 # 3 days
       FifoQueue: true
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2829,6 +2846,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120 # GitHub API calls + S3 uploads
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueueGithubDeadLetter.Arn
         maxReceiveCount: 3
@@ -2842,6 +2861,8 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 259200 # 3 days
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2854,6 +2875,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 10
       VisibilityTimeout: 120
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt RunsOnQueuePoolDeadLetter.Arn
         maxReceiveCount: 5
@@ -2869,6 +2892,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 120
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2881,6 +2906,8 @@ Resources:
       MessageRetentionPeriod: 86400 # 24h
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 120
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2893,6 +2920,8 @@ Resources:
       MessageRetentionPeriod: 7200
       ReceiveMessageWaitTimeSeconds: 20
       VisibilityTimeout: 120
+      KmsMasterKeyId: !If [HasSqsKmsKey, !Ref SqsKmsKeyId, !Ref "AWS::NoValue"]
+      SqsManagedSseEnabled: !If [HasSqsKmsKey, !Ref "AWS::NoValue", true]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
