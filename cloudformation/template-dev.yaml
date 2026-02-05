@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: CloudFormation stack for https://runs-on.com
+Transform: AWS::LanguageExtensions
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -474,7 +475,7 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: dev
-      ImageTag: dev@sha256:ff128895da29af4218a7c30ad894a69c1ddb856f003236568d1146ed4cb04d91
+      ImageTag: dev@sha256:92d00b093b51ae34ccef2c4451c9acd48acc9f27594b096d90b7d86d780efbf1
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2450,110 +2451,12 @@ Resources:
           ImageConfiguration:
             Port: 8080
             RuntimeEnvironmentVariables:
-              - Name: RUNS_ON_AWS_ACCOUNT_ID
-                Value: !Ref AWS::AccountId
               - Name: RUNS_ON_ENV
                 Value: !Ref Environment
-              - Name: RUNS_ON_COST_ALLOCATION_TAG
-                Value: !Ref CostAllocationTag
               - Name: RUNS_ON_STACK_NAME
                 Value: !Ref AWS::StackName
-              - Name: RUNS_ON_LOCKS_TABLE
-                Value: !Ref RunsOnLocksTable
-              - Name: RUNS_ON_WORKFLOW_JOBS_TABLE
-                Value: !Ref RunsOnWorkflowJobsTable
-              - Name: RUNS_ON_NETWORKING_STACK
-                Value: !Ref NetworkingStack
-              - Name: RUNS_ON_GITHUB_ORGANIZATION
-                Value: !Ref GithubOrganization
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
-              - Name: RUNS_ON_BOOTSTRAP_TAG
-                Value: !FindInMap [App, Tags, BootstrapTag]
-              - Name: RUNS_ON_LICENSE_KEY
-                Value: !Ref LicenseKey
-              - Name: RUNS_ON_RUNNER_CUSTOM_TAGS
-                Value: !Join [",", !Ref RunnerCustomTags]
-              - Name: RUNS_ON_BUCKET_CONFIG
-                Value: !Ref S3Bucket
-              - Name: RUNS_ON_BUCKET_CACHE
-                Value: !Ref S3BucketCache
-              - Name: RUNS_ON_VPC_ID
-                Value: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
-              - Name: RUNS_ON_SECURITY_GROUP_ID
-                Value: !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
-              - Name: RUNS_ON_INSTANCE_PROFILE_ARN
-                Value: !GetAtt EC2InstanceProfile.Arn
-              - Name: RUNS_ON_INSTANCE_ROLE_NAME
-                Value: !Ref EC2InstanceRole
-              - Name: RUNS_ON_TOPIC_ARN
-                Value: !Ref AlertTopic
-              - Name: RUNS_ON_REGION
-                Value: !Ref AWS::Region
-              - Name: RUNS_ON_SSH_ALLOWED
-                Value: !Ref SSHAllowed
-              - Name: RUNS_ON_APP_EC2_QUEUE_SIZE
-                Value: !Ref AppEc2QueueSize
-              - Name: RUNS_ON_EBS_ENCRYPTION_KEY
-                Value: !If [HasEncryptEbs, "alias/aws/ebs", ""]
-              - Name: RUNS_ON_APP_GITHUB_API_STRATEGY
-                Value: !Ref AppGithubApiStrategy
-              - Name: RUNS_ON_PUBLIC_SUBNET_IDS
-                Value: !If [ExternalVpc,
-                  !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
-                  !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
-              - Name: RUNS_ON_PRIVATE_SUBNET_IDS
-                Value: !If [ExternalVpc,
-                  !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
-                  !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
-              - Name: RUNS_ON_PRIVATE
-                Value: !Ref Private
-              - Name: RUNS_ON_DEFAULT_ADMINS
-                Value: !Ref DefaultAdmins
-              - Name: RUNS_ON_RUNNER_MAX_RUNTIME
-                Value: !Ref RunnerMaxRuntime
-              - Name: RUNS_ON_RUNNER_CONFIG_AUTO_EXTENDS_FROM
-                Value: !Ref RunnerConfigAutoExtendsFrom
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_DEFAULT
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_DEFAULT
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_LINUX_PRIVATE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
-              - Name: RUNS_ON_LAUNCH_TEMPLATE_WINDOWS_PRIVATE
-                Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
-              - Name: RUNS_ON_RUNNER_DEFAULT_DISK_SIZE
-                Value: !Ref RunnerDefaultDiskSize
-              - Name: RUNS_ON_RUNNER_DEFAULT_VOLUME_THROUGHPUT
-                Value: !Ref RunnerDefaultVolumeThroughput
-              - Name: RUNS_ON_RUNNER_LARGE_DISK_SIZE
-                Value: !Ref RunnerLargeDiskSize
-              - Name: RUNS_ON_RUNNER_LARGE_VOLUME_THROUGHPUT
-                Value: !Ref RunnerLargeVolumeThroughput
-              - Name: RUNS_ON_QUEUE
-                Value: !Ref RunsOnQueue
-              - Name: RUNS_ON_QUEUE_POOL
-                Value: !Ref RunsOnQueuePool
-              - Name: RUNS_ON_QUEUE_HOUSEKEEPING
-                Value: !Ref RunsOnQueueHousekeeping
-              - Name: RUNS_ON_QUEUE_TERMINATION
-                Value: !Ref RunsOnQueueTermination
-              - Name: RUNS_ON_QUEUE_EVENTS
-                Value: !Ref RunsOnQueueEvents
-              - Name: RUNS_ON_QUEUE_JOBS
-                Value: !Ref RunsOnQueueJobs
-              - Name: RUNS_ON_QUEUE_GITHUB
-                Value: !Ref RunsOnQueueGithub
-              - Name: RUNS_ON_COST_REPORTS_ENABLED
-                Value: !Ref CostReportsEnabled
-              - Name: RUNS_ON_SERVER_PASSWORD
-                Value: !Ref ServerPassword
-              - Name: RUNS_ON_SPOT_CIRCUIT_BREAKER
-                Value: !Ref SpotCircuitBreaker
-              - Name: RUNS_ON_INTEGRATION_STEP_SECURITY_API_KEY
-                Value: !Ref IntegrationStepSecurityApiKey
-              - Name: RUNS_ON_GITHUB_ENTERPRISE_URL
-                Value: !Ref GithubEnterpriseUrl
               - Name: OTEL_EXPORTER_OTLP_ENDPOINT
                 Value: !Ref OtelExporterEndpoint
               - Name: OTEL_EXPORTER_OTLP_HEADERS
@@ -2562,10 +2465,86 @@ Resources:
                 Value: !Ref OtelExporterTemporality
               - Name: RUNS_ON_LOGGER_LEVEL
                 Value: !Ref LoggerLevel
+            RuntimeEnvironmentSecrets:
+              - Name: RUNS_ON_STACK_CONFIG_JSON
+                Value: !Ref RunsOnStackConfigSecret
           ImageIdentifier: !Sub
             - "${AppRegistry}:${ImageTag}"
             - ImageTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
+
+  RunsOnStackConfigSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub
+        - "/runs-on/${AWS::StackName}/config/${ImageDigest}"
+        - ImageDigest: !Select
+            - 1
+            - !Split
+              - ":"
+              - !Select
+                - 1
+                - !Split
+                  - "@"
+                  - !FindInMap [App, Tags, ImageTag]
+      SecretString:
+        Fn::ToJsonString:
+          AwsAccountId: !Ref AWS::AccountId
+          Private: !Ref Private
+          GithubOrganization: !Ref GithubOrganization
+          Region: !Ref AWS::Region
+          LicenseKey: !Ref LicenseKey
+          BucketConfig: !Ref S3Bucket
+          BucketCache: !Ref S3BucketCache
+          InstanceRoleName: !Ref EC2InstanceRole
+          SshAllowed: !Ref SSHAllowed
+          LaunchTemplateLinuxDefault: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
+          LaunchTemplateWindowsDefault: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+          LaunchTemplateLinuxPrivate: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+          LaunchTemplateWindowsPrivate: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
+          PublicSubnetIds: !If [ExternalVpc,
+            !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+            !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+          PrivateSubnetIds: !If [ExternalVpc,
+            !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+            !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+          DefaultAdmins: !Ref DefaultAdmins
+          TopicArn: !Ref AlertTopic
+          RunnerDefaultDiskSize: !Ref RunnerDefaultDiskSize
+          RunnerDefaultVolumeThroughput: !Ref RunnerDefaultVolumeThroughput
+          RunnerLargeDiskSize: !Ref RunnerLargeDiskSize
+          RunnerLargeVolumeThroughput: !Ref RunnerLargeVolumeThroughput
+          RunnerCustomTags: !Join [",", !Ref RunnerCustomTags]
+          RunnerMaxRuntime: !Ref RunnerMaxRuntime
+          RunnerConfigAutoExtendsFrom: !Ref RunnerConfigAutoExtendsFrom
+          EbsEncryptionKey: !If [HasEncryptEbs, "alias/aws/ebs", ""]
+          AppGithubApiStrategy: !Ref AppGithubApiStrategy
+          AppTag: !FindInMap [App, Tags, AppTag]
+          StackName: !Ref AWS::StackName
+          AppEc2QueueSize: !Ref AppEc2QueueSize
+          Queue: !Ref RunsOnQueue
+          QueueJobs: !Ref RunsOnQueueJobs
+          QueueGithub: !Ref RunsOnQueueGithub
+          QueuePool: !Ref RunsOnQueuePool
+          QueueHousekeeping: !Ref RunsOnQueueHousekeeping
+          QueueTermination: !Ref RunsOnQueueTermination
+          QueueEvents: !Ref RunsOnQueueEvents
+          LocksTable: !Ref RunsOnLocksTable
+          WorkflowJobsTable: !Ref RunsOnWorkflowJobsTable
+          CostReportsEnabled: !Ref CostReportsEnabled
+          ServerPassword: !Ref ServerPassword
+          CostAllocationTag: !Ref CostAllocationTag
+          SpotCircuitBreaker: !Ref SpotCircuitBreaker
+          IntegrationStepSecurityApiKey: !Ref IntegrationStepSecurityApiKey
+          GithubEnterpriseUrl: !Ref GithubEnterpriseUrl
+          VPCId: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
+          NetworkingStack: !Ref NetworkingStack
+          Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
 
   RunsOnServiceVpcConnector:
     Type: AWS::AppRunner::VpcConnector
@@ -2653,6 +2632,11 @@ Resources:
                   - ssm:DeleteParameters
                 Resource:
                   - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref RunsOnStackConfigSecret
               - Effect: Allow
                 Action:
                   - ec2:TerminateInstances
