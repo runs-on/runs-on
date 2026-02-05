@@ -31,9 +31,38 @@ cleanup() {
 }
 trap cleanup EXIT
 
-aws apprunner describe-service --service-arn "$SERVICE_ARN" \
-    --query 'Service.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables' \
-    --output json | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > "$env_tmp"
+image_config_json="$(aws apprunner describe-service --service-arn "$SERVICE_ARN" \
+    --query 'Service.SourceConfiguration.ImageRepository.ImageConfiguration' \
+    --output json)"
+
+# Environment variables (supports both array and map shapes)
+printf '%s\n' "$image_config_json" \
+    | jq -r '
+        def vars_to_lines:
+          if type=="object" then to_entries | map("\(.key)=\(.value)") | .[]
+          elif type=="array" then map("\(.Name)=\(.Value)") | .[]
+          else empty end;
+        .RuntimeEnvironmentVariables // empty | vars_to_lines
+      ' > "$env_tmp"
+
+# Runtime environment secrets (fetch actual secret values; supports both array and map shapes)
+while IFS=$'\t' read -r name arn; do
+    [ -z "$name" ] && continue
+    secret_value="$(aws secretsmanager get-secret-value --secret-id "$arn" --query 'SecretString' --output text 2>/dev/null || true)"
+    if [ -z "$secret_value" ] || [ "$secret_value" = "None" ] || [ "$secret_value" = "null" ]; then
+        secret_value="$(aws secretsmanager get-secret-value --secret-id "$arn" --query 'SecretBinary' --output text 2>/dev/null | base64 --decode)"
+    fi
+    printf '%s=%s\n' "$name" "$secret_value" >> "$env_tmp"
+done < <(
+    printf '%s\n' "$image_config_json" \
+        | jq -r '
+            def secrets_to_pairs:
+              if type=="object" then to_entries | map("\(.key)\t\(.value)") | .[]
+              elif type=="array" then map("\(.Name)\t\(.Value)") | .[]
+              else empty end;
+            .RuntimeEnvironmentSecrets // empty | secrets_to_pairs
+          '
+)
 
 if [ -f "$OUTPUT_FILE" ]; then
     if grep -qF "$BEGIN_MARKER" "$OUTPUT_FILE" && grep -qF "$END_MARKER" "$OUTPUT_FILE"; then
