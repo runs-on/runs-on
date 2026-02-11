@@ -11,14 +11,14 @@
   "go.lintFlags": [],
   "go.toolsManagement.autoUpdate": false,
   "go.alternateTools": {
-    "go": "${env:HOME}/.local/share/mise/installs/go/1.24/bin/go",
-    "gofmt": "${env:HOME}/.local/share/mise/installs/go/1.24/bin/gofmt",
+    "go": "${env:HOME}/.local/share/mise/installs/go/1.26/bin/go",
+    "gofmt": "${env:HOME}/.local/share/mise/installs/go/1.26/bin/gofmt",
     "golangci-lint": "/opt/homebrew/bin/golangci-lint"
   },
-  "go.goroot": "${env:HOME}/.local/share/mise/installs/go/1.24",
+  "go.goroot": "${env:HOME}/.local/share/mise/installs/go/1.26",
   "go.toolsEnvVars": {
     "GO111MODULE": "on",
-    "PATH": "${env:HOME}/.local/share/mise/installs/go/1.24/bin:/opt/homebrew/bin:${env:PATH}"
+    "PATH": "${env:HOME}/.local/share/mise/installs/go/1.26/bin:/opt/homebrew/bin:${env:PATH}"
   },
   "gopls": {
     "build.directoryFilters": [
