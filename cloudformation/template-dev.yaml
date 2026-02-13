@@ -475,7 +475,7 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: dev
-      ImageTag: dev@sha256:92d00b093b51ae34ccef2c4451c9acd48acc9f27594b096d90b7d86d780efbf1
+      ImageTag: dev@sha256:8cc63f3010f1c150684072b3cdd36385eac2aec1622f76cc7432a3717b25eea8
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
