@@ -2539,6 +2539,7 @@ Resources:
           GithubEnterpriseUrl: !Ref GithubEnterpriseUrl
           VPCId: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
           NetworkingStack: !Ref NetworkingStack
+          InfrastructureSource: "cloudformation"
           Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
       Tags:
         - Key: !Ref CostAllocationTag
