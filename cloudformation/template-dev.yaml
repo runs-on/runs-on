@@ -470,6 +470,14 @@ Parameters:
     NoEcho: true
     Description: "Password for the /metrics Prometheus endpoint. If blank, the endpoint will be disabled. Access with username 'admin' and this password via HTTP Basic Auth."
 
+  MaintenanceMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable maintenance mode (disables queue processing and leader election)"
+
 Mappings:
   App:
     Tags:
@@ -2457,6 +2465,8 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
+              - Name: RUNS_ON_MAINTENANCE_MODE
+                Value: !Ref MaintenanceMode
               - Name: OTEL_EXPORTER_OTLP_ENDPOINT
                 Value: !Ref OtelExporterEndpoint
               - Name: OTEL_EXPORTER_OTLP_HEADERS
