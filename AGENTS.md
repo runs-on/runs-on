@@ -106,6 +106,7 @@ RunsOn supports warm pools of pre-provisioned instances for faster job starts. K
 **IMPORTANT**: All CloudFormation template edits must be made in `cloudformation/template-dev.yaml`. Never edit `template.yaml` directly.
 
 - Edit `cloudformation/template-dev.yaml` for all infrastructure changes
+- Do **not** use YAML anchors/aliases (`&` / `*`) in CloudFormation templates. CloudFormation rejects them with `YAML aliases are not allowed`.
 - Run `make dev` to update `template-dev.yaml` with dev tags and upload to S3
 - Run `make stage` to create `template.yaml` from `template-dev.yaml` with version tags and upload to S3 at its versioned URL.
 

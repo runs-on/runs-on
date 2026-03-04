@@ -85,7 +85,6 @@ Metadata:
           - AppDebug
           - LoggerLevel
           - S3CacheExpirationInDays
-
 Parameters:
   GithubOrganization:
     Type: String
@@ -1603,23 +1602,94 @@ Resources:
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
+            # BEGIN AUTO-GENERATED LINUX USER-DATA
             - |
               #!/bin/bash -ex
               date -u
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
-              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              export RUNS_ON_DEBUG="${AppDebug}"
-              export AWS_REGION="${AWS::Region}"
-              ${EfsExport}
-              ${EphemeralRegistryExport}
-              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
-            - AppTag: !FindInMap [App, Tags, AppTag]
+              mkdir -p /etc/runs-on /runs-on
+              cat <<EOF > /etc/runs-on/bootstrap.env
+              RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
+              RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              RUNS_ON_DEBUG="${AppDebug}"
+              AWS_REGION="${Region}"
+              RUNS_ON_S3_BUCKET_CACHE="${S3BucketCache}"
+              RUNS_ON_BOOTSTRAP_TAG="${BootstrapTag}"
+              RUNS_ON_APP_TAG="${AppTag}"
+              RUNS_ON_AGENT_S3_BUCKET="${AgentS3Bucket}"
+              ${EfsEnvLine}
+              ${EphemeralRegistryEnvLine}
+              EOF
+              
+              cat <<'EOF' > /usr/local/bin/runs-on-bootstrap.sh
+              #!/bin/bash
+              set -euo pipefail
+              
+              set -a
+              . /etc/runs-on/bootstrap.env
+              set +a
+              
+              BOOTSTRAP_BIN="/usr/local/bin/runs-on-bootstrap-$RUNS_ON_BOOTSTRAP_TAG"
+              AGENT_BINARY_URL="$RUNS_ON_AGENT_S3_BUCKET/agent-linux-$(uname -m)"
+              
+              _the_end() {
+                exit_code=$?
+                if [ "$exit_code" -ne 0 ] ; then
+                  echo "Bootstrap exited with error ($exit_code). Sleeping 60s for troubleshooting/log shipping..."
+                  sleep 60
+                fi
+              
+                if [ "$RUNS_ON_DEBUG" != "true" ] ; then
+                  echo "THE END"
+                  shutdown -h now
+                fi
+              }
+              trap _the_end EXIT INT TERM
+              
+              if [ ! -f "$BOOTSTRAP_BIN" ]; then
+                time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
+                  "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
+                  -o "$BOOTSTRAP_BIN"
+              fi
+              
+              chmod a+x "$BOOTSTRAP_BIN"
+              "$BOOTSTRAP_BIN" --debug="$RUNS_ON_DEBUG" --exec --post-exec shutdown "$AGENT_BINARY_URL"
+              EOF
+              chmod a+x /usr/local/bin/runs-on-bootstrap.sh
+              
+              cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
+              [Unit]
+              Description=RunsOn Bootstrap Service
+              After=network-online.target local-fs.target
+              Wants=network-online.target
+              Requires=local-fs.target
+              
+              [Service]
+              Type=simple
+              ExecStart=/bin/bash -lc '/usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log'
+              StandardOutput=journal+console
+              StandardError=journal+console
+              Restart=no
+              
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+              
+              systemctl daemon-reload
+              if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
+                echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
+                /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
+              fi
+            # END AUTO-GENERATED LINUX USER-DATA
+            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
+              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
+              AppDebug: !Ref AppDebug
+              Region: !Ref AWS::Region
+              S3BucketCache: !Ref S3BucketCache
+              AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
+              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
+              EfsEnvLine: !If [CreateEfs, !Sub 'RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub 'RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsDefault:
     Type: AWS::EC2::LaunchTemplate
@@ -1674,15 +1744,17 @@ Resources:
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
+            # BEGIN AUTO-GENERATED WINDOWS USER-DATA
             - |
               <powershell>
               Get-Date -format s
               $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
-              $env:AWS_REGION = "${AWS::Region}"
-              ${EfsEnvVar}
-              ${EphemeralRegistryExport}
+              $env:AWS_REGION = "${Region}"
+              $env:RUNS_ON_S3_BUCKET_CACHE = "${S3BucketCache}"
+              ${EfsEnvLine}
+              ${EphemeralRegistryEnvLine}
               # Enable and start SSM Agent service
               try {
                 Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
@@ -1692,6 +1764,8 @@ Resources:
                 Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
               }
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
+              $bootstrapFailed = $false
+              $bootstrapExitCode = 0
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
@@ -1702,21 +1776,41 @@ Resources:
                   Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                $bootstrapExitCode = $LASTEXITCODE
+                if ($bootstrapExitCode -ne 0) {
+                  throw "Bootstrap exited with code $bootstrapExitCode"
+                }
+              } catch {
+                $bootstrapFailed = $true
+                if ($bootstrapExitCode -eq 0) {
+                  $bootstrapExitCode = 1
+                }
+                Write-Output "Bootstrap failed: $($_.Exception.Message)"
+                throw
               } finally {
+                if ($bootstrapFailed) {
+                  Write-Output "Bootstrap failed (exit code $bootstrapExitCode). Sleeping 60s for troubleshooting/log shipping..."
+                  Start-Sleep -Seconds 60
+                }
                 if ($env:RUNS_ON_DEBUG -ne "true") {
-                  Write-Output "user-data: Going to shut down in a few seconds..."
-                  Start-Sleep -Seconds 180
+                  Write-Output "user-data: Going to shut down now..."
                   Stop-Computer -Force
                 }
               }
               </powershell>
               <detach>true</detach>
               <persist>true</persist>
-            - AppTag: !FindInMap [App, Tags, AppTag]
+            # END AUTO-GENERATED WINDOWS USER-DATA
+            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
+              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
+              AppDebug: !Ref AppDebug
+              Region: !Ref AWS::Region
+              S3BucketCache: !Ref S3BucketCache
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
+              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
+              EfsEnvLine: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
@@ -1771,23 +1865,94 @@ Resources:
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
+            # BEGIN AUTO-GENERATED LINUX USER-DATA
             - |
               #!/bin/bash -ex
               date -u
-              BOOTSTRAP_BIN=/usr/local/bin/runs-on-bootstrap-${BootstrapTag}
-              export RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
-              export RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              export RUNS_ON_DEBUG="${AppDebug}"
-              export AWS_REGION="${AWS::Region}"
-              ${EfsExport}
-              ${EphemeralRegistryExport}
-              _the_end() { if [ "$RUNS_ON_DEBUG" != "true" ] ; then echo "THE END" ; sleep 180 ; shutdown -h now ; fi ; } ; trap _the_end EXIT INT TERM
-              test -f $BOOTSTRAP_BIN || time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-linux-$(uname -m) -o $BOOTSTRAP_BIN
-              chmod a+x $BOOTSTRAP_BIN && $BOOTSTRAP_BIN --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-linux-$(uname -m)"
-            - AppTag: !FindInMap [App, Tags, AppTag]
+              mkdir -p /etc/runs-on /runs-on
+              cat <<EOF > /etc/runs-on/bootstrap.env
+              RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
+              RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
+              RUNS_ON_DEBUG="${AppDebug}"
+              AWS_REGION="${Region}"
+              RUNS_ON_S3_BUCKET_CACHE="${S3BucketCache}"
+              RUNS_ON_BOOTSTRAP_TAG="${BootstrapTag}"
+              RUNS_ON_APP_TAG="${AppTag}"
+              RUNS_ON_AGENT_S3_BUCKET="${AgentS3Bucket}"
+              ${EfsEnvLine}
+              ${EphemeralRegistryEnvLine}
+              EOF
+              
+              cat <<'EOF' > /usr/local/bin/runs-on-bootstrap.sh
+              #!/bin/bash
+              set -euo pipefail
+              
+              set -a
+              . /etc/runs-on/bootstrap.env
+              set +a
+              
+              BOOTSTRAP_BIN="/usr/local/bin/runs-on-bootstrap-$RUNS_ON_BOOTSTRAP_TAG"
+              AGENT_BINARY_URL="$RUNS_ON_AGENT_S3_BUCKET/agent-linux-$(uname -m)"
+              
+              _the_end() {
+                exit_code=$?
+                if [ "$exit_code" -ne 0 ] ; then
+                  echo "Bootstrap exited with error ($exit_code). Sleeping 60s for troubleshooting/log shipping..."
+                  sleep 60
+                fi
+              
+                if [ "$RUNS_ON_DEBUG" != "true" ] ; then
+                  echo "THE END"
+                  shutdown -h now
+                fi
+              }
+              trap _the_end EXIT INT TERM
+              
+              if [ ! -f "$BOOTSTRAP_BIN" ]; then
+                time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
+                  "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
+                  -o "$BOOTSTRAP_BIN"
+              fi
+              
+              chmod a+x "$BOOTSTRAP_BIN"
+              "$BOOTSTRAP_BIN" --debug="$RUNS_ON_DEBUG" --exec --post-exec shutdown "$AGENT_BINARY_URL"
+              EOF
+              chmod a+x /usr/local/bin/runs-on-bootstrap.sh
+              
+              cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
+              [Unit]
+              Description=RunsOn Bootstrap Service
+              After=network-online.target local-fs.target
+              Wants=network-online.target
+              Requires=local-fs.target
+              
+              [Service]
+              Type=simple
+              ExecStart=/bin/bash -lc '/usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log'
+              StandardOutput=journal+console
+              StandardError=journal+console
+              Restart=no
+              
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+              
+              systemctl daemon-reload
+              if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
+                echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
+                /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
+              fi
+            # END AUTO-GENERATED LINUX USER-DATA
+            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
+              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
+              AppDebug: !Ref AppDebug
+              Region: !Ref AWS::Region
+              S3BucketCache: !Ref S3BucketCache
+              AppTag: !FindInMap [App, Tags, AppTag]
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsExport: !If [CreateEfs, !Sub 'export RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub 'export RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
+              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
+              EfsEnvLine: !If [CreateEfs, !Sub 'RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
+              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub 'RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
 
   EC2FleetLaunchTemplateWindowsPrivate:
     Type: AWS::EC2::LaunchTemplate
@@ -1842,15 +2007,17 @@ Resources:
             Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
         UserData:
           Fn::Base64: !Sub
+            # BEGIN AUTO-GENERATED WINDOWS USER-DATA
             - |
               <powershell>
               Get-Date -format s
               $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
               $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
               $env:RUNS_ON_DEBUG = "${AppDebug}"
-              $env:AWS_REGION = "${AWS::Region}"
-              ${EfsEnvVar}
-              ${EphemeralRegistryExport}
+              $env:AWS_REGION = "${Region}"
+              $env:RUNS_ON_S3_BUCKET_CACHE = "${S3BucketCache}"
+              ${EfsEnvLine}
+              ${EphemeralRegistryEnvLine}
               # Enable and start SSM Agent service
               try {
                 Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
@@ -1860,6 +2027,8 @@ Resources:
                 Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
               }
               $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
+              $bootstrapFailed = $false
+              $bootstrapExitCode = 0
               try {
                 New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
                 if (-not (Test-Path $bootstrapBin)) {
@@ -1870,21 +2039,41 @@ Resources:
                   Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
                 Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "s3://${S3Bucket}/agents/${AppTag}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
+                $bootstrapExitCode = $LASTEXITCODE
+                if ($bootstrapExitCode -ne 0) {
+                  throw "Bootstrap exited with code $bootstrapExitCode"
+                }
+              } catch {
+                $bootstrapFailed = $true
+                if ($bootstrapExitCode -eq 0) {
+                  $bootstrapExitCode = 1
+                }
+                Write-Output "Bootstrap failed: $($_.Exception.Message)"
+                throw
               } finally {
+                if ($bootstrapFailed) {
+                  Write-Output "Bootstrap failed (exit code $bootstrapExitCode). Sleeping 60s for troubleshooting/log shipping..."
+                  Start-Sleep -Seconds 60
+                }
                 if ($env:RUNS_ON_DEBUG -ne "true") {
-                  Write-Output "user-data: Going to shut down in a few seconds..."
-                  Start-Sleep -Seconds 180
+                  Write-Output "user-data: Going to shut down now..."
                   Stop-Computer -Force
                 }
               }
               </powershell>
               <detach>true</detach>
               <persist>true</persist>
-            - AppTag: !FindInMap [App, Tags, AppTag]
+            # END AUTO-GENERATED WINDOWS USER-DATA
+            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
+              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
+              AppDebug: !Ref AppDebug
+              Region: !Ref AWS::Region
+              S3BucketCache: !Ref S3BucketCache
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              EfsEnvVar: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryExport: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
+              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
+              EfsEnvLine: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
+              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
