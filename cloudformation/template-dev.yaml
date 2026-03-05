@@ -482,7 +482,7 @@ Mappings:
     Tags:
       BootstrapTag: v0.1.12
       AppTag: dev
-      ImageTag: dev@sha256:8cc63f3010f1c150684072b3cdd36385eac2aec1622f76cc7432a3717b25eea8
+      ImageTag: dev@sha256:9b16807b77f418cc3d5c9e5906f12f2b47d60e7c4170c981a421f8d2fb149c1e
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1674,7 +1674,6 @@ Resources:
               WantedBy=multi-user.target
               EOF
               
-              systemctl daemon-reload
               if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
                 echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
                 /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
@@ -1937,7 +1936,6 @@ Resources:
               WantedBy=multi-user.target
               EOF
               
-              systemctl daemon-reload
               if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
                 echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
                 /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
