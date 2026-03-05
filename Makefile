@@ -1,4 +1,4 @@
-VERSION=v2.11.0
+VERSION=v2.12.0
 VERSION_DEV=dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
@@ -98,8 +98,12 @@ dev: login copyright
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
+confirm-version:
+	@echo "About to stage VERSION=$(VERSION)"
+	@echo -n "Continue? [y/N] " && read ans && [ "$$ans" = "y" ] || (echo "Aborted." && exit 1)
+
 # generates a stage release
-stage: build-push
+stage: confirm-version build-push
 	./scripts/sync-user-data-templates.sh
 	./scripts/prepare-template.sh stage $(REGISTRY):$(VERSION) $(VERSION)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/template-$(VERSION).yaml
