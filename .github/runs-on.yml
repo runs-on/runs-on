@@ -33,6 +33,13 @@ runners:
       #!/bin/bash
       echo "preinstall ko"
       exit 1
+  prerun-ok:
+    image: ubuntu22-full-x64
+    cpu: 2
+    family: [c7]
+    prerun: |
+      #!/bin/bash
+      echo "prerun ok" | tee /tmp/prerun-output
   gofast:
     cpu: 4
     family: [c7a, c7i]

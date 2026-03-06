@@ -1,4 +1,4 @@
-VERSION=v2.11.0
+VERSION=v2.12.0
 VERSION_DEV=dev
 MAJOR_VERSION=v2
 FEATURE_BRANCH=feature/$(VERSION)
@@ -88,6 +88,7 @@ bootstrap-tag:
 # generates a dev release
 dev: login copyright
 	./scripts/set-bootstrap-tag.sh
+	./scripts/sync-user-data-templates.sh
 	docker buildx build --push \
 		--platform linux/amd64 \
 		-t $(REGISTRY):$(VERSION_DEV) .
@@ -97,8 +98,13 @@ dev: login copyright
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template-dev.yaml s3://runs-on/cloudformation/
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template-dev.yaml s3://runs-on/cloudformation/dashboard/
 
+confirm-version:
+	@echo "About to stage VERSION=$(VERSION)"
+	@echo -n "Continue? [y/N] " && read ans && [ "$$ans" = "y" ] || (echo "Aborted." && exit 1)
+
 # generates a stage release
-stage: build-push
+stage: confirm-version build-push
+	./scripts/sync-user-data-templates.sh
 	./scripts/prepare-template.sh stage $(REGISTRY):$(VERSION) $(VERSION)
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/template.yaml s3://runs-on/cloudformation/template-$(VERSION).yaml
 	AWS_PROFILE=runs-on-releaser aws s3 cp ./cloudformation/dashboard/template.yaml s3://runs-on/cloudformation/dashboard/template-$(VERSION).yaml
@@ -156,6 +162,7 @@ dev-install:
 		--stack-name $(STACK_DEV_NAME) \
 		--s3-bucket $(STACK_DEV_NAME)-tmp-$(USER) \
 		--parameter-overrides file://cloudformation/parameters/$(STACK_DEV_NAME).json
+	make dev-env
 
 dev-dashboard:
 	@echo "Finding dashboard nested stack for $(STACK_DEV_NAME)..."

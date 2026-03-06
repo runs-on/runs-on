@@ -8,3 +8,4 @@ tmp/
 /cloudformation/parameters/*.json
 node_modules
 app.json
+/_local

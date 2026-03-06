@@ -61,6 +61,15 @@ jobs:
           jq -e '.[] | select(.key=="team" and .value=="Team1")' tags.json
           jq -e '.[] | select(.key=="tag2" and .value=="value2")' tags.json
 
+  test-prerun-ok:
+    runs-on: runs-on,runner=prerun-ok,env=${{ inputs.env || 'production' }}
+    steps:
+      - run: echo Hello world
+      - name: Ensure prerun ran
+        run: |
+          test -f /tmp/prerun-output
+          grep -Fx "prerun ok" /tmp/prerun-output
+
   test-efs-tmpfs:
     runs-on: runs-on,family=r7,ram=16,extras=efs+tmpfs+s3-cache,env=${{ inputs.env || 'production' }}
     steps:
@@ -221,7 +230,7 @@ jobs:
           - runs-on,runner=2cpu-linux-x64
           - runs-on,runner=4cpu-linux-x64
           - runs-on,runner=gofast,image=custom
-          - runs-on,runner=gofast,cpu=1,disk=large
+          - runs-on,runner=gofast,cpu=2,volume=80gb:gp3:750mbs:4000iops
           - runs-on,runner=1cpu-linux-arm64,image=ubuntu22-base-arm64
           - runs-on,runner=2cpu-linux-arm64,image=ubuntu22-full-arm64
           - runs-on,runner=2cpu-linux-arm64,ssh=false
