@@ -12,7 +12,7 @@ VERSION_CUSTOM=$(VERSION)-custom-$(shell date -u +%Y%m%d%H%M%S)
 include .env.local
 
 .PHONY: check tag login build-push dev stage promote cf \
-	dev-env dev-run dev-roc dev-install dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
+	dev-env dev-env-tf dev-run dev-run-tf dev-roc dev-install dev-install-tf dev-destroy-tf dev-logs dev-logs-instances dev-show dev-get-job dev-get-instance dev-warns \
 	test-install-embedded test-install-external test-install-manual test-smoke test-show test-delete \
 	stage-install stage-show stage-logs \
 	demo-install demo-logs \
@@ -123,6 +123,7 @@ networking-stack:
 		--template-file ./cloudformation/networking/public-private-managed-nat.yaml
 
 STACK_DEV_NAME=runs-on-dev
+STACK_TF_DEV_NAME=runs-on-tf-dev
 
 dev-env:
 	AWS_PROFILE=$(STACK_DEV_NAME) ./scripts/fetch-apprunner-env.sh $(STACK_DEV_NAME) server/.env
@@ -170,6 +171,22 @@ dev-dashboard:
 		--template-file ./cloudformation/dashboard/template-dev.yaml \
 		--capabilities CAPABILITY_IAM \
 		--stack-name $$DASHBOARD_STACK_NAME
+
+dev-install-tf:
+	cd terraform/examples/basic && AWS_PROFILE=$(STACK_DEV_NAME) terraform init && AWS_PROFILE=$(STACK_DEV_NAME) terraform apply
+
+dev-destroy-tf:
+	cd terraform/examples/basic && AWS_PROFILE=$(STACK_DEV_NAME) terraform destroy
+
+dev-env-tf:
+	AWS_PROFILE=$(STACK_DEV_NAME) ./scripts/fetch-apprunner-env.sh $(STACK_TF_DEV_NAME) server/.env.tf
+
+dev-run-tf:
+	cd server && make lint && $(if $(filter fast,$(MAKECMDGOALS)),,make agent &&) rm -rf tmp && mkdir -p tmp && \
+		set -a && . ./.env.tf && set +a && \
+		$(if $(filter fast,$(MAKECMDGOALS)),export RUNS_ON_REFRESH_AGENTS=false &&) \
+		AWS_PROFILE=$(STACK_TF_DEV_NAME)-local RUNS_ON_STACK_NAME=$(STACK_TF_DEV_NAME) RUNS_ON_LOCAL_DEV=true \
+		go run cmd/server/main.go 2>&1 | tee tmp/dev.log
 
 dev-smoke:
 	./scripts/trigger-and-wait-for-github-workflow.sh runs-on/test dev-smoke.yml master
