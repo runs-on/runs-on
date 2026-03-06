@@ -38,9 +38,10 @@ image_config_json="$(aws apprunner describe-service --service-arn "$SERVICE_ARN"
 # Environment variables (supports both array and map shapes)
 printf '%s\n' "$image_config_json" \
     | jq -r '
+        def quote: gsub("'"'"'"; "'"'"'\\'"'"''"'"'");
         def vars_to_lines:
-          if type=="object" then to_entries | map("\(.key)=\(.value)") | .[]
-          elif type=="array" then map("\(.Name)=\(.Value)") | .[]
+          if type=="object" then to_entries | map("\(.key)='"'"'\(.value | quote)'"'"'") | .[]
+          elif type=="array" then map("\(.Name)='"'"'\(.Value | quote)'"'"'") | .[]
           else empty end;
         .RuntimeEnvironmentVariables // empty | vars_to_lines
       ' > "$env_tmp"
@@ -52,7 +53,8 @@ while IFS=$'\t' read -r name arn; do
     if [ -z "$secret_value" ] || [ "$secret_value" = "None" ] || [ "$secret_value" = "null" ]; then
         secret_value="$(aws secretsmanager get-secret-value --secret-id "$arn" --query 'SecretBinary' --output text 2>/dev/null | base64 --decode)"
     fi
-    printf '%s=%s\n' "$name" "$secret_value" >> "$env_tmp"
+    escaped_value="$(printf '%s' "$secret_value" | sed "s/'/'\\\\''/g")"
+    printf "%s='%s'\n" "$name" "$escaped_value" >> "$env_tmp"
 done < <(
     printf '%s\n' "$image_config_json" \
         | jq -r '
