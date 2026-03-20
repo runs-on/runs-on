@@ -1,37 +1,86 @@
-# RunsOn Monorepo
+# RunsOn: 10x cheaper GitHub Actions runners.
 
-This repository is the private source of truth for RunsOn.
+**Remove 90% of your CI spend**. **Faster** builds. **Fully self-hosted**, in your AWS account.
 
-It contains the code and release assets for:
+RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any size, at the cheapest price available. Think of it as your best alternative to the Actions Runner Controller (ARC) for Kubernetes, the Philips terraform module, or any of the third party providers that require deep access to your code and secrets.
 
-- `cmd/server` and `pkg/server`: the RunsOn server
-- `cmd/agent` and `pkg/agent`: the RunsOn agent
-- `cmd/` and `pkg/`: shared Go code and binaries, including `releasectl`
-- `cloudformation/`: CloudFormation install and release assets
-- `terraform/`: Terraform module source
-- `cli/`: the RunsOn CLI
-- `config/`: the RunsOn config validator and schema tooling
+- ✅ **Faster**. Raw [CPU performance is up 30%](https://runs-on.com/benchmarks/github-actions-runners/) compared to official runners.
+- ✅ **Cheaper**. Between [7x to 15x cheaper](https://runs-on.com/pricing/) than official runners.
+- ✅ **Scalable**. Handles bursts of multiple hundred jobs at once without issue. No concurrency limit.
+- ✅ **Full workflow compatibility** with official GitHub runners. Use the [compatible public AMIs for AWS](https://github.com/runs-on/runner-images-for-aws), or [bring your own images](https://runs-on.com/features/byoi/).
+- ✅ **Low maintenance**. A single [CloudFormation template](./cloudformation/template.yaml) with all the resources, 1-click install, 1-click upgrades. Costs $1.5/month.
 
-Downstream repositories such as `runs-on/runs-on`, `runs-on/terraform-aws-runs-on`, `runs-on/cli`, and `runs-on/config` are treated as mirror outputs from this repository.
+## Features
 
-## Licensing
+- [Linux](https://runs-on.com/runners/linux) (x64 and arm64), [Windows](https://runs-on.com/runners/windows), [GPU](https://runs-on.com/runners/gpu) support.
+- **Ephemeral VM** for each job.
+- [Spot pricing](https://runs-on.com/features/spot-instances/), with **automatic fallback** to on-demand.
+- Multi-AZ, and multi-[environments](https://runs-on.com/configuration/environments/) support.
+- **Fast and unlimited GitHub Actions cache**: An [integrated cache backend](https://runs-on.com/caching/s3-cache-for-github-actions/) based on a local S3 bucket allows for up to 5x faster and unlimited cache for dependencies and docker layers.
+- **SSH access** into the runners. Can be [restricted to a specific CIDR range](https://runs-on.com/networking/ssh/).
+- **Static IPs** for your runners, if you [enabled private networking](https://runs-on.com/networking/static-ips/).
+- Automatic [**cost and alert reporting**](https://runs-on.com/features/cost-and-alert-report/).
+- NEW ✨ [Magic Caching](https://runs-on.com/caching/magic-cache/)
 
-This repository is mixed-license.
+## Installation
 
-- Server and agent code in `cmd/server`, `cmd/agent`, `pkg/server`, and `pkg/agent` remain proprietary and are governed by the Sponsorship license.
-- `cloudformation/`, `terraform/`, `cli/`, and `config/` keep their own mirrored license files.
+RunsOn is available in 10 AWS regions. Use the [installation guide](https://runs-on.com/guides/install/) to set it up in 10 minutes.
 
-See `LICENSING.md` for the current license inventory and mirroring rules.
+## Usage
 
-## Release and Mirroring
+Before:
 
-- Canonical version: `VERSION`
-- Release configuration: `release/config.yaml`
-- Mirror/export rules: `release/mirrors.yaml`
-- License inventory: `release/licenses.yaml`
+```yaml
+  runs-on: ubuntu-latest
+```
 
-`releasectl` owns shared environment workflows, release artifact rendering, deployment orchestration, tracked mirror publishing, and downstream CLI release publication. `devctl` is reserved for local development startup.
+After:
+```yaml
+  runs-on: "runs-on=${{ github.run_id }}/runner=2cpu-linux-x64"
+```
 
-## Contribution Flow
+Learn more about all the supported [job labels](https://runs-on.com/configuration/job-labels) for dynamic runner configuration.
 
-This is a private repository. External contributions are still welcome subject to the Contributor License Agreement in `docs/contributors/CLA-v1.md`. See `docs/CONTRIBUTING.md` for details.
+## Screenshots
+
+**NodeJS CI build across different providers:**
+
+<img width="618" alt="RunsOn is the fastest and cheapest GitHub Actions self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/70ff5114-c843-4834-a872-1255ed10624e">
+
+**Stable queue time with thousands of jobs and bursts:**
+
+![queue-time](https://github.com/runs-on/runs-on/assets/6114/0a0a5a0c-5bc2-49e5-bc31-49c62a265490)
+
+**Much faster caches:**
+
+![Faster and unlimited GitHUb Actions cache](https://github.com/runs-on/runs-on/assets/6114/27dfbb5e-c979-4892-8b2c-8fe6024c0d41)
+
+**Metadata and timings about your job:**
+
+<img width="642" alt="Metadata and timings about your job" src="https://github.com/runs-on/runs-on/assets/6114/7ff224a1-e5e2-47a1-8131-5cacd6d69b65">
+
+## License
+
+The code for the main repository (the current one, with the CloudFormation templates to deploy the AWS resources) is MIT licensed.
+
+However the code in the `server/` submodule is proprietary and requires a license to use it:
+
+- A non-profit (free) license is available if you are using RunsOn in a non-profit organization (this must apply to any parent organization as well), or if you are using it for personal use.
+- For commercial organizations, you can evaluate for free for 15 days with a Demo license, after which you must buy a commercial license: 300€/year for the standard license, 1500€/year for the sponsorship license.
+
+RunsOn has an insane ROI for commercial organizations. The monthly license cost is usually recouped within a few days. To learn more about licenses, visit the dedicated [pricing](https://runs-on.com/pricing/) page.
+
+Access to the following code is public:
+
+- CloudFormation template
+- Public compatible AMIs for AWS
+
+With a Sponsorship license, you get full access to the entire source code of RunsOn: server + agent (contained in the `server/` submodule), and can even modify it for internal use.
+
+## Author
+
+This software is built by [Cyril Rohr](https://cyrilrohr.com) - [Twitter/X](https://twitter.com/crohr).
+
+Learn more about the [history](https://runs-on.com/about/) of the project.
+
+If you like DevOps tooling, you might also be interested in my other projects [PullPreview.com](https://pullpreview.com) and [Packager.io](https://packager.io).
