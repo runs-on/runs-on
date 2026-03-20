@@ -1,0 +1,3 @@
+# Keep local CloudFormation parameter files out of git.
+parameters/*
+!parameters/.gitkeep

@@ -1619,61 +1619,61 @@ Resources:
               ${EfsEnvLine}
               ${EphemeralRegistryEnvLine}
               EOF
-              
+
               cat <<'EOF' > /usr/local/bin/runs-on-bootstrap.sh
               #!/bin/bash
               set -euo pipefail
-              
+
               set -a
               . /etc/runs-on/bootstrap.env
               set +a
-              
+
               BOOTSTRAP_BIN="/usr/local/bin/runs-on-bootstrap-$RUNS_ON_BOOTSTRAP_TAG"
               AGENT_BINARY_URL="$RUNS_ON_AGENT_S3_BUCKET/agent-linux-$(uname -m)"
-              
+
               _the_end() {
                 exit_code=$?
                 if [ "$exit_code" -ne 0 ] ; then
                   echo "Bootstrap exited with error ($exit_code). Sleeping 60s for troubleshooting/log shipping..."
                   sleep 60
                 fi
-              
+
                 if [ "$RUNS_ON_DEBUG" != "true" ] ; then
                   echo "THE END"
                   shutdown -h now
                 fi
               }
               trap _the_end EXIT INT TERM
-              
+
               if [ ! -f "$BOOTSTRAP_BIN" ]; then
                 time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
                   "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
                   -o "$BOOTSTRAP_BIN"
               fi
-              
+
               chmod a+x "$BOOTSTRAP_BIN"
               "$BOOTSTRAP_BIN" --debug="$RUNS_ON_DEBUG" --exec --post-exec shutdown "$AGENT_BINARY_URL"
               EOF
               chmod a+x /usr/local/bin/runs-on-bootstrap.sh
-              
+
               cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
               [Unit]
               Description=RunsOn Bootstrap Service
               After=network-online.target local-fs.target
               Wants=network-online.target
               Requires=local-fs.target
-              
+
               [Service]
               Type=simple
               ExecStart=/bin/bash -lc '/usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log'
               StandardOutput=journal+console
               StandardError=journal+console
               Restart=no
-              
+
               [Install]
               WantedBy=multi-user.target
               EOF
-              
+
               if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
                 echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
                 /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
@@ -1881,61 +1881,61 @@ Resources:
               ${EfsEnvLine}
               ${EphemeralRegistryEnvLine}
               EOF
-              
+
               cat <<'EOF' > /usr/local/bin/runs-on-bootstrap.sh
               #!/bin/bash
               set -euo pipefail
-              
+
               set -a
               . /etc/runs-on/bootstrap.env
               set +a
-              
+
               BOOTSTRAP_BIN="/usr/local/bin/runs-on-bootstrap-$RUNS_ON_BOOTSTRAP_TAG"
               AGENT_BINARY_URL="$RUNS_ON_AGENT_S3_BUCKET/agent-linux-$(uname -m)"
-              
+
               _the_end() {
                 exit_code=$?
                 if [ "$exit_code" -ne 0 ] ; then
                   echo "Bootstrap exited with error ($exit_code). Sleeping 60s for troubleshooting/log shipping..."
                   sleep 60
                 fi
-              
+
                 if [ "$RUNS_ON_DEBUG" != "true" ] ; then
                   echo "THE END"
                   shutdown -h now
                 fi
               }
               trap _the_end EXIT INT TERM
-              
+
               if [ ! -f "$BOOTSTRAP_BIN" ]; then
                 time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
                   "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
                   -o "$BOOTSTRAP_BIN"
               fi
-              
+
               chmod a+x "$BOOTSTRAP_BIN"
               "$BOOTSTRAP_BIN" --debug="$RUNS_ON_DEBUG" --exec --post-exec shutdown "$AGENT_BINARY_URL"
               EOF
               chmod a+x /usr/local/bin/runs-on-bootstrap.sh
-              
+
               cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
               [Unit]
               Description=RunsOn Bootstrap Service
               After=network-online.target local-fs.target
               Wants=network-online.target
               Requires=local-fs.target
-              
+
               [Service]
               Type=simple
               ExecStart=/bin/bash -lc '/usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log'
               StandardOutput=journal+console
               StandardError=journal+console
               Restart=no
-              
+
               [Install]
               WantedBy=multi-user.target
               EOF
-              
+
               if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
                 echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
                 /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
@@ -2342,7 +2342,7 @@ Resources:
     Properties:
       PermissionsBoundary: !If [HasDefaultPermissionBoundaryArn, !Ref DefaultPermissionBoundaryArn, !Ref "AWS::NoValue"]
       ManagedPolicyArns:
-        !If 
+        !If
           - CustomPolicyProvided
           - [!Ref EC2InstanceCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
           - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
@@ -2619,6 +2619,8 @@ Resources:
 
   RunsOnService:
     Type: AWS::AppRunner::Service
+    DependsOn:
+      - RunsOnServiceDelay
     Properties:
       Tags:
         - Key: !Ref CostAllocationTag
@@ -2652,6 +2654,16 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
+              # Force App Runner updates to wait for embedded private routes before switching to VPC egress.
+              - Name: RUNS_ON_NETWORK_READY
+                Value: !If
+                  - HasPrivateSubnet
+                  - !Join
+                    - ","
+                    - - !Ref PrivateSubnet1Route
+                      - !Ref PrivateSubnet2Route
+                      - !Ref PrivateSubnet3Route
+                  - !If [PrivateEnabled, external, public]
               - Name: RUNS_ON_MAINTENANCE_MODE
                 Value: !Ref MaintenanceMode
               - Name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -2754,6 +2766,176 @@ Resources:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
 
+  RunsOnServiceDelayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: DescribeLaunchTemplates
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeLaunchTemplateVersions
+                Resource: "*"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  RunsOnServiceDelayFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt RunsOnServiceDelayRole.Arn
+      Timeout: 300
+      MemorySize: 128
+      VpcConfig: !If
+        - PrivateEnabled
+        - SecurityGroupIds: !If [ExternalVpc, [!Ref ExternalVpcSecurityGroupId], [!Ref SecurityGroup]]
+          SubnetIds: !If [ExternalVpc, !Ref ExternalVpcPrivateSubnetIds, [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+        - !Ref "AWS::NoValue"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import logging
+          import time
+          import urllib.request
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def respond(event, context, status, data=None, reason=None):
+              body = {
+                  "Status": status,
+                  "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                  "PhysicalResourceId": event.get("PhysicalResourceId") or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": data or {},
+              }
+              request = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=json.dumps(body).encode("utf-8"),
+                  method="PUT",
+                  headers={"content-type": ""},
+              )
+              urllib.request.urlopen(request)
+
+          def handler(event, context):
+              logger.info("Received event: %s", json.dumps(event))
+              try:
+                  properties = event.get("ResourceProperties", {})
+                  delay_seconds = int(properties.get("DelaySeconds", "0"))
+                  max_wait_seconds = int(properties.get("MaxWaitSeconds", "0"))
+                  poll_interval_seconds = int(properties.get("PollIntervalSeconds", "5"))
+                  launch_template_ids = [
+                      value for value in properties.get("LaunchTemplateIds", "").split(",") if value
+                  ]
+
+                  if event["RequestType"] in ("Create", "Update") and delay_seconds > 0:
+                      logger.info("Sleeping for %s seconds before signaling success", delay_seconds)
+                      time.sleep(delay_seconds)
+
+                  if (
+                      event["RequestType"] in ("Create", "Update")
+                      and max_wait_seconds > 0
+                      and launch_template_ids
+                  ):
+                      ec2 = boto3.client("ec2")
+                      deadline = time.monotonic() + max_wait_seconds
+                      attempts = 0
+                      last_error = None
+
+                      while time.monotonic() < deadline:
+                          attempts += 1
+                          try:
+                              ec2.describe_launch_template_versions(
+                                  LaunchTemplateId=launch_template_ids[0],
+                                  Versions=["$Latest"],
+                              )
+                              logger.info(
+                                  "Connectivity probe succeeded after %s attempts", attempts
+                              )
+                              respond(
+                                  event,
+                                  context,
+                                  "SUCCESS",
+                                  {
+                                      "DelaySeconds": delay_seconds,
+                                      "MaxWaitSeconds": max_wait_seconds,
+                                      "Attempts": attempts,
+                                  },
+                              )
+                              return
+                          except Exception as exc:
+                              last_error = str(exc)
+                              logger.warning(
+                                  "Connectivity probe attempt %s failed: %s", attempts, last_error
+                              )
+                              time.sleep(poll_interval_seconds)
+
+                      raise TimeoutError(
+                          f"EC2 connectivity probe did not succeed within {max_wait_seconds}s: {last_error}"
+                      )
+
+                  respond(
+                      event,
+                      context,
+                      "SUCCESS",
+                      {
+                          "DelaySeconds": delay_seconds,
+                          "MaxWaitSeconds": max_wait_seconds,
+                          "Attempts": 0,
+                      },
+                  )
+              except Exception as exc:
+                  logger.exception("Delay custom resource failed")
+                  respond(event, context, "FAILED", reason=str(exc))
+
+  # Give newly-created private networking resources a brief stabilization window
+  # before App Runner rolls the service onto VPC egress.
+  RunsOnServiceDelay:
+    Type: Custom::RunsOnServiceDelay
+    Properties:
+      ServiceToken: !GetAtt RunsOnServiceDelayFunction.Arn
+      DelaySeconds: !If [PrivateEnabled, 30, 0]
+      MaxWaitSeconds: !If [PrivateEnabled, 180, 0]
+      PollIntervalSeconds: 5
+      LaunchTemplateIds: !Join
+        - ","
+        - - !Ref EC2FleetLaunchTemplateLinuxPrivate
+          - !Ref EC2FleetLaunchTemplateWindowsPrivate
+      Trigger: !If
+        - HasPrivateSubnet
+        - !Join
+          - ","
+          - - !Ref RunsOnServiceVpcConnector
+            - !Ref PrivateSubnetGateway1
+            - !Ref PrivateSubnet1Route
+            - !Ref PrivateSubnet2Route
+            - !Ref PrivateSubnet3Route
+        - !If [PrivateEnabled, !Ref RunsOnServiceVpcConnector, "public"]
+
   RunsOnServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -2782,6 +2964,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:DescribeImages
+                  - ec2:DescribeInstanceTypes
                   - ec2:DescribeInstances
                   - ec2:DescribeSubnets
                   - ec2:DescribeRouteTables
@@ -3403,10 +3586,10 @@ Resources:
                   if state_lower == "alarm":
                       return "danger"
                   elif state_lower == "ok":
-                      return "good" 
+                      return "good"
                   elif state_lower == "insufficient_data":
                       return "warning"
-              
+
               if subject:
                   subject_lower = subject.lower()
                   if any(word in subject_lower for word in ["error", "fail", "❌"]):
@@ -3415,7 +3598,7 @@ Resources:
                       return "warning"
                   elif any(word in subject_lower for word in ["success", "✅", "complete"]):
                       return "good"
-              
+
               return "#439FE0"  # Default blue color
 
           def create_attachment(title, text, color, stack_name):
@@ -3431,7 +3614,7 @@ Resources:
           def handler(event, context):
               webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
               stack_name = os.environ.get("STACK_NAME", "RunsOn")
-              
+
               if not webhook_url:
                   logger.error("Slack webhook URL is not configured")
                   return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
@@ -3659,7 +3842,7 @@ Outputs:
     Description: SQS FIFO queue for workflow job scheduling
     Value: !Ref RunsOnQueueJobs
   RunsOnQueueGithub:
-    Description: SQS FIFO queue for GitHub registration tasks
+    Description: SQS FIFO queue for runner registration
     Value: !Ref RunsOnQueueGithub
   RunsOnQueuePool:
     Description: SQS queue for the RunsOn service, used for pool management tasks
