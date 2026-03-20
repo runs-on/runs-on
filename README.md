@@ -1,86 +1,78 @@
-# RunsOn: 10x cheaper GitHub Actions runners.
+# RunsOn: faster, cheaper GitHub Actions runners in your AWS account
 
-**Remove 90% of your CI spend**. **Faster** builds. **Fully self-hosted**, in your AWS account.
+**Cut CI spend, speed up builds, and keep your runner infrastructure fully under your control.**
 
-RunsOn is the **modern way to run self-hosted GitHub Actions runners** of any size, at the cheapest price available. Think of it as your best alternative to the Actions Runner Controller (ARC) for Kubernetes, the Philips terraform module, or any of the third party providers that require deep access to your code and secrets.
+RunsOn gives you self-hosted GitHub Actions runners that run in your own AWS account, with fast startup, strong isolation, and the flexibility to use the instance types, networking model, and images that fit your workloads. Think of it as a strong alternative to Actions Runner Controller (ARC) on Kubernetes, the Philips Terraform module, or third-party runner providers that require broad access to your code and secrets.
 
-- ✅ **Faster**. Raw [CPU performance is up 30%](https://runs-on.com/benchmarks/github-actions-runners/) compared to official runners.
-- ✅ **Cheaper**. Between [7x to 15x cheaper](https://runs-on.com/pricing/) than official runners.
-- ✅ **Scalable**. Handles bursts of multiple hundred jobs at once without issue. No concurrency limit.
-- ✅ **Full workflow compatibility** with official GitHub runners. Use the [compatible public AMIs for AWS](https://github.com/runs-on/runner-images-for-aws), or [bring your own images](https://runs-on.com/features/byoi/).
-- ✅ **Low maintenance**. A single [CloudFormation template](./cloudformation/template.yaml) with all the resources, 1-click install, 1-click upgrades. Costs $1.5/month.
+## Why RunsOn
 
-## Features
+- ✅ **Cheaper**. RunsOn is designed to reduce the cost of GitHub Actions dramatically, often by [7x to 15x](https://runs-on.com/pricing/) compared to GitHub-hosted runners.
+- ✅ **Faster**. Raw [CPU performance is up to 30% higher](https://runs-on.com/benchmarks/github-actions-runners/) than official GitHub-hosted runners.
+- ✅ **Fully owned by you**. RunsOn installs into your AWS account and uses a private GitHub App created for your organization during setup.
+- ✅ **Compatible with real workflows**. Keep using GitHub Actions, choose from [public AMIs for AWS](https://github.com/runs-on/runner-images-for-aws), or [bring your own image](https://runs-on.com/features/byoi/).
+- ✅ **Low maintenance**. Install and upgrade from a single [CloudFormation template](./cloudformation/template.yaml) and related public templates in this repository.
 
-- [Linux](https://runs-on.com/runners/linux) (x64 and arm64), [Windows](https://runs-on.com/runners/windows), [GPU](https://runs-on.com/runners/gpu) support.
-- **Ephemeral VM** for each job.
-- [Spot pricing](https://runs-on.com/features/spot-instances/), with **automatic fallback** to on-demand.
-- Multi-AZ, and multi-[environments](https://runs-on.com/configuration/environments/) support.
-- **Fast and unlimited GitHub Actions cache**: An [integrated cache backend](https://runs-on.com/caching/s3-cache-for-github-actions/) based on a local S3 bucket allows for up to 5x faster and unlimited cache for dependencies and docker layers.
-- **SSH access** into the runners. Can be [restricted to a specific CIDR range](https://runs-on.com/networking/ssh/).
-- **Static IPs** for your runners, if you [enabled private networking](https://runs-on.com/networking/static-ips/).
-- Automatic [**cost and alert reporting**](https://runs-on.com/features/cost-and-alert-report/).
-- NEW ✨ [Magic Caching](https://runs-on.com/caching/magic-cache/)
+## Install
 
-## Installation
+Use the [installation guide](https://runs-on.com/guides/install/) to deploy RunsOn in about 10 minutes.
 
-RunsOn is available in 10 AWS regions. Use the [installation guide](https://runs-on.com/guides/install/) to set it up in 10 minutes.
+This public repository publishes the CloudFormation install assets and a small set of public-facing supporting files for RunsOn. Product docs, install guidance, architecture details, and pricing live on [runs-on.com](https://runs-on.com/).
+
+- Primary guide: [Install RunsOn](https://runs-on.com/guides/install/)
+- Architecture overview: [RunsOn architecture](https://runs-on.com/architecture/)
 
 ## Usage
 
 Before:
 
 ```yaml
-  runs-on: ubuntu-latest
+runs-on: ubuntu-latest
 ```
 
 After:
+
 ```yaml
-  runs-on: "runs-on=${{ github.run_id }}/runner=2cpu-linux-x64"
+runs-on: "runs-on=${{ github.run_id }}/runner=2cpu-linux-x64"
 ```
 
-Learn more about all the supported [job labels](https://runs-on.com/configuration/job-labels) for dynamic runner configuration.
+See the [job labels documentation](https://runs-on.com/configuration/job-labels) for runner sizing, images, environments, and other configuration options.
+
+## Features
+
+- [Linux](https://runs-on.com/runners/linux), [Windows](https://runs-on.com/runners/windows), and [GPU](https://runs-on.com/runners/gpu) runner support.
+- Ephemeral VMs per job, with [spot pricing](https://runs-on.com/features/spot-instances/) and automatic on-demand fallback.
+- Multi-AZ and multi-[environment](https://runs-on.com/configuration/environments/) support.
+- Faster, larger, and cheaper caching with the built-in [S3 cache backend](https://runs-on.com/caching/s3-cache-for-github-actions/).
+- Optional [SSH access](https://runs-on.com/networking/ssh/) and [static IPs](https://runs-on.com/networking/static-ips/) for controlled networking setups.
+- Built-in [cost and alert reporting](https://runs-on.com/features/cost-and-alert-report/) and [Magic Caching](https://runs-on.com/caching/magic-cache/).
 
 ## Screenshots
 
-**NodeJS CI build across different providers:**
+**Node.js CI build across different providers**
 
 <img width="618" alt="RunsOn is the fastest and cheapest GitHub Actions self-hosted runner alternative" src="https://github.com/runs-on/runs-on/assets/6114/70ff5114-c843-4834-a872-1255ed10624e">
 
-**Stable queue time with thousands of jobs and bursts:**
+**Stable queue times under large bursts**
 
 ![queue-time](https://github.com/runs-on/runs-on/assets/6114/0a0a5a0c-5bc2-49e5-bc31-49c62a265490)
 
-**Much faster caches:**
+**Much faster caches**
 
 ![Faster and unlimited GitHUb Actions cache](https://github.com/runs-on/runs-on/assets/6114/27dfbb5e-c979-4892-8b2c-8fe6024c0d41)
 
-**Metadata and timings about your job:**
+**Job metadata and timings**
 
 <img width="642" alt="Metadata and timings about your job" src="https://github.com/runs-on/runs-on/assets/6114/7ff224a1-e5e2-47a1-8131-5cacd6d69b65">
 
 ## License
 
-The code for the main repository (the current one, with the CloudFormation templates to deploy the AWS resources) is MIT licensed.
+This repository contains public MIT-licensed RunsOn assets, including the CloudFormation templates published here.
 
-However the code in the `server/` submodule is proprietary and requires a license to use it:
+Commercial licensing, product access, and additional licensing details are described on the [pricing page](https://runs-on.com/pricing/). This public repository is not the private source-of-truth monorepo for RunsOn.
 
-- A non-profit (free) license is available if you are using RunsOn in a non-profit organization (this must apply to any parent organization as well), or if you are using it for personal use.
-- For commercial organizations, you can evaluate for free for 15 days with a Demo license, after which you must buy a commercial license: 300€/year for the standard license, 1500€/year for the sponsorship license.
+## Learn More
 
-RunsOn has an insane ROI for commercial organizations. The monthly license cost is usually recouped within a few days. To learn more about licenses, visit the dedicated [pricing](https://runs-on.com/pricing/) page.
-
-Access to the following code is public:
-
-- CloudFormation template
-- Public compatible AMIs for AWS
-
-With a Sponsorship license, you get full access to the entire source code of RunsOn: server + agent (contained in the `server/` submodule), and can even modify it for internal use.
-
-## Author
-
-This software is built by [Cyril Rohr](https://cyrilrohr.com) - [Twitter/X](https://twitter.com/crohr).
-
-Learn more about the [history](https://runs-on.com/about/) of the project.
-
-If you like DevOps tooling, you might also be interested in my other projects [PullPreview.com](https://pullpreview.com) and [Packager.io](https://packager.io).
+- [About RunsOn](https://runs-on.com/about/)
+- [Documentation](https://runs-on.com/docs/)
+- [Pricing](https://runs-on.com/pricing/)
+- [Cyril Rohr](https://cyrilrohr.com)
