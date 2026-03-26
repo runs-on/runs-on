@@ -481,8 +481,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v2.12.0
-      ImageTag: v2.12.0@sha256:c2a00ae49598ae1b47c12409f9cc39885394da6c7d4fcdf1ef86570c88802706
+      AppTag: v2.12.2
+      ImageTag: v2.12.2@sha256:d2ca49ab8b180054a9c76abb5a2fb16febbbae592da211ae5d3eb153413e1da2
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -1774,7 +1774,7 @@ Resources:
                   $ProgressPreference = 'SilentlyContinue'
                   Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
                 }
-                Add-MpPreference -ExclusionProcess $bootstrapBin
+                Add-MpPreference -ExclusionProcess $bootstrapBin -ErrorAction SilentlyContinue
                 & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
                 $bootstrapExitCode = $LASTEXITCODE
                 if ($bootstrapExitCode -ne 0) {
@@ -1811,9 +1811,37 @@ Resources:
               EfsEnvLine: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
               EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
 
+  EC2FleetLaunchTemplateLinuxDefaultNested:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-linux-default-nested"
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefaultNested"]]
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
+
+  ManagedLaunchTemplateLinuxDefaultNested:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxDefaultNested
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber
+      NestedVirtualization: true
+
   EC2FleetLaunchTemplateLinuxPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-linux-private"
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1824,137 +1852,78 @@ Resources:
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       LaunchTemplateData:
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-          - ResourceType: volume
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-          - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-        IamInstanceProfile:
-          Arn: !GetAtt EC2InstanceProfile.Arn
-        EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
-          HttpPutResponseHopLimit: 2
-        InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring:
-          !If
-            - ECInstanceDetailedMonitoringEnabled
-            - Enabled: true
-            - Ref: AWS::NoValue
-        NetworkInterfaces:
-          - DeleteOnTermination: true
-            DeviceIndex: "0"
-            AssociatePublicIpAddress: false
-            Groups:
-              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
-            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
-        UserData:
-          Fn::Base64: !Sub
-            # BEGIN AUTO-GENERATED LINUX USER-DATA
-            - |
-              #!/bin/bash -ex
-              date -u
-              mkdir -p /etc/runs-on /runs-on
-              cat <<EOF > /etc/runs-on/bootstrap.env
-              RUNS_ON_RUNNER_MAX_RUNTIME="${RunnerMaxRuntime}"
-              RUNS_ON_LOG_GROUP_NAME="${EC2InstanceLogGroup}"
-              RUNS_ON_DEBUG="${AppDebug}"
-              AWS_REGION="${Region}"
-              RUNS_ON_S3_BUCKET_CACHE="${S3BucketCache}"
-              RUNS_ON_BOOTSTRAP_TAG="${BootstrapTag}"
-              RUNS_ON_APP_TAG="${AppTag}"
-              RUNS_ON_AGENT_S3_BUCKET="${AgentS3Bucket}"
-              ${EfsEnvLine}
-              ${EphemeralRegistryEnvLine}
-              EOF
 
-              cat <<'EOF' > /usr/local/bin/runs-on-bootstrap.sh
-              #!/bin/bash
-              set -euo pipefail
+  ManagedLaunchTemplateLinuxPrivate:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxPrivate
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber
+      Private: true
 
-              set -a
-              . /etc/runs-on/bootstrap.env
-              set +a
+  EC2FleetLaunchTemplateLinuxPrivateNested:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-linux-private-nested"
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivateNested"]]
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
 
-              BOOTSTRAP_BIN="/usr/local/bin/runs-on-bootstrap-$RUNS_ON_BOOTSTRAP_TAG"
-              AGENT_BINARY_URL="$RUNS_ON_AGENT_S3_BUCKET/agent-linux-$(uname -m)"
+  ManagedLaunchTemplateLinuxPrivateNested:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxPrivateNested
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateLinuxDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber
+      Private: true
+      NestedVirtualization: true
 
-              _the_end() {
-                exit_code=$?
-                if [ "$exit_code" -ne 0 ] ; then
-                  echo "Bootstrap exited with error ($exit_code). Sleeping 60s for troubleshooting/log shipping..."
-                  sleep 60
-                fi
+  EC2FleetLaunchTemplateWindowsDefaultNested:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-windows-default-nested"
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefaultNested"]]
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
 
-                if [ "$RUNS_ON_DEBUG" != "true" ] ; then
-                  echo "THE END"
-                  shutdown -h now
-                fi
-              }
-              trap _the_end EXIT INT TERM
-
-              if [ ! -f "$BOOTSTRAP_BIN" ]; then
-                time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
-                  "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
-                  -o "$BOOTSTRAP_BIN"
-              fi
-
-              chmod a+x "$BOOTSTRAP_BIN"
-              "$BOOTSTRAP_BIN" --debug="$RUNS_ON_DEBUG" --exec --post-exec shutdown "$AGENT_BINARY_URL"
-              EOF
-              chmod a+x /usr/local/bin/runs-on-bootstrap.sh
-
-              cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
-              [Unit]
-              Description=RunsOn Bootstrap Service
-              After=network-online.target local-fs.target
-              Wants=network-online.target
-              Requires=local-fs.target
-
-              [Service]
-              Type=simple
-              ExecStart=/bin/bash -lc '/usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log'
-              StandardOutput=journal+console
-              StandardError=journal+console
-              Restart=no
-
-              [Install]
-              WantedBy=multi-user.target
-              EOF
-
-              if ! systemctl --no-block enable --now runs-on-bootstrap.service; then
-                echo "Failed to enable/start runs-on-bootstrap.service via systemd, falling back to inline bootstrap."
-                /usr/local/bin/runs-on-bootstrap.sh 2>&1 | tee -a /runs-on/output.log /var/log/cloud-init-output.log
-              fi
-            # END AUTO-GENERATED LINUX USER-DATA
-            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
-              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
-              AppDebug: !Ref AppDebug
-              Region: !Ref AWS::Region
-              S3BucketCache: !Ref S3BucketCache
-              AppTag: !FindInMap [App, Tags, AppTag]
-              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
-              EfsEnvLine: !If [CreateEfs, !Sub 'RUNS_ON_EFS_ID="${EfsFileSystem}"', '']
-              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub 'RUNS_ON_ECR_CACHE="${EphemeralRegistry.RepositoryUri}"', '']
+  ManagedLaunchTemplateWindowsDefaultNested:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsDefaultNested
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber
+      NestedVirtualization: true
 
   EC2FleetLaunchTemplateWindowsPrivate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-windows-private"
       TagSpecifications:
         - ResourceType: launch-template
           Tags:
@@ -1965,113 +1934,46 @@ Resources:
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       LaunchTemplateData:
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-          - ResourceType: volume
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-          - ResourceType: network-interface
-            Tags:
-              - Key: !Ref CostAllocationTag
-                Value: !Ref AWS::StackName
-              - Key: runs-on-stack-name
-                Value: !Ref AWS::StackName
-        IamInstanceProfile:
-          Arn: !GetAtt EC2InstanceProfile.Arn
-        EbsOptimized: "true"
         MetadataOptions:
           HttpTokens: required
-          HttpPutResponseHopLimit: 2
-        InstanceInitiatedShutdownBehavior: "terminate"
-        Monitoring:
-          !If
-            - ECInstanceDetailedMonitoringEnabled
-            - Enabled: true
-            - Ref: AWS::NoValue
-        NetworkInterfaces:
-          - DeleteOnTermination: true
-            DeviceIndex: "0"
-            AssociatePublicIpAddress: false
-            Groups:
-              - !If [ExternalVpc, !Ref ExternalVpcSecurityGroupId, !Ref SecurityGroup]
-            Ipv6AddressCount: !If [HasIpv6Enabled, 1, 0]
-        UserData:
-          Fn::Base64: !Sub
-            # BEGIN AUTO-GENERATED WINDOWS USER-DATA
-            - |
-              <powershell>
-              Get-Date -format s
-              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
-              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-              $env:RUNS_ON_DEBUG = "${AppDebug}"
-              $env:AWS_REGION = "${Region}"
-              $env:RUNS_ON_S3_BUCKET_CACHE = "${S3BucketCache}"
-              ${EfsEnvLine}
-              ${EphemeralRegistryEnvLine}
-              # Enable and start SSM Agent service
-              try {
-                Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
-                Start-Service -Name "AmazonSSMAgent" -ErrorAction SilentlyContinue
-                Write-Output "SSM Agent service enabled and started"
-              } catch {
-                Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
-              }
-              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
-              $bootstrapFailed = $false
-              $bootstrapExitCode = 0
-              try {
-                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
-                if (-not (Test-Path $bootstrapBin)) {
-                  # Enable TLS 1.2 for Windows Server 2016 compatibility
-                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                  # Disable progress bar for much faster downloads (can be 100x faster)
-                  $ProgressPreference = 'SilentlyContinue'
-                  Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
-                }
-                Add-MpPreference -ExclusionProcess $bootstrapBin
-                & $bootstrapBin --debug=${AppDebug} --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
-                $bootstrapExitCode = $LASTEXITCODE
-                if ($bootstrapExitCode -ne 0) {
-                  throw "Bootstrap exited with code $bootstrapExitCode"
-                }
-              } catch {
-                $bootstrapFailed = $true
-                if ($bootstrapExitCode -eq 0) {
-                  $bootstrapExitCode = 1
-                }
-                Write-Output "Bootstrap failed: $($_.Exception.Message)"
-                throw
-              } finally {
-                if ($bootstrapFailed) {
-                  Write-Output "Bootstrap failed (exit code $bootstrapExitCode). Sleeping 60s for troubleshooting/log shipping..."
-                  Start-Sleep -Seconds 60
-                }
-                if ($env:RUNS_ON_DEBUG -ne "true") {
-                  Write-Output "user-data: Going to shut down now..."
-                  Stop-Computer -Force
-                }
-              }
-              </powershell>
-              <detach>true</detach>
-              <persist>true</persist>
-            # END AUTO-GENERATED WINDOWS USER-DATA
-            - RunnerMaxRuntime: !Ref RunnerMaxRuntime
-              EC2InstanceLogGroup: !Ref EC2InstanceLogGroup
-              AppDebug: !Ref AppDebug
-              Region: !Ref AWS::Region
-              S3BucketCache: !Ref S3BucketCache
-              BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
-              AgentS3Bucket: !Join ["", ["s3://", !Ref S3Bucket, "/agents/", !FindInMap [App, Tags, AppTag]]]
-              EfsEnvLine: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
+
+  ManagedLaunchTemplateWindowsPrivate:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsPrivate
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber
+      Private: true
+
+  EC2FleetLaunchTemplateWindowsPrivateNested:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-windows-private-nested"
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: !Ref CostAllocationTag
+              Value: !Ref AWS::StackName
+            - Key: runs-on-stack-name
+              Value: !Ref AWS::StackName
+            - Key: "runs-on/launch-template-name"
+              Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivateNested"]]
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpTokens: required
+
+  ManagedLaunchTemplateWindowsPrivateNested:
+    Type: Custom::LaunchTemplate
+    Properties:
+      ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
+      RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
+      TargetLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsPrivateNested
+      SourceLaunchTemplateId: !Ref EC2FleetLaunchTemplateWindowsDefault
+      SourceLaunchTemplateVersion: !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber
+      Private: true
+      NestedVirtualization: true
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -2654,6 +2556,10 @@ Resources:
                 Value: !Ref AWS::StackName
               - Name: RUNS_ON_APP_TAG
                 Value: !FindInMap [App, Tags, AppTag]
+              - Name: RUNS_ON_STACK_CONFIG_SECRET_ARN
+                Value: !Ref RunsOnStackConfigSecret
+              - Name: RUNS_ON_STACK_CONFIG_SECRET_VERSION
+                Value: !GetAtt StackConfigMaterializer.StackConfigSecretVersion
               # Force App Runner updates to wait for embedded private routes before switching to VPC egress.
               - Name: RUNS_ON_NETWORK_READY
                 Value: !If
@@ -2674,82 +2580,149 @@ Resources:
                 Value: !Ref OtelExporterTemporality
               - Name: RUNS_ON_LOGGER_LEVEL
                 Value: !Ref LoggerLevel
-            RuntimeEnvironmentSecrets:
-              - Name: RUNS_ON_STACK_CONFIG_JSON
-                Value: !Ref RunsOnStackConfigSecret
           ImageIdentifier: !Sub
             - "${AppRegistry}:${ImageTag}"
             - ImageTag: !FindInMap [App, Tags, ImageTag]
           ImageRepositoryType: ECR_PUBLIC
 
+  RunsOnServiceVerifyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DescribeAppRunnerService
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - apprunner:DescribeService
+                  - apprunner:ListOperations
+                Resource: !Ref RunsOnService
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  RunsOnServiceVerifyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt RunsOnServiceVerifyRole.Arn
+      Timeout: 900
+      MemorySize: 128
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          import boto3,json,logging,time
+          import cfnresponse
+          A=boto3.client("apprunner")
+          logger=logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          FAILURE_STATUSES={"FAILED","ROLLBACK_IN_PROGRESS","ROLLBACK_FAILED","ROLLBACK_SUCCEEDED"}
+
+          def image_id(service):
+              return (((service.get("SourceConfiguration") or {}).get("ImageRepository") or {}).get("ImageIdentifier") or "").strip()
+
+          def latest_op(service_arn):
+              ops=A.list_operations(ServiceArn=service_arn,MaxResults=1).get("OperationSummaryList") or []
+              return ops[0] if ops else None
+
+          def fmt_op(op):
+              if not op:
+                  return "no recent operation"
+              parts=[str(op.get("Type") or "<unknown-type>"), str(op.get("Status") or "<unknown-status>")]
+              if op.get("Id"):
+                  parts.append(f"id={op['Id']}")
+              return " ".join(parts)
+
+          def fail(event,context,pid,reason):
+              logger.error(reason)
+              return cfnresponse.send(event,context,cfnresponse.FAILED,{"Reason":reason},pid,reason=reason)
+
+          def handler(event,context):
+              logger.info("Received event: %s", json.dumps(event))
+              p=event.get("ResourceProperties",{})
+              pid="runs-on-apprunner-verify"
+              if event["RequestType"]=="Delete":
+                  return cfnresponse.send(event,context,cfnresponse.SUCCESS,{},pid)
+              try:
+                  service_arn=p["ServiceArn"]
+                  expected_image=(p.get("ExpectedImageIdentifier") or "").strip()
+                  max_wait=int(p.get("MaxWaitSeconds","840"))
+                  poll=int(p.get("PollIntervalSeconds","10"))
+                  deadline=time.monotonic()+max_wait
+                  attempts=0
+                  last_status=""
+                  last_image=""
+                  last_op_text="no recent operation"
+                  last_error=""
+                  while time.monotonic()<deadline:
+                      attempts+=1
+                      try:
+                          service=(A.describe_service(ServiceArn=service_arn).get("Service") or {})
+                          status=(service.get("Status") or "").strip()
+                          current_image=image_id(service)
+                          last_status=status
+                          last_image=current_image
+                          if status=="RUNNING" and current_image==expected_image:
+                              logger.info("Attempt %s status=%s image=%s", attempts, status, current_image)
+                              return cfnresponse.send(event,context,cfnresponse.SUCCESS,{},pid)
+                          op=latest_op(service_arn)
+                          op_status=((op or {}).get("Status") or "").strip()
+                          last_op_text=fmt_op(op)
+                          last_error=""
+                          logger.info("Attempt %s status=%s image=%s op=%s", attempts, status, current_image, last_op_text)
+                          if op_status in FAILURE_STATUSES:
+                              return fail(event,context,pid,f"App Runner operation failed after CloudFormation service update: expected image {expected_image}, observed image {current_image or '<empty>'}, service status {status or '<empty>'}, latest operation {last_op_text}")
+                      except Exception as e:
+                          last_error=str(e)
+                          logger.warning("Attempt %s failed to read App Runner state: %s", attempts, last_error)
+                      time.sleep(poll)
+                  reason=f"Timed out waiting for App Runner to serve expected image {expected_image}: observed image {last_image or '<empty>'}, service status {last_status or '<empty>'}, latest operation {last_op_text}"
+                  if last_error:
+                      reason=f"{reason}, last probe error {last_error}"
+                  return fail(event,context,pid,reason)
+              except Exception as e:
+                  logger.exception("App Runner verification custom resource failed")
+                  return fail(event,context,pid,str(e))
+
+  RunsOnServiceVerifyFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref RunsOnServiceVerifyFunction
+
+  RunsOnServiceVerify:
+    Type: Custom::RunsOnServiceVerify
+    Properties:
+      ServiceToken: !GetAtt RunsOnServiceVerifyFunction.Arn
+      RefreshToken: !Ref RunsOnServiceVerifyFunctionVersion
+      ServiceArn: !Ref RunsOnService
+      ExpectedImageIdentifier: !Sub
+        - "${AppRegistry}:${ImageTag}"
+        - ImageTag: !FindInMap [App, Tags, ImageTag]
+      MaxWaitSeconds: 840
+      PollIntervalSeconds: 10
+
   RunsOnStackConfigSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub
-        - "/runs-on/${AWS::StackName}/config/${ImageDigest}"
-        - ImageDigest: !Select
-            - 1
-            - !Split
-              - ":"
-              - !Select
-                - 1
-                - !Split
-                  - "@"
-                  - !FindInMap [App, Tags, ImageTag]
-      SecretString:
-        Fn::ToJsonString:
-          AwsAccountId: !Ref AWS::AccountId
-          Private: !Ref Private
-          GithubOrganization: !Ref GithubOrganization
-          Region: !Ref AWS::Region
-          LicenseKey: !Ref LicenseKey
-          BucketConfig: !Ref S3Bucket
-          BucketCache: !Ref S3BucketCache
-          InstanceRoleName: !Ref EC2InstanceRole
-          SshAllowed: !Ref SSHAllowed
-          LaunchTemplateLinuxDefault: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
-          LaunchTemplateWindowsDefault: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
-          LaunchTemplateLinuxPrivate: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
-          LaunchTemplateWindowsPrivate: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
-          PublicSubnetIds: !If [ExternalVpc,
-            !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
-            !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
-          PrivateSubnetIds: !If [ExternalVpc,
-            !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
-            !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
-          DefaultAdmins: !Ref DefaultAdmins
-          TopicArn: !Ref AlertTopic
-          RunnerDefaultDiskSize: !Ref RunnerDefaultDiskSize
-          RunnerDefaultVolumeThroughput: !Ref RunnerDefaultVolumeThroughput
-          RunnerLargeDiskSize: !Ref RunnerLargeDiskSize
-          RunnerLargeVolumeThroughput: !Ref RunnerLargeVolumeThroughput
-          RunnerCustomTags: !Join [",", !Ref RunnerCustomTags]
-          RunnerMaxRuntime: !Ref RunnerMaxRuntime
-          RunnerConfigAutoExtendsFrom: !Ref RunnerConfigAutoExtendsFrom
-          EbsEncryptionKey: !If [HasEncryptEbs, "alias/aws/ebs", ""]
-          AppGithubApiStrategy: !Ref AppGithubApiStrategy
-          AppTag: !FindInMap [App, Tags, AppTag]
-          StackName: !Ref AWS::StackName
-          AppEc2QueueSize: !Ref AppEc2QueueSize
-          Queue: !Ref RunsOnQueue
-          QueueJobs: !Ref RunsOnQueueJobs
-          QueueGithub: !Ref RunsOnQueueGithub
-          QueuePool: !Ref RunsOnQueuePool
-          QueueHousekeeping: !Ref RunsOnQueueHousekeeping
-          QueueTermination: !Ref RunsOnQueueTermination
-          QueueEvents: !Ref RunsOnQueueEvents
-          LocksTable: !Ref RunsOnLocksTable
-          WorkflowJobsTable: !Ref RunsOnWorkflowJobsTable
-          CostReportsEnabled: !Ref CostReportsEnabled
-          ServerPassword: !Ref ServerPassword
-          CostAllocationTag: !Ref CostAllocationTag
-          SpotCircuitBreaker: !Ref SpotCircuitBreaker
-          IntegrationStepSecurityApiKey: !Ref IntegrationStepSecurityApiKey
-          GithubEnterpriseUrl: !Ref GithubEnterpriseUrl
-          VPCId: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
-          NetworkingStack: !Ref NetworkingStack
-          InfrastructureSource: "cloudformation"
-          Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
+      Name: !Sub "/runs-on/${AWS::StackName}/config"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2765,6 +2738,488 @@ Resources:
       Tags: # note: adding a new tag requires a full replacement
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
+
+  ManagedLaunchTemplateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ManageLaunchTemplates
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeLaunchTemplateVersions
+                  - ec2:CreateLaunchTemplateVersion
+                Resource: "*"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  ManagedLaunchTemplateFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt ManagedLaunchTemplateRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          from __future__ import annotations
+
+          import copy
+          import hashlib
+          import json
+          import xml.etree.ElementTree as ET
+          from urllib import error as urllib_error, parse as urllib_parse, request as urllib_request
+
+          try:
+              import boto3
+          except ImportError:
+              boto3 = None
+
+          try:
+              import cfnresponse
+          except ImportError:
+              cfnresponse = None
+
+          try:
+              from botocore.auth import SigV4Auth
+              from botocore.awsrequest import AWSRequest
+              from botocore.serialize import create_serializer
+          except ImportError:
+              SigV4Auth = None
+              AWSRequest = None
+              create_serializer = None
+
+
+          SOURCE_FIELDS = (
+              "TagSpecifications",
+              "IamInstanceProfile",
+              "EbsOptimized",
+              "MetadataOptions",
+              "InstanceInitiatedShutdownBehavior",
+              "Monitoring",
+              "NetworkInterfaces",
+              "UserData",
+              "CpuOptions",
+          )
+          SUPPORTED_CPU_OPTION_FIELDS = ("AmdSevSnp", "CoreCount", "ThreadsPerCore")
+          _EC2_CLIENT = None
+
+
+          def require_dependency(value, name):
+              if value is None:
+                  raise RuntimeError(f"{name} is unavailable in this environment")
+              return value
+
+
+          def ec2_client():
+              global _EC2_CLIENT
+              if _EC2_CLIENT is None:
+                  require_dependency(boto3, "boto3")
+                  _EC2_CLIENT = boto3.client("ec2")
+              return _EC2_CLIENT
+
+
+          def boto3_session(session=None):
+              if session is not None:
+                  return session
+              require_dependency(boto3, "boto3")
+              return boto3.session.Session()
+
+
+          def enabled(value):
+              return value in (True, "true", "True")
+
+
+          def source_launch_template_data(launch_template_id, version, ec2=None):
+              client = ec2 or ec2_client()
+              versions = client.describe_launch_template_versions(
+                  LaunchTemplateId=launch_template_id,
+                  Versions=[str(version)],
+              )["LaunchTemplateVersions"]
+              if not versions:
+                  raise RuntimeError(f"launch template source version not found for {launch_template_id}:{version}")
+              source = versions[0]["LaunchTemplateData"]
+              data = {}
+              for field in SOURCE_FIELDS:
+                  if field in source:
+                      data[field] = copy.deepcopy(source[field])
+              return data
+
+
+          def desired_launch_template_data(properties, ec2=None):
+              data = source_launch_template_data(
+                  properties["SourceLaunchTemplateId"],
+                  properties["SourceLaunchTemplateVersion"],
+                  ec2=ec2,
+              )
+              if enabled(properties.get("Private")):
+                  interfaces = copy.deepcopy(data.get("NetworkInterfaces", []))
+                  if not interfaces:
+                      raise RuntimeError("private managed launch templates require at least one network interface")
+                  interfaces[0]["AssociatePublicIpAddress"] = False
+                  data["NetworkInterfaces"] = interfaces
+              if enabled(properties.get("NestedVirtualization")):
+                  cpu = copy.deepcopy(data.get("CpuOptions", {}))
+                  cpu["NestedVirtualization"] = "enabled"
+                  data["CpuOptions"] = cpu
+              return data
+
+
+          def supported_launch_template_data(data):
+              supported = copy.deepcopy(data)
+              cpu = supported.get("CpuOptions")
+              if isinstance(cpu, dict):
+                  filtered = {key: copy.deepcopy(value) for key, value in cpu.items() if key in SUPPORTED_CPU_OPTION_FIELDS}
+                  if filtered:
+                      supported["CpuOptions"] = filtered
+                  else:
+                      supported.pop("CpuOptions", None)
+              return supported
+
+
+          def version_description(data):
+              payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
+              digest = hashlib.sha256(payload.encode()).hexdigest()
+              return f"runs-on-derived/{digest}"
+
+
+          def xml_text(root, name):
+              node = root.find(f".//{{*}}{name}")
+              if node is not None and node.text:
+                  return node.text.strip()
+              return ""
+
+
+          def xml_message(payload):
+              try:
+                  root = ET.fromstring(payload)
+              except ET.ParseError:
+                  return payload.decode("utf-8", "replace")
+              for name in ("Message", "message"):
+                  text = xml_text(root, name)
+                  if text:
+                      return text
+              return payload.decode("utf-8", "replace")
+
+
+          def query_pairs(body):
+              if isinstance(body, dict):
+                  return list(body.items())
+              if isinstance(body, bytes):
+                  body = body.decode("utf-8")
+              return urllib_parse.parse_qsl(body, keep_blank_values=True)
+
+
+          def encoded_query_body(body, nested_enabled):
+              pairs = query_pairs(body)
+              if nested_enabled:
+                  pairs.append(("LaunchTemplateData.CpuOptions.NestedVirtualization", "enabled"))
+              return urllib_parse.urlencode(pairs).encode("utf-8")
+
+
+          def serialize_create_launch_template_version_request(launch_template_id, description, data, ec2=None):
+              client = ec2 or ec2_client()
+              serializer_factory = require_dependency(create_serializer, "botocore.serialize.create_serializer")
+              service_model = client.meta.service_model
+              serializer = serializer_factory(service_model.metadata["protocol"])
+              request = serializer.serialize_to_request(
+                  {
+                      "ClientToken": description,
+                      "LaunchTemplateId": launch_template_id,
+                      "LaunchTemplateData": supported_launch_template_data(data),
+                      "VersionDescription": description,
+                  },
+                  service_model.operation_model("CreateLaunchTemplateVersion"),
+              )
+              body = encoded_query_body(
+                  request.get("body", ""),
+                  data.get("CpuOptions", {}).get("NestedVirtualization") == "enabled",
+              )
+              headers = dict(request.get("headers", {}))
+              headers.setdefault("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+              return body, headers
+
+
+          def signed_ec2_query(body, headers, ec2=None, session=None):
+              client = ec2 or ec2_client()
+              aws_request_cls = require_dependency(AWSRequest, "botocore.awsrequest.AWSRequest")
+              signer_cls = require_dependency(SigV4Auth, "botocore.auth.SigV4Auth")
+              credentials = boto3_session(session).get_credentials()
+              if credentials is None:
+                  raise RuntimeError("aws credentials unavailable for EC2 query signing")
+              aws_request = aws_request_cls(
+                  method="POST",
+                  url=client.meta.endpoint_url,
+                  data=body,
+                  headers=headers,
+              )
+              signer_cls(credentials.get_frozen_credentials(), "ec2", client.meta.region_name).add_auth(aws_request)
+              prepared = aws_request.prepare()
+              signed_body = prepared.body if prepared.body is not None else body
+              if isinstance(signed_body, str):
+                  signed_body = signed_body.encode("utf-8")
+              try:
+                  with urllib_request.urlopen(
+                      urllib_request.Request(
+                          prepared.url,
+                          data=signed_body,
+                          headers=dict(prepared.headers),
+                          method="POST",
+                      )
+                  ) as response:
+                      return response.read()
+              except urllib_error.HTTPError as http_error:
+                  raise RuntimeError(xml_message(http_error.read()))
+
+
+          def create_launch_template_version(launch_template_id, description, data, ec2=None, session=None):
+              body, headers = serialize_create_launch_template_version_request(
+                  launch_template_id,
+                  description,
+                  data,
+                  ec2=ec2,
+              )
+              root = ET.fromstring(signed_ec2_query(body, headers, ec2=ec2, session=session))
+              version = xml_text(root, "versionNumber")
+              if not version:
+                  raise RuntimeError("launch template version number missing from EC2 response")
+              return version
+
+
+          def matching_version(launch_template_id, description, ec2=None):
+              client = ec2 or ec2_client()
+              token = None
+              while True:
+                  params = {"LaunchTemplateId": launch_template_id}
+                  if token is not None:
+                      params["NextToken"] = token
+                  response = client.describe_launch_template_versions(**params)
+                  for version in response["LaunchTemplateVersions"]:
+                      if version.get("VersionDescription") == description:
+                          return str(version["VersionNumber"])
+                  token = response.get("NextToken")
+                  if token is None:
+                      return None
+
+
+          def ensure_launch_template_version(properties, ec2=None, session=None):
+              data = desired_launch_template_data(properties, ec2=ec2)
+              description = version_description(data)
+              launch_template_id = properties["TargetLaunchTemplateId"]
+              version = matching_version(launch_template_id, description, ec2=ec2)
+              if version is None:
+                  version = create_launch_template_version(
+                      launch_template_id,
+                      description,
+                      data,
+                      ec2=ec2,
+                      session=session,
+                  )
+              return launch_template_id, version
+
+
+          def send_response(event, context, status, data, physical_resource_id, reason=None):
+              response_module = require_dependency(cfnresponse, "cfnresponse")
+              response_module.send(event, context, status, data, physical_resource_id, reason=reason)
+
+
+          def handler(event, context):
+              properties = event["ResourceProperties"]
+              physical_id = event.get("PhysicalResourceId") or properties["TargetLaunchTemplateId"]
+              try:
+                  if event["RequestType"] == "Delete":
+                      return send_response(event, context, cfnresponse.SUCCESS, {}, physical_id)
+                  launch_template_id, version = ensure_launch_template_version(properties)
+                  send_response(
+                      event,
+                      context,
+                      cfnresponse.SUCCESS,
+                      {
+                          "LaunchTemplateRef": f"{launch_template_id}:{version}",
+                      },
+                      launch_template_id,
+                  )
+              except Exception as exc:
+                  send_response(
+                      event,
+                      context,
+                      cfnresponse.FAILED,
+                      {},
+                      physical_id,
+                      reason=str(exc),
+                  )
+  ManagedLaunchTemplateFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref ManagedLaunchTemplateFunction
+
+  StackConfigMaterializerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ManageStackConfigMaterializer
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:PutSecretValue
+                Resource: !Ref RunsOnStackConfigSecret
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  StackConfigMaterializerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt StackConfigMaterializerRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          import boto3,json,hashlib
+          import cfnresponse
+          from botocore.exceptions import ClientError
+
+          S=boto3.client("secretsmanager")
+
+          def error_code(error):
+              return error.response.get("Error",{}).get("Code","")
+
+          def handler(event,context):
+              p=event["ResourceProperties"];stack=p["StackConfigBase"]["StackName"];pid=f"{stack}-stack-config-materializer"
+              try:
+                  if event["RequestType"]=="Delete":
+                      return cfnresponse.send(event,context,cfnresponse.SUCCESS,{},pid)
+                  cfg=dict(p["StackConfigBase"])
+                  for key in (
+                      "LaunchTemplateLinuxDefault",
+                      "LaunchTemplateLinuxDefaultNested",
+                      "LaunchTemplateWindowsDefault",
+                      "LaunchTemplateWindowsDefaultNested",
+                      "LaunchTemplateLinuxPrivate",
+                      "LaunchTemplateLinuxPrivateNested",
+                      "LaunchTemplateWindowsPrivate",
+                      "LaunchTemplateWindowsPrivateNested",
+                  ):
+                      cfg[key]=p[key]
+                  payload=json.dumps(cfg,sort_keys=True,separators=(",",":"));vid=hashlib.sha256(payload.encode()).hexdigest()
+                  try:
+                      vid=S.put_secret_value(SecretId=p["StackConfigSecretArn"],SecretString=payload,ClientRequestToken=vid).get("VersionId",vid)
+                  except ClientError as e:
+                      if error_code(e)!="ResourceExistsException":
+                          raise
+                  data={"StackConfigSecretVersion":vid}
+                  cfnresponse.send(event,context,cfnresponse.SUCCESS,data,pid)
+              except Exception as e:
+                  cfnresponse.send(event,context,cfnresponse.FAILED,{},pid,reason=str(e))
+
+  StackConfigMaterializerFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref StackConfigMaterializerFunction
+
+  StackConfigMaterializer:
+    Type: Custom::StackConfigMaterializer
+    Properties:
+      ServiceToken: !GetAtt StackConfigMaterializerFunction.Arn
+      RefreshToken: !Ref StackConfigMaterializerFunctionVersion
+      StackConfigSecretArn: !Ref RunsOnStackConfigSecret
+      StackConfigBase:
+        AwsAccountId: !Ref AWS::AccountId
+        Private: !Ref Private
+        GithubOrganization: !Ref GithubOrganization
+        Region: !Ref AWS::Region
+        LicenseKey: !Ref LicenseKey
+        BucketConfig: !Ref S3Bucket
+        BucketCache: !Ref S3BucketCache
+        InstanceRoleName: !Ref EC2InstanceRole
+        SshAllowed: !Ref SSHAllowed
+        PublicSubnetIds: !If [ExternalVpc,
+          !If [ExternalVpcPublicSubnetIdsProvided, !Join [",", !Ref ExternalVpcPublicSubnetIds], "-"],
+          !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]]]
+        PrivateSubnetIds: !If [ExternalVpc,
+          !If [ExternalVpcPrivateSubnetIdsProvided, !Join [",", !Ref ExternalVpcPrivateSubnetIds], "-"],
+          !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]]
+        DefaultAdmins: !Ref DefaultAdmins
+        TopicArn: !Ref AlertTopic
+        RunnerDefaultDiskSize: !Ref RunnerDefaultDiskSize
+        RunnerDefaultVolumeThroughput: !Ref RunnerDefaultVolumeThroughput
+        RunnerLargeDiskSize: !Ref RunnerLargeDiskSize
+        RunnerLargeVolumeThroughput: !Ref RunnerLargeVolumeThroughput
+        RunnerCustomTags: !Join [",", !Ref RunnerCustomTags]
+        RunnerMaxRuntime: !Ref RunnerMaxRuntime
+        RunnerConfigAutoExtendsFrom: !Ref RunnerConfigAutoExtendsFrom
+        EbsEncryptionKey: !If [HasEncryptEbs, "alias/aws/ebs", ""]
+        AppGithubApiStrategy: !Ref AppGithubApiStrategy
+        AppTag: !FindInMap [App, Tags, AppTag]
+        StackName: !Ref AWS::StackName
+        AppEc2QueueSize: !Ref AppEc2QueueSize
+        Queue: !Ref RunsOnQueue
+        QueueJobs: !Ref RunsOnQueueJobs
+        QueueGithub: !Ref RunsOnQueueGithub
+        QueuePool: !Ref RunsOnQueuePool
+        QueueHousekeeping: !Ref RunsOnQueueHousekeeping
+        QueueTermination: !Ref RunsOnQueueTermination
+        QueueEvents: !Ref RunsOnQueueEvents
+        LocksTable: !Ref RunsOnLocksTable
+        WorkflowJobsTable: !Ref RunsOnWorkflowJobsTable
+        CostReportsEnabled: !Ref CostReportsEnabled
+        ServerPassword: !Ref ServerPassword
+        CostAllocationTag: !Ref CostAllocationTag
+        SpotCircuitBreaker: !Ref SpotCircuitBreaker
+        IntegrationStepSecurityApiKey: !Ref IntegrationStepSecurityApiKey
+        GithubEnterpriseUrl: !Ref GithubEnterpriseUrl
+        VPCId: !If [ExternalVpc, !Ref ExternalVpcId, !Ref VPC]
+        NetworkingStack: !Ref NetworkingStack
+        InfrastructureSource: "cloudformation"
+        Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
+      LaunchTemplateLinuxDefault: !Sub "${EC2FleetLaunchTemplateLinuxDefault}:${EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber}"
+      LaunchTemplateLinuxDefaultNested: !GetAtt ManagedLaunchTemplateLinuxDefaultNested.LaunchTemplateRef
+      LaunchTemplateWindowsDefault: !Sub "${EC2FleetLaunchTemplateWindowsDefault}:${EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber}"
+      LaunchTemplateWindowsDefaultNested: !GetAtt ManagedLaunchTemplateWindowsDefaultNested.LaunchTemplateRef
+      LaunchTemplateLinuxPrivate: !GetAtt ManagedLaunchTemplateLinuxPrivate.LaunchTemplateRef
+      LaunchTemplateLinuxPrivateNested: !GetAtt ManagedLaunchTemplateLinuxPrivateNested.LaunchTemplateRef
+      LaunchTemplateWindowsPrivate: !GetAtt ManagedLaunchTemplateWindowsPrivate.LaunchTemplateRef
+      LaunchTemplateWindowsPrivateNested: !GetAtt ManagedLaunchTemplateWindowsPrivateNested.LaunchTemplateRef
 
   RunsOnServiceDelayRole:
     Type: AWS::IAM::Role
@@ -2814,103 +3269,42 @@ Resources:
           Value: !Ref AWS::StackName
       Code:
         ZipFile: |
-          import boto3
-          import json
-          import logging
-          import time
-          import urllib.request
-
-          logger = logging.getLogger()
+          import boto3,json,logging,time
+          import cfnresponse
+          E=boto3.client("ec2")
+          logger=logging.getLogger()
           logger.setLevel(logging.INFO)
 
-          def respond(event, context, status, data=None, reason=None):
-              body = {
-                  "Status": status,
-                  "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
-                  "PhysicalResourceId": event.get("PhysicalResourceId") or context.log_stream_name,
-                  "StackId": event["StackId"],
-                  "RequestId": event["RequestId"],
-                  "LogicalResourceId": event["LogicalResourceId"],
-                  "Data": data or {},
-              }
-              request = urllib.request.Request(
-                  event["ResponseURL"],
-                  data=json.dumps(body).encode("utf-8"),
-                  method="PUT",
-                  headers={"content-type": ""},
-              )
-              urllib.request.urlopen(request)
-
-          def handler(event, context):
+          def handler(event,context):
               logger.info("Received event: %s", json.dumps(event))
               try:
-                  properties = event.get("ResourceProperties", {})
-                  delay_seconds = int(properties.get("DelaySeconds", "0"))
-                  max_wait_seconds = int(properties.get("MaxWaitSeconds", "0"))
-                  poll_interval_seconds = int(properties.get("PollIntervalSeconds", "5"))
-                  launch_template_ids = [
-                      value for value in properties.get("LaunchTemplateIds", "").split(",") if value
-                  ]
-
-                  if event["RequestType"] in ("Create", "Update") and delay_seconds > 0:
-                      logger.info("Sleeping for %s seconds before signaling success", delay_seconds)
-                      time.sleep(delay_seconds)
-
-                  if (
-                      event["RequestType"] in ("Create", "Update")
-                      and max_wait_seconds > 0
-                      and launch_template_ids
-                  ):
-                      ec2 = boto3.client("ec2")
-                      deadline = time.monotonic() + max_wait_seconds
-                      attempts = 0
-                      last_error = None
-
-                      while time.monotonic() < deadline:
-                          attempts += 1
+                  p=event.get("ResourceProperties",{})
+                  delay=int(p.get("DelaySeconds","0"))
+                  max_wait=int(p.get("MaxWaitSeconds","0"))
+                  poll=int(p.get("PollIntervalSeconds","5"))
+                  ids=[v for v in p.get("LaunchTemplateIds","").split(",") if v]
+                  if event["RequestType"] in ("Create","Update") and delay>0:
+                      logger.info("Sleeping for %s seconds before signaling success", delay)
+                      time.sleep(delay)
+                  if event["RequestType"] in ("Create","Update") and max_wait>0 and ids:
+                      deadline=time.monotonic()+max_wait
+                      attempts=0
+                      last_error=None
+                      while time.monotonic()<deadline:
+                          attempts+=1
                           try:
-                              ec2.describe_launch_template_versions(
-                                  LaunchTemplateId=launch_template_ids[0],
-                                  Versions=["$Latest"],
-                              )
-                              logger.info(
-                                  "Connectivity probe succeeded after %s attempts", attempts
-                              )
-                              respond(
-                                  event,
-                                  context,
-                                  "SUCCESS",
-                                  {
-                                      "DelaySeconds": delay_seconds,
-                                      "MaxWaitSeconds": max_wait_seconds,
-                                      "Attempts": attempts,
-                                  },
-                              )
-                              return
-                          except Exception as exc:
-                              last_error = str(exc)
-                              logger.warning(
-                                  "Connectivity probe attempt %s failed: %s", attempts, last_error
-                              )
-                              time.sleep(poll_interval_seconds)
-
-                      raise TimeoutError(
-                          f"EC2 connectivity probe did not succeed within {max_wait_seconds}s: {last_error}"
-                      )
-
-                  respond(
-                      event,
-                      context,
-                      "SUCCESS",
-                      {
-                          "DelaySeconds": delay_seconds,
-                          "MaxWaitSeconds": max_wait_seconds,
-                          "Attempts": 0,
-                      },
-                  )
-              except Exception as exc:
+                              E.describe_launch_template_versions(LaunchTemplateId=ids[0],Versions=["$Latest"])
+                              logger.info("Connectivity probe succeeded after %s attempts", attempts)
+                              return cfnresponse.send(event,context,cfnresponse.SUCCESS,{})
+                          except Exception as e:
+                              last_error=str(e)
+                              logger.warning("Connectivity probe attempt %s failed: %s", attempts, last_error)
+                              time.sleep(poll)
+                      raise TimeoutError(f"EC2 connectivity probe did not succeed within {max_wait}s: {last_error}")
+                  cfnresponse.send(event,context,cfnresponse.SUCCESS,{})
+              except Exception as e:
                   logger.exception("Delay custom resource failed")
-                  respond(event, context, "FAILED", reason=str(exc))
+                  cfnresponse.send(event,context,cfnresponse.FAILED,{},reason=str(e))
 
   # Give newly-created private networking resources a brief stabilization window
   # before App Runner rolls the service onto VPC egress.
@@ -2930,6 +3324,7 @@ Resources:
         - !Join
           - ","
           - - !Ref RunsOnServiceVpcConnector
+            - !Ref S3VpcEndpoint
             - !Ref PrivateSubnetGateway1
             - !Ref PrivateSubnet1Route
             - !Ref PrivateSubnet2Route
@@ -3063,6 +3458,7 @@ Resources:
                 Action:
                   - sqs:SendMessage
                   - sqs:ReceiveMessage
+                  - sqs:ChangeMessageVisibility
                   - sqs:DeleteMessage
                   - sqs:GetQueueAttributes
                 Resource:
@@ -3569,110 +3965,59 @@ Resources:
           Value: !Ref AWS::StackName
       Code:
         ZipFile: |
-          import json
-          import logging
-          import os
-          import time
-          import urllib.error
-          import urllib.request
-
-          logger = logging.getLogger()
+          import json,logging,os,time,urllib.error,urllib.request
+          logger=logging.getLogger()
           logger.setLevel(logging.INFO)
+          STATE_COLORS={"alarm":"danger","ok":"good","insufficient_data":"warning"}
+          STATE_EMOJI={"ALARM":":rotating_light:","OK":":white_check_mark:","INSUFFICIENT_DATA":":warning:"}
 
-          def get_alert_color(subject, state=None):
-              """Determine the color for a Slack alert based on content."""
+          def get_alert_color(subject,state=None):
               if state:
-                  state_lower = state.lower()
-                  if state_lower == "alarm":
-                      return "danger"
-                  elif state_lower == "ok":
-                      return "good"
-                  elif state_lower == "insufficient_data":
-                      return "warning"
+                  return STATE_COLORS.get(state.lower(),"#439FE0")
+              subject=(subject or "").lower()
+              if any(word in subject for word in ("error","fail","❌")):
+                  return "danger"
+              if any(word in subject for word in ("warn","⚠️","unable")):
+                  return "warning"
+              if any(word in subject for word in ("success","✅","complete")):
+                  return "good"
+              return "#439FE0"
 
-              if subject:
-                  subject_lower = subject.lower()
-                  if any(word in subject_lower for word in ["error", "fail", "❌"]):
-                      return "danger"
-                  elif any(word in subject_lower for word in ["warn", "⚠️", "unable"]):
-                      return "warning"
-                  elif any(word in subject_lower for word in ["success", "✅", "complete"]):
-                      return "good"
-
-              return "#439FE0"  # Default blue color
-
-          def create_attachment(title, text, color, stack_name):
-              """Create a Slack attachment."""
-              return {
-                  "color": color,
-                  "title": title,
-                  "text": text,
-                  "footer": stack_name,
-                  "ts": int(time.time())
-              }
-
-          def handler(event, context):
-              webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
-              stack_name = os.environ.get("STACK_NAME", "RunsOn")
-
+          def handler(event,context):
+              webhook_url=os.environ.get("SLACK_WEBHOOK_URL")
+              stack_name=os.environ.get("STACK_NAME","RunsOn")
               if not webhook_url:
                   logger.error("Slack webhook URL is not configured")
-                  return {"statusCode": 500, "body": "Slack webhook URL is not configured"}
-
-              records = event.get("Records", [])
-              for record in records:
-                  sns = record.get("Sns", {})
-                  subject = sns.get("Subject", "")
-                  message = sns.get("Message", "")
-
-                  # Base payload with username and icon
-                  payload = {
-                      "username": stack_name,
-                      "icon_url": "https://runs-on.com/logo.png"
-                  }
-
-                  # Try to parse message as JSON (CloudWatch alarms)
+                  return {"statusCode":500,"body":"Slack webhook URL is not configured"}
+              for record in event.get("Records",[]):
+                  sns=record.get("Sns",{})
+                  subject=sns.get("Subject","")
+                  message=sns.get("Message","")
+                  title=subject or "Alert"
+                  text=message
+                  color=get_alert_color(subject)
                   try:
-                      alarm_data = json.loads(message)
+                      alarm_data=json.loads(message)
                       if "AlarmName" in alarm_data:
-                          # CloudWatch alarm formatting
-                          state = alarm_data.get("NewStateValue", "UNKNOWN")
-                          state_emoji = {"ALARM": ":rotating_light:", "OK": ":white_check_mark:", "INSUFFICIENT_DATA": ":warning:"}.get(state, ":question:")
-                          title = f"{state_emoji} CloudWatch Alarm: {state}"
-                          text = f"*Alarm:* {alarm_data.get('AlarmName', 'N/A')}\n*Reason:* {alarm_data.get('NewStateReason', 'N/A')}"
-                          color = get_alert_color(None, state)
+                          state=alarm_data.get("NewStateValue","UNKNOWN")
+                          title=f'{STATE_EMOJI.get(state,":question:")} CloudWatch Alarm: {state}'
+                          text=f"*Alarm:* {alarm_data.get('AlarmName','N/A')}\n*Reason:* {alarm_data.get('NewStateReason','N/A')}"
+                          color=get_alert_color(None,state)
                       else:
-                          # JSON but not an alarm, format as code block
-                          title = subject if subject else "JSON Message"
-                          text = f"```\n{json.dumps(alarm_data, indent=2)}\n```"
-                          color = get_alert_color(subject)
-                  except (json.JSONDecodeError, TypeError):
-                      # Plain text message
-                      title = subject if subject else "Alert"
-                      text = message
-                      color = get_alert_color(subject)
-
-                  payload["attachments"] = [create_attachment(title, text, color, stack_name)]
-
-                  data = json.dumps(payload).encode("utf-8")
-                  request = urllib.request.Request(
-                      webhook_url,
-                      data=data,
-                      headers={"Content-Type": "application/json"},
-                      method="POST",
-                  )
-
+                          title=subject or "JSON Message"
+                          text=f"```\n{json.dumps(alarm_data,indent=2)}\n```"
+                  except (json.JSONDecodeError,TypeError):
+                      pass
+                  data=json.dumps({"username":stack_name,"icon_url":"https://runs-on.com/logo.png","attachments":[{"color":color,"title":title,"text":text,"footer":stack_name,"ts":int(time.time())}]}).encode("utf-8")
+                  request=urllib.request.Request(webhook_url,data=data,headers={"Content-Type":"application/json"},method="POST")
                   try:
-                      with urllib.request.urlopen(request, timeout=5) as response:
+                      with urllib.request.urlopen(request,timeout=5) as response:
                           logger.info("Sent alert to Slack with status %s", response.status)
                   except urllib.error.HTTPError as error:
-                      logger.error(
-                          "Failed to send alert to Slack: HTTP %s %s", error.code, error.reason
-                      )
+                      logger.error("Failed to send alert to Slack: HTTP %s %s", error.code, error.reason)
                   except Exception as error:  # noqa: BLE001
                       logger.exception("Unexpected error sending alert to Slack: %s", error)
-
-              return {"statusCode": 200, "body": "Processed SNS records"}
+              return {"statusCode":200,"body":"Processed SNS records"}
 
   AlertTopicSlackWebhookPermission:
     Condition: AlertTopicSlackWebhookProvided
@@ -3697,7 +4042,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.0.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.2.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
@@ -3825,16 +4170,28 @@ Outputs:
     Value: !Ref AlertTopic
   RunsOnLaunchTemplateLinuxDefault:
     Description: Default Linux launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxDefault, !GetAtt EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber]]
+    Value: !Sub "${EC2FleetLaunchTemplateLinuxDefault}:${EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber}"
+  RunsOnLaunchTemplateLinuxDefaultNested:
+    Description: Default Linux nested launch template for the RunsOn service
+    Value: !GetAtt ManagedLaunchTemplateLinuxDefaultNested.LaunchTemplateRef
   RunsOnLaunchTemplateWindowsDefault:
     Description: Default Windows launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsDefault, !GetAtt EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber]]
+    Value: !Sub "${EC2FleetLaunchTemplateWindowsDefault}:${EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber}"
+  RunsOnLaunchTemplateWindowsDefaultNested:
+    Description: Default Windows nested launch template for the RunsOn service
+    Value: !GetAtt ManagedLaunchTemplateWindowsDefaultNested.LaunchTemplateRef
   RunsOnLaunchTemplateLinuxPrivate:
     Description: Private Linux launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateLinuxPrivate, !GetAtt EC2FleetLaunchTemplateLinuxPrivate.LatestVersionNumber]]
+    Value: !GetAtt ManagedLaunchTemplateLinuxPrivate.LaunchTemplateRef
+  RunsOnLaunchTemplateLinuxPrivateNested:
+    Description: Private Linux nested launch template for the RunsOn service
+    Value: !GetAtt ManagedLaunchTemplateLinuxPrivateNested.LaunchTemplateRef
   RunsOnLaunchTemplateWindowsPrivate:
     Description: Private Windows launch template for the RunsOn service
-    Value: !Join [":", [!Ref EC2FleetLaunchTemplateWindowsPrivate, !GetAtt EC2FleetLaunchTemplateWindowsPrivate.LatestVersionNumber]]
+    Value: !GetAtt ManagedLaunchTemplateWindowsPrivate.LaunchTemplateRef
+  RunsOnLaunchTemplateWindowsPrivateNested:
+    Description: Private Windows nested launch template for the RunsOn service
+    Value: !GetAtt ManagedLaunchTemplateWindowsPrivateNested.LaunchTemplateRef
   RunsOnQueue:
     Description: SQS queue for the RunsOn service
     Value: !Ref RunsOnQueue
