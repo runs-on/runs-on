@@ -481,8 +481,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v2.12.3
-      ImageTag: v2.12.3@sha256:1058446c40de25ecbe318c487aa1159bbf4e48fb4531451aa512e24d5041fd54
+      AppTag: v2.12.4-rc.1
+      ImageTag: v2.12.4-rc.1@sha256:78320345076b8b50210b40222a4ab7aab7762388cc478bf038397724b5946184
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -2903,6 +2903,12 @@ Resources:
               return f"runs-on-derived/{digest}"
 
 
+          def client_token(launch_template_id, description):
+              # EC2 idempotency tokens must remain unique per target launch template even
+              # when two templates derive the same payload and therefore share a digest.
+              return f"{launch_template_id}/{description}"
+
+
           def xml_text(root, name):
               node = root.find(f".//{{*}}{name}")
               if node is not None and node.text:
@@ -2944,7 +2950,7 @@ Resources:
               serializer = serializer_factory(service_model.metadata["protocol"])
               request = serializer.serialize_to_request(
                   {
-                      "ClientToken": description,
+                      "ClientToken": client_token(launch_template_id, description),
                       "LaunchTemplateId": launch_template_id,
                       "LaunchTemplateData": supported_launch_template_data(data),
                       "VersionDescription": description,
@@ -4042,7 +4048,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.3.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.4-rc.1.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
