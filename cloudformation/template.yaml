@@ -481,8 +481,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v2.12.4
-      ImageTag: v2.12.4@sha256:78320345076b8b50210b40222a4ab7aab7762388cc478bf038397724b5946184
+      AppTag: v2.12.5-rc.1
+      ImageTag: v2.12.5-rc.1@sha256:7f1445c4acc497300ba616b9fd95da7f34131e309c70f04f6d8a8a978da34d0c
 
 Conditions:
   EmbeddedVpc: !Equals [!Ref NetworkingStack, "embedded"]
@@ -4048,7 +4048,7 @@ Resources:
     Condition: CreateDashboard
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.4.yaml"
+      TemplateURL: "https://runs-on.s3.eu-west-1.amazonaws.com/cloudformation/dashboard/template-v2.12.5-rc.1.yaml"
       Parameters:
         LogGroupName: !Join
           - ""
