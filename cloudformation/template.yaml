@@ -295,8 +295,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.0.2
-      ImageTag: v3.0.2@sha256:f5241b1db3025735b83db365a593a6719b2288c603a69a1f55dee99390462bac
+      AppTag: v3.0.4
+      ImageTag: v3.0.4@sha256:cf997e4c58de7db4c3e01a07b2af3723ca626223e38d168e5036ed237bf8ed70
   AppSize:
     small:
       Cpu: 256
