@@ -38,6 +38,7 @@ Metadata:
           default: "App runtime and maintenance [optional]"
         Parameters:
           - AppSize
+          - AppCapacityProvider
           - AppGithubApiStrategy
           - AppRegistry
           - LoggerLevel
@@ -204,6 +205,14 @@ Parameters:
       - "xhigh"
     Description: "Preset for the RunsOn control plane. This sets the worker service CPU/memory, queued-job concurrency, and the default EC2 launch/termination rate-limit assumptions together. Higher concurrency presets assume you have raised the relevant EC2 quotas (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html)."
 
+  AppCapacityProvider:
+    Type: String
+    Default: "FARGATE"
+    AllowedValues:
+      - "FARGATE"
+      - "FARGATE_SPOT"
+    Description: "ECS Fargate capacity provider for the RunsOn control plane. FARGATE_SPOT lowers idle cost but can briefly stop the single control-plane task until Spot capacity is available; interrupted in-flight queue messages retry after the SQS visibility timeout."
+
   AppGithubApiStrategy:
     Type: String
     Default: "normal"
@@ -295,8 +304,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.0.5
-      ImageTag: v3.0.5@sha256:6fdfcebff8b0fb4386ca2651f7caf64fff19dcec975b939489e33ce5b2788f7e
+      AppTag: v3.0.6-rc.1
+      ImageTag: v3.0.6-rc.1@sha256:7964cb92761182aa0504d3c37d768817ec39bce0c94d22410d06278fa38cd32d
   AppSize:
     small:
       Cpu: 256
@@ -1658,6 +1667,9 @@ Resources:
   RunsOnWorkerCluster:
     Type: AWS::ECS::Cluster
     Properties:
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -4954,6 +4966,7 @@ Resources:
             - "${AppRegistry}:${ImageTag}"
             - ImageTag: !FindInMap [App, Tags, ImageTag]
           Essential: true
+          StopTimeout: 30
           Command:
             - /app/dist/flexd
           Environment:
@@ -5002,7 +5015,9 @@ Resources:
     Properties:
       Cluster: !Ref RunsOnWorkerCluster
       DesiredCount: !If [MaintenanceModeEnabled, 0, 1]
-      LaunchType: FARGATE
+      CapacityProviderStrategy:
+        - CapacityProvider: !Ref AppCapacityProvider
+          Weight: 1
       PlatformVersion: LATEST
       TaskDefinition: !Ref RunsOnWorkerTaskDefinition
       PropagateTags: SERVICE
