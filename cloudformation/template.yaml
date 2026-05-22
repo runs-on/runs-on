@@ -15,6 +15,7 @@ Metadata:
       - Label:
           default: "Networking and security [optional]"
         Parameters:
+          - VpcCidrBlock
           - Private
           - Ipv6Enabled
           - SSHAllowed
@@ -24,6 +25,7 @@ Metadata:
           - EncryptEbs
           - RunnerCustomPolicy
           - AppCustomPolicy
+          - NetworkFirewallPolicyArn
       - Label:
           default: "Runner behavior and storage [optional]"
         Parameters:
@@ -81,6 +83,11 @@ Parameters:
     Description: "Make RunsOn only listen to jobs with an `env` job label matching this value. Only change this if you know what you are doing. See https://runs-on.com/configuration/environments/ for more details."
 
   # Networking and security [optional]
+  VpcCidrBlock:
+    Type: String
+    Default: 10.1.0.0/16
+    Description: "CIDR block for the embedded RunsOn VPC. Set this to a range that does not overlap with your existing VPCs when creating the stack. Changing this after the VPC exists requires replacing the VPC and dependent resources."
+
   Private:
     Type: String
     Default: "false"
@@ -146,6 +153,12 @@ Parameters:
     Type: String
     Default: ""
     Description: "Optional managed IAM Policy ARN to assign to the RunsOn service role. Can be used to e.g. allow access to KMS decryption keys for AMIs."
+
+  NetworkFirewallPolicyArn:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^arn:aws[a-zA-Z-]*:network-firewall:[a-z0-9-]+:[0-9]{12}:firewall-policy/.+$"
+    Description: "Optional ARN of an AWS Network Firewall policy used for IPv4 egress filtering. Manage the policy and its rule groups outside this stack. When provided, RunsOn creates firewall endpoints in both AZs and routes IPv4 egress from public subnets, plus private-subnet egress after NAT, through the firewall. S3 gateway endpoint traffic still bypasses the firewall. IPv6 traffic is not filtered; set Ipv6Enabled=false if you need comprehensive egress filtering."
 
   # Runner behavior and storage [optional]
   EnableBedrock:
@@ -304,8 +317,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.0.9
-      ImageTag: v3.0.9@sha256:5f5c33e1fd0fef95e997a26690bf1e3f0a3c2d8426e47b0823a130c40038d81c
+      AppTag: v3.0.10
+      ImageTag: v3.0.10@sha256:62b1444505532a3b66dce9252d22e100193ac20c0806c956b126716e67a4b71b
   AppSize:
     small:
       Cpu: 256
@@ -338,11 +351,13 @@ Conditions:
   BedrockEnabled: !Equals [!Ref EnableBedrock, "true"]
   CreateEfs: !Equals [!Ref EnableEfs, "true"]
   CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
+  NetworkFirewallEnabled: !Not [!Equals [!Ref NetworkFirewallPolicyArn, ""]]
+  NetworkFirewallDisabled: !Equals [!Ref NetworkFirewallPolicyArn, ""]
 Resources:
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.1.0.0/16
+      CidrBlock: !Ref VpcCidrBlock
       EnableDnsSupport: true
       EnableDnsHostnames: true
       InstanceTenancy: default
@@ -580,7 +595,8 @@ Resources:
         Fn::Sub: "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Gateway
       RouteTableIds:
-        - !Ref PublicRouteTable
+        - !If [NetworkFirewallEnabled, !Ref PublicSubnet1FirewallRouteTable, !Ref PublicRouteTable]
+        - !If [NetworkFirewallEnabled, !Ref PublicSubnet2FirewallRouteTable, !Ref AWS::NoValue]
         - !Ref PrivateSubnet1RouteTable
         - !Ref PrivateSubnet2RouteTable
 
@@ -631,15 +647,563 @@ Resources:
 
   SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallDisabled
     Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
   SubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallDisabled
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
+
+  # Optional distributed AWS Network Firewall egress path. The public subnets
+  # use AZ-local firewall endpoints so stateful rules see both directions of a
+  # connection; private-subnet traffic is filtered after it exits the NAT gateway
+  # in PublicSubnet1.
+  FirewallSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Select [14, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-FirewallSubnet1
+
+  FirewallSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Select [15, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-FirewallSubnet2
+
+  FirewallSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-FirewallSubnet1RouteTable
+
+  FirewallSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-FirewallSubnet2RouteTable
+
+  FirewallSubnet1Route:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref FirewallSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  FirewallSubnet2Route:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref FirewallSubnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  FirewallSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallEnabled
+    Properties:
+      SubnetId: !Ref FirewallSubnet1
+      RouteTableId: !Ref FirewallSubnet1RouteTable
+
+  FirewallSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallEnabled
+    Properties:
+      SubnetId: !Ref FirewallSubnet2
+      RouteTableId: !Ref FirewallSubnet2RouteTable
+
+  NetworkFirewall:
+    Type: AWS::NetworkFirewall::Firewall
+    Condition: NetworkFirewallEnabled
+    Properties:
+      FirewallName: !Sub ${AWS::StackName}-NetworkFirewall
+      FirewallPolicyArn: !Ref NetworkFirewallPolicyArn
+      VpcId: !Ref VPC
+      SubnetMappings:
+        - SubnetId: !Ref FirewallSubnet1
+        - SubnetId: !Ref FirewallSubnet2
+      DeleteProtection: false
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-NetworkFirewall
+
+  NetworkFirewallLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: NetworkFirewallEnabled
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/network-firewall/${AWS::StackName}
+      RetentionInDays: 30
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  NetworkFirewallLoggingConfiguration:
+    Type: AWS::NetworkFirewall::LoggingConfiguration
+    Condition: NetworkFirewallEnabled
+    Properties:
+      FirewallArn: !GetAtt NetworkFirewall.FirewallArn
+      LoggingConfiguration:
+        LogDestinationConfigs:
+          - LogType: ALERT
+            LogDestinationType: CloudWatchLogs
+            LogDestination:
+              logGroup: !Ref NetworkFirewallLogGroup
+          - LogType: FLOW
+            LogDestinationType: CloudWatchLogs
+            LogDestination:
+              logGroup: !Ref NetworkFirewallLogGroup
+
+  NetworkFirewallEndpointResolverRole:
+    Type: AWS::IAM::Role
+    Condition: NetworkFirewallEnabled
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DescribeNetworkFirewall
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - network-firewall:DescribeFirewall
+                Resource: !GetAtt NetworkFirewall.FirewallArn
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  NetworkFirewallEndpointResolverFunction:
+    Type: AWS::Lambda::Function
+    Condition: NetworkFirewallEnabled
+    Properties:
+      Runtime: nodejs24.x
+      Handler: index.handler
+      Role: !GetAtt NetworkFirewallEndpointResolverRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+      Code:
+        ZipFile: |
+          'use strict';
+
+          function createDefaultAws() {
+            let initialized = false;
+            let client;
+            let DescribeFirewallCommand;
+
+            function init() {
+              if (initialized) return;
+              initialized = true;
+              const networkFirewall = require('@aws-sdk/client-network-firewall');
+              client = new networkFirewall.NetworkFirewallClient({});
+              DescribeFirewallCommand = networkFirewall.DescribeFirewallCommand;
+            }
+
+            return {
+              async describeFirewall(params) {
+                init();
+                return client.send(new DescribeFirewallCommand(params));
+              },
+            };
+          }
+
+          function log(level, message, fields = {}) {
+            const entry = {
+              level,
+              message,
+              ...fields,
+            };
+            const rendered = JSON.stringify(entry);
+            if (level === 'error') {
+              console.error(rendered);
+              return;
+            }
+            if (level === 'warn') {
+              console.warn(rendered);
+              return;
+            }
+            console.log(rendered);
+          }
+
+          function trimString(value) {
+            return String(value || '').trim();
+          }
+
+          function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+          }
+
+          function isCloudFormationCustomResourceEvent(event) {
+            return !!event?.ResponseURL && !!event?.RequestType;
+          }
+
+          function configFromEvent(event = {}) {
+            const properties = event?.ResourceProperties || {};
+            const subnetIds = properties.SubnetIds && typeof properties.SubnetIds === 'object'
+              ? properties.SubnetIds
+              : {};
+
+            return {
+              firewallArn: trimString(properties.FirewallArn),
+              subnetIds: Object.fromEntries(
+                Object.entries(subnetIds)
+                  .map(([name, subnetId]) => [trimString(name), trimString(subnetId)])
+                  .filter(([name, subnetId]) => name && subnetId),
+              ),
+            };
+          }
+
+          function endpointMappings(firewallStatus = {}) {
+            const syncStates = firewallStatus.SyncStates || {};
+            const states = Array.isArray(syncStates) ? syncStates : Object.values(syncStates);
+            const mappings = new Map();
+
+            for (const state of states) {
+              const attachment = state?.Attachment || {};
+              const subnetId = trimString(attachment.SubnetId);
+              const endpointId = trimString(attachment.EndpointId);
+              const status = trimString(attachment.Status);
+              if (!subnetId) continue;
+
+              mappings.set(subnetId, {
+                endpointId,
+                status,
+              });
+            }
+
+            return mappings;
+          }
+
+          function resolvedEndpointData(firewallStatus, subnetIds) {
+            const mappings = endpointMappings(firewallStatus);
+            const data = {};
+            const pending = [];
+
+            for (const [name, subnetId] of Object.entries(subnetIds)) {
+              const mapping = mappings.get(subnetId);
+              if (!mapping?.endpointId) {
+                pending.push(`${name} (${subnetId}) has no endpoint yet`);
+                continue;
+              }
+              if (mapping.status && mapping.status !== 'READY') {
+                pending.push(`${name} (${subnetId}) endpoint ${mapping.endpointId} is ${mapping.status}`);
+                continue;
+              }
+              data[`${name}EndpointId`] = mapping.endpointId;
+            }
+
+            return {
+              data,
+              pending,
+            };
+          }
+
+          async function resolveEndpointIds(event, options = {}) {
+            const aws = options.aws || createDefaultAws();
+            const config = configFromEvent(event);
+            const maxAttempts = options.maxAttempts || 60;
+            const pollDelayMs = options.pollDelayMs || 5000;
+            const sleepImpl = options.sleepImpl || sleep;
+
+            if (!config.firewallArn) {
+              throw new Error('FirewallArn is required');
+            }
+            if (Object.keys(config.subnetIds).length === 0) {
+              throw new Error('At least one subnet ID is required');
+            }
+
+            let lastPending = [];
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+              const response = await aws.describeFirewall({
+                FirewallArn: config.firewallArn,
+              });
+
+              const result = resolvedEndpointData(response?.FirewallStatus, config.subnetIds);
+              if (result.pending.length === 0) {
+                log('info', 'Resolved Network Firewall endpoint IDs', {
+                  firewall_arn: config.firewallArn,
+                  attempt,
+                  endpoint_count: Object.keys(result.data).length,
+                });
+                return result.data;
+              }
+
+              lastPending = result.pending;
+              log('info', 'Waiting for Network Firewall endpoint IDs', {
+                firewall_arn: config.firewallArn,
+                attempt,
+                pending: result.pending,
+              });
+
+              if (attempt < maxAttempts) {
+                await sleepImpl(pollDelayMs);
+              }
+            }
+
+            throw new Error(`Network Firewall endpoints were not ready: ${lastPending.join('; ')}`);
+          }
+
+          async function sendCloudFormationResponse(event, status, data, reason, fetchImpl = fetch) {
+            const responseUrl = trimString(event?.ResponseURL);
+            if (!responseUrl) return;
+
+            const physicalResourceId = trimString(event?.PhysicalResourceId)
+              || trimString(event?.LogicalResourceId)
+              || 'RunsOnNetworkFirewallEndpointResolver';
+            const body = JSON.stringify({
+              Status: status,
+              Reason: reason || `See CloudWatch Logs for details: ${trimString(event?.LogicalResourceId) || 'RunsOnNetworkFirewallEndpointResolver'}`,
+              PhysicalResourceId: physicalResourceId,
+              StackId: trimString(event?.StackId),
+              RequestId: trimString(event?.RequestId),
+              LogicalResourceId: trimString(event?.LogicalResourceId),
+              Data: data || {},
+            });
+
+            await fetchImpl(responseUrl, {
+              method: 'PUT',
+              headers: {
+                'content-type': '',
+                'content-length': String(Buffer.byteLength(body)),
+              },
+              body,
+            });
+          }
+
+          async function createHandler(event, options = {}) {
+            if (isCloudFormationCustomResourceEvent(event)) {
+              if (event.RequestType === 'Delete') {
+                await sendCloudFormationResponse(event, 'SUCCESS', { skipped: true }, 'Delete request acknowledged', options.fetchImpl || fetch);
+                return { skipped: true };
+              }
+
+              try {
+                const data = await resolveEndpointIds(event, options);
+                await sendCloudFormationResponse(event, 'SUCCESS', data, undefined, options.fetchImpl || fetch);
+                return data;
+              } catch (error) {
+                const message = String(error?.message || error);
+                log('error', 'CloudFormation Network Firewall endpoint resolution failed', { error: message });
+                await sendCloudFormationResponse(event, 'FAILED', { error: message }, message, options.fetchImpl || fetch);
+                throw error;
+              }
+            }
+
+            return resolveEndpointIds(event, options);
+          }
+
+          module.exports = {
+            configFromEvent,
+            createHandler,
+            endpointMappings,
+            handler: (event) => createHandler(event),
+            resolvedEndpointData,
+            resolveEndpointIds,
+          };
+  NetworkFirewallEndpointResolverLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: NetworkFirewallEnabled
+    Properties:
+      RetentionInDays: 14
+      LogGroupName: !Sub "/aws/lambda/${NetworkFirewallEndpointResolverFunction}"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  NetworkFirewallEndpointResolverFunctionVersion:
+    Type: AWS::Lambda::Version
+    Condition: NetworkFirewallEnabled
+    Properties:
+      FunctionName: !Ref NetworkFirewallEndpointResolverFunction
+
+  NetworkFirewallEndpointResolver:
+    Type: Custom::NetworkFirewallEndpointResolver
+    Condition: NetworkFirewallEnabled
+    Properties:
+      ServiceToken: !GetAtt NetworkFirewallEndpointResolverFunction.Arn
+      RefreshToken: !Ref NetworkFirewallEndpointResolverFunctionVersion
+      FirewallArn: !GetAtt NetworkFirewall.FirewallArn
+      SubnetIds:
+        FirewallSubnet1: !Ref FirewallSubnet1
+        FirewallSubnet2: !Ref FirewallSubnet2
+
+  PublicSubnet1FirewallRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet1FirewallRouteTable
+
+  PublicSubnet2FirewallRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet2FirewallRouteTable
+
+  PublicSubnet1FirewallRoute:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    Properties:
+      RouteTableId: !Ref PublicSubnet1FirewallRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet1EndpointId
+
+  PublicSubnet2FirewallRoute:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    Properties:
+      RouteTableId: !Ref PublicSubnet2FirewallRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet2EndpointId
+
+  PublicSubnet1FirewallRouteIPv6:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicSubnet1FirewallRouteTable
+      DestinationIpv6CidrBlock: ::/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet2FirewallRouteIPv6:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicSubnet2FirewallRouteTable
+      DestinationIpv6CidrBlock: ::/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1FirewallRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallEnabled
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicSubnet1FirewallRouteTable
+
+  PublicSubnet2FirewallRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: NetworkFirewallEnabled
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicSubnet2FirewallRouteTable
+
+  InternetGatewayRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: NetworkFirewallEnabled
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-InternetGatewayRouteTable
+
+  InternetGatewayRouteTableAssociation:
+    Type: AWS::EC2::GatewayRouteTableAssociation
+    Condition: NetworkFirewallEnabled
+    DependsOn: AttachGateway
+    Properties:
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref InternetGatewayRouteTable
+
+  # Return traffic from the IGW must re-enter through the matching firewall
+  # endpoint. Without this edge route table, stateful firewall rules would see
+  # only one side of public-subnet connections.
+  InternetGatewayRoutePublicSubnet1:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    Properties:
+      RouteTableId: !Ref InternetGatewayRouteTable
+      DestinationCidrBlock: !GetAtt PublicSubnet1.CidrBlock
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet1EndpointId
+
+  InternetGatewayRoutePublicSubnet2:
+    Type: AWS::EC2::Route
+    Condition: NetworkFirewallEnabled
+    Properties:
+      RouteTableId: !Ref InternetGatewayRouteTable
+      DestinationCidrBlock: !GetAtt PublicSubnet2.CidrBlock
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet2EndpointId
 
   # --- EFS Resources ---
   EfsFileSystem:
@@ -5568,6 +6132,11 @@ Outputs:
     Value: !Ref VPC
     Export:
       Name: !Sub "${AWS::StackName}-VPCId"
+  RunsOnVpcCidrBlock:
+    Description: VPC CIDR block
+    Value: !Ref VpcCidrBlock
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicSubnetIds:
     Description: Public subnet IDs
     Value: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
