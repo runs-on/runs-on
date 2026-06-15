@@ -108,7 +108,7 @@ Parameters:
 
   SSHAllowed:
     Type: String
-    Default: "true"
+    Default: "false"
     AllowedValues:
       - "true"
       - "false"
@@ -117,7 +117,7 @@ Parameters:
   SSHCidrRange:
     Type: String
     Default: 0.0.0.0/0
-    Description: CIDR range for inbound SSH access. By default, only repository collaborators with admin permission will be able to SSH into the runner instances.
+    Description: CIDR range for inbound SSH access when SSHAllowed is true. Keep SSHAllowed false unless runner SSH access is required.
     MinLength: 1
 
   EnableWAF:
@@ -317,8 +317,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.1.1
-      ImageTag: v3.1.1@sha256:3d95c7a4cbce8a20b9b71e8ce0d1d88d9ff67c41abfefdbde0ca2f81f7a54f98
+      AppTag: v3.1.2-rc.1
+      ImageTag: v3.1.2-rc.1@sha256:8c89f1958fe5e1b0a3d137ff350ec80229d1c0e7c28283a5f1d49deadde5d940
   AppSize:
     small:
       Cpu: 256
@@ -814,8 +814,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: DescribeNetworkFirewall
           PolicyDocument:
@@ -840,6 +838,8 @@ Resources:
       Role: !GetAtt NetworkFirewallEndpointResolverRole.Arn
       Timeout: 300
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref NetworkFirewallEndpointResolverLogGroup
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -1068,12 +1068,28 @@ Resources:
     Condition: NetworkFirewallEnabled
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${NetworkFirewallEndpointResolverFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/network-firewall-endpoint-resolver"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+
+  NetworkFirewallEndpointResolverLogsPolicy:
+    Type: AWS::IAM::Policy
+    Condition: NetworkFirewallEnabled
+    Properties:
+      PolicyName: NetworkFirewallEndpointResolverLogs
+      Roles:
+        - !Ref NetworkFirewallEndpointResolverRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${NetworkFirewallEndpointResolverLogGroup.Arn}:*"
 
   NetworkFirewallEndpointResolverFunctionVersion:
     Type: AWS::Lambda::Version
@@ -1084,7 +1100,7 @@ Resources:
   NetworkFirewallEndpointResolver:
     Type: Custom::NetworkFirewallEndpointResolver
     Condition: NetworkFirewallEnabled
-    DependsOn: NetworkFirewallEndpointResolverLogGroup
+    DependsOn: NetworkFirewallEndpointResolverLogsPolicy
     Properties:
       ServiceToken: !GetAtt NetworkFirewallEndpointResolverFunction.Arn
       RefreshToken: !Ref NetworkFirewallEndpointResolverFunctionVersion
@@ -1564,6 +1580,7 @@ Resources:
 
   ManagedLaunchTemplateLinuxDefaultNested:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1591,6 +1608,7 @@ Resources:
 
   ManagedLaunchTemplateLinuxPrivate:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1618,6 +1636,7 @@ Resources:
 
   ManagedLaunchTemplateLinuxPrivateNested:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1646,6 +1665,7 @@ Resources:
 
   ManagedLaunchTemplateWindowsDefaultNested:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1673,6 +1693,7 @@ Resources:
 
   ManagedLaunchTemplateWindowsPrivate:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1700,6 +1721,7 @@ Resources:
 
   ManagedLaunchTemplateWindowsPrivateNested:
     Type: Custom::LaunchTemplate
+    DependsOn: ManagedLaunchTemplateLogsPolicy
     Properties:
       ServiceToken: !GetAtt ManagedLaunchTemplateFunction.Arn
       RefreshToken: !Ref ManagedLaunchTemplateFunctionVersion
@@ -1916,8 +1938,8 @@ Resources:
       ManagedPolicyArns:
         !If
           - RunnerCustomPolicyProvided
-          - [!Ref RunnerCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
-          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess"]
+          - [!Ref RunnerCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly"]
+          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly"]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -1954,7 +1976,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:CreateTags
-                Resource: "*"
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ARN": "${ec2:SourceInstanceARN}"
@@ -1975,14 +1997,10 @@ Resources:
               - Effect: Allow
                 Action:
                   - "logs:PutLogEvents"
-                  - "logs:PutRetentionPolicy"
                   - "logs:DescribeLogStreams"
-                  - "logs:DescribeLogGroups"
                   - "logs:CreateLogStream"
-                  - "logs:CreateLogGroup"
                 Resource:
-                - !Sub "${EC2InstanceLogGroup.Arn}"
-                - !Sub "${EC2InstanceLogGroup.Arn}:*"
+                  - !Sub "${EC2InstanceLogGroup.Arn}:*"
         - PolicyName: PutMetrics
           PolicyDocument:
             Version: "2012-10-17"
@@ -2131,10 +2149,13 @@ Resources:
                     - elasticfilesystem:ClientMount
                     - elasticfilesystem:ClientWrite
                     - elasticfilesystem:DescribeMountTargets
+                  Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${EfsFileSystem}"
+                - Effect: Allow
+                  Action:
                     # Required by efs-utils helper to find mount target IP
                     - ec2:DescribeSubnets
                     - ec2:DescribeNetworkInterfaces
-                  Resource: "*" # Scoping down requires knowing EFS ARN, Subnet ARNs, etc. Keep broad for simplicity.
+                  Resource: "*"
           - !Ref AWS::NoValue
         - !If
           - CreateEphemeralRegistry
@@ -2203,6 +2224,7 @@ Resources:
 
   RunsOnGitHubRunnerCacheRefreshSchedule:
     Type: AWS::Scheduler::Schedule
+    DependsOn: RunsOnGitHubRunnerCacheRefreshLogsPolicy
     Properties:
       ScheduleExpression: "cron(15 0 * * ? *)"
       ScheduleExpressionTimezone: "UTC"
@@ -2217,6 +2239,7 @@ Resources:
 
   RunsOnGitHubRunnerCacheRefreshSeed:
     Type: Custom::RunsOnGitHubRunnerCacheRefreshSeed
+    DependsOn: RunsOnGitHubRunnerCacheRefreshLogsPolicy
     Properties:
       ServiceToken: !GetAtt RunsOnGitHubRunnerCacheRefreshFunction.Arn
       Bucket: !Ref S3BucketCache
@@ -2288,7 +2311,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${RunsOnPublicIngressFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/public-ingress"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2300,7 +2323,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${RunsOnGitHubAppsSetupFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/github-apps-setup"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2312,7 +2335,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${RunsOnGitHubWafSyncFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/github-waf-sync"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2323,7 +2346,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${RunsOnGitHubRunnerCacheRefreshFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/github-runner-cache-refresh"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2334,12 +2357,89 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 14
-      LogGroupName: !Sub "/aws/lambda/${RunsOnJobDiagnosticsResolverFunction}"
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/job-diagnostics-resolver"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+
+  RunsOnPublicIngressLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: RunsOnPublicIngressLogs
+      Roles:
+        - !Ref RunsOnPublicIngressRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${RunsOnPublicIngressLogGroup.Arn}:*"
+
+  RunsOnGitHubAppsSetupLogsPolicy:
+    Condition: AdminRoutesEnabled
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: RunsOnGitHubAppsSetupLogs
+      Roles:
+        - !Ref RunsOnGitHubAppsSetupRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${RunsOnGitHubAppsSetupLogGroup.Arn}:*"
+
+  RunsOnGitHubWafSyncLogsPolicy:
+    Condition: WafEnabled
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: RunsOnGitHubWafSyncLogs
+      Roles:
+        - !Ref RunsOnGitHubWafSyncRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${RunsOnGitHubWafSyncLogGroup.Arn}:*"
+
+  RunsOnGitHubRunnerCacheRefreshLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: RunsOnGitHubRunnerCacheRefreshLogs
+      Roles:
+        - !Ref RunsOnGitHubRunnerCacheRefreshRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${RunsOnGitHubRunnerCacheRefreshLogGroup.Arn}:*"
+
+  RunsOnJobDiagnosticsResolverLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: RunsOnJobDiagnosticsResolverLogs
+      Roles:
+        - !Ref RunsOnJobDiagnosticsResolverRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${RunsOnJobDiagnosticsResolverLogGroup.Arn}:*"
 
   RunsOnPublicIngressAllowedIpsIPv4:
     Condition: WafEnabled
@@ -2382,8 +2482,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: RunsOnGitHubWafSync
           PolicyDocument:
@@ -2412,8 +2510,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: RunsOnGitHubRunnerCacheRefresh
           PolicyDocument:
@@ -2449,8 +2545,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: RunsOnPublicIngress
           PolicyDocument:
@@ -2477,8 +2571,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: RunsOnGitHubAppsSetup
           PolicyDocument:
@@ -2505,8 +2597,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - iam:GetRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+              - Effect: Allow
+                Action:
                   - iam:CreateServiceLinkedRole
-                Resource: "*"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Condition:
+                  StringEquals:
+                    "iam:AWSServiceName": "spot.amazonaws.com"
               - Effect: Allow
                 Action:
                   - sqs:SendMessage
@@ -2527,8 +2625,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: RunsOnJobDiagnosticsResolverPermissions
           PolicyDocument:
@@ -2558,6 +2654,8 @@ Resources:
       Role: !GetAtt RunsOnPublicIngressRole.Arn
       Timeout: 15
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref RunsOnPublicIngressLogGroup
       Environment:
         Variables:
           RUNS_ON_WEBHOOKS_QUEUE_URL: !Ref RunsOnQueueWebhooks
@@ -2844,6 +2942,8 @@ Resources:
       Role: !GetAtt RunsOnGitHubAppsSetupRole.Arn
       Timeout: 15
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref RunsOnGitHubAppsSetupLogGroup
       Environment:
         Variables:
           RUNS_ON_GITHUB_ORG: !Ref GithubOrganization
@@ -4006,6 +4106,8 @@ Resources:
       Role: !GetAtt RunsOnJobDiagnosticsResolverRole.Arn
       Timeout: 30
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref RunsOnJobDiagnosticsResolverLogGroup
       Environment:
         Variables:
           RUNS_ON_PRODUCT: flex
@@ -4740,6 +4842,8 @@ Resources:
       Role: !GetAtt RunsOnGitHubWafSyncRole.Arn
       Timeout: 30
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref RunsOnGitHubWafSyncLogGroup
       Environment:
         Variables:
           RUNS_ON_GITHUB_META_URL: "https://api.github.com/meta"
@@ -4994,6 +5098,8 @@ Resources:
       Role: !GetAtt RunsOnGitHubRunnerCacheRefreshRole.Arn
       Timeout: 300
       MemorySize: 512
+      LoggingConfig:
+        LogGroup: !Ref RunsOnGitHubRunnerCacheRefreshLogGroup
       Environment:
         Variables:
           RUNS_ON_RUNNER_CACHE_BUCKET: !Ref S3BucketCache
@@ -5367,6 +5473,7 @@ Resources:
   RunsOnGitHubWafSyncRule:
     Condition: WafEnabled
     Type: AWS::Events::Rule
+    DependsOn: RunsOnGitHubWafSyncLogsPolicy
     Properties:
       Description: Refreshes the public ingress WAF webhook IP allowlist every hour.
       ScheduleExpression: rate(1 hour)
@@ -5387,6 +5494,7 @@ Resources:
   RunsOnGitHubWafSyncSeed:
     Condition: WafEnabled
     Type: Custom::RunsOnGitHubWafSyncSeed
+    DependsOn: RunsOnGitHubWafSyncLogsPolicy
     Properties:
       ServiceToken: !GetAtt RunsOnGitHubWafSyncFunction.Arn
       MetaUrl: "https://api.github.com/meta"
@@ -5649,7 +5757,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref RunsOnPublicIngressFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/*"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/POST/github/webhooks"
 
   RunsOnPublicIngressRestApiInvokeGitHubAppsSetupPermission:
     Condition: AdminRoutesEnabled
@@ -5658,7 +5766,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref RunsOnGitHubAppsSetupFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/*"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/GET/*"
 
   RunsOnStackConfigSecret:
     Type: AWS::SecretsManager::Secret
@@ -5701,8 +5809,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: ManageLaunchTemplates
           PolicyDocument:
@@ -5722,11 +5828,13 @@ Resources:
   ManagedLaunchTemplateFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.11
+      Runtime: python3.14
       Handler: index.handler
       Role: !GetAtt ManagedLaunchTemplateRole.Arn
       Timeout: 300
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref ManagedLaunchTemplateLogGroup
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -5775,6 +5883,17 @@ Resources:
           )
           SUPPORTED_CPU_OPTION_FIELDS = ("AmdSevSnp", "CoreCount", "ThreadsPerCore")
           _EC2_CLIENT = None
+
+
+          def safe_xml_fromstring(payload):
+              if isinstance(payload, str):
+                  text = payload
+              else:
+                  text = payload.decode("utf-8", "replace")
+              upper = text.upper()
+              if "<!DOCTYPE" in upper or "<!ENTITY" in upper:
+                  raise ET.ParseError("XML DTD and entity declarations are not supported")
+              return ET.fromstring(text)
 
 
           def require_dependency(value, name):
@@ -5870,7 +5989,7 @@ Resources:
 
           def xml_message(payload):
               try:
-                  root = ET.fromstring(payload)
+                  root = safe_xml_fromstring(payload)
               except ET.ParseError:
                   return payload.decode("utf-8", "replace")
               for name in ("Message", "message"):
@@ -5957,7 +6076,7 @@ Resources:
                   data,
                   ec2=ec2,
               )
-              root = ET.fromstring(signed_ec2_query(body, headers, ec2=ec2, session=session))
+              root = safe_xml_fromstring(signed_ec2_query(body, headers, ec2=ec2, session=session))
               version = xml_text(root, "versionNumber")
               if not version:
                   raise RuntimeError("launch template version number missing from EC2 response")
@@ -6031,6 +6150,32 @@ Resources:
     Properties:
       FunctionName: !Ref ManagedLaunchTemplateFunction
 
+  ManagedLaunchTemplateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/managed-launch-template"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  ManagedLaunchTemplateLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ManagedLaunchTemplateLogs
+      Roles:
+        - !Ref ManagedLaunchTemplateRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${ManagedLaunchTemplateLogGroup.Arn}:*"
+
   StackConfigMaterializerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -6041,8 +6186,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: ManageStackConfigMaterializer
           PolicyDocument:
@@ -6061,11 +6204,13 @@ Resources:
   StackConfigMaterializerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.11
+      Runtime: python3.14
       Handler: index.handler
       Role: !GetAtt StackConfigMaterializerRole.Arn
       Timeout: 300
       MemorySize: 256
+      LoggingConfig:
+        LogGroup: !Ref StackConfigMaterializerLogGroup
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -6115,8 +6260,35 @@ Resources:
     Properties:
       FunctionName: !Ref StackConfigMaterializerFunction
 
+  StackConfigMaterializerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/stack-config-materializer"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  StackConfigMaterializerLogsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: StackConfigMaterializerLogs
+      Roles:
+        - !Ref StackConfigMaterializerRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${StackConfigMaterializerLogGroup.Arn}:*"
+
   StackConfigMaterializer:
     Type: Custom::StackConfigMaterializer
+    DependsOn: StackConfigMaterializerLogsPolicy
     Properties:
       ServiceToken: !GetAtt StackConfigMaterializerFunction.Arn
       RefreshToken: !Ref StackConfigMaterializerFunctionVersion
@@ -6204,17 +6376,35 @@ Resources:
                   - ec2:DescribeLaunchTemplateVersions
                   - ce:GetCostAndUsage
                   - ce:UpdateCostAllocationTagsStatus
-                  - cloudwatch:PutMetricData
                   - cloudwatch:GetMetricData
                   - cloudwatch:DescribeAlarms
                   - cloudtrail:LookupEvents
-                  - iam:GetRole
-                  - sns:ListSubscriptionsByTopic
                 Resource: "*"
               - Effect: Allow
                 Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace:
+                      - "RunsOn"
+                      - "RunsOn/Flex"
+                      - "RunsOn/Runners"
+              - Effect: Allow
+                Action:
+                  - sns:ListSubscriptionsByTopic
+                Resource: !Ref AlertTopic
+              - Effect: Allow
+                # The worker checks for the EC2 Spot service-linked role before
+                # creating it. GetRole on the runner instance role is granted
+                # alongside PassRole below.
+                Action:
+                  - iam:GetRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+              - Effect: Allow
+                Action:
                   - iam:CreateServiceLinkedRole
-                Resource: "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
                 Condition:
                   StringEquals:
                     "iam:AWSServiceName": "spot.amazonaws.com"
@@ -6229,7 +6419,16 @@ Resources:
                   - ec2:RunInstances
                 Resource:
                   - !Sub "arn:aws:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:launch-template/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
+                  # Spot launches authorize RunInstances and tag-on-create
+                  # CreateTags against the spot-instances-request resource.
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:spot-instances-request/*"
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -6240,10 +6439,7 @@ Resources:
                   - ssm:PutParameter
                   - ssm:GetParameter
                   - ssm:GetParameters
-                  - ssm:DeleteParameter
-                  - ssm:DeleteParameters
-                Resource:
-                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/*"
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
@@ -6263,24 +6459,33 @@ Resources:
                 Action:
                   - ec2:DeleteVolume
                   - ec2:DeleteSnapshot
-                Resource: "*"
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
               - Effect: Allow
                 Action:
-                  - s3:GetObject
-                  - s3:PutObject
                   - s3:ListBucket
-                Resource:
-                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}
-                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}/*
+                Resource: !Sub "arn:aws:s3:::${S3BucketCache}"
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - cache
+                      - cache/*
+                      - agents
+                      - agents/*
+                      - runners
+                      - runners/*
               - Effect: Allow
                 Action:
+                  - s3:GetObject
                   - s3:PutObject
                 Resource:
-                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}/runners/*
-                  - Fn::Sub: arn:aws:s3:::${S3BucketCache}/agents/*
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/cache/*"
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/runners/*"
+                  - !Sub "arn:aws:s3:::${S3BucketCache}/agents/*"
               - Effect: Allow
                 Action:
                   - sns:Publish
@@ -6313,7 +6518,9 @@ Resources:
                   - dynamodb:Scan
                 Resource:
                   - !GetAtt RunsOnWorkflowJobsTable.Arn
-                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/*"
+                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/reconcile-index"
+                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/pending-work-index"
+                  - !Sub "${RunsOnWorkflowJobsTable.Arn}/index/daily-activity-index"
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -6560,6 +6767,8 @@ Resources:
     Properties:
       TableName: !Sub "${AWS::StackName}-workflow-jobs"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: job_id
           AttributeType: N
@@ -6696,8 +6905,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -6708,11 +6915,13 @@ Resources:
     Condition: AlertTopicSlackWebhookProvided
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: python3.11
+      Runtime: python3.14
       Handler: index.handler
       Role: !GetAtt AlertTopicSlackWebhookRole.Arn
       Timeout: 10
       MemorySize: 128
+      LoggingConfig:
+        LogGroup: !Ref AlertTopicSlackWebhookLogGroup
       Environment:
         Variables:
           SLACK_WEBHOOK_URL: !Ref AlertTopicSlackWebhookUrl
@@ -6787,11 +6996,40 @@ Resources:
       Principal: sns.amazonaws.com
       SourceArn: !Ref AlertTopic
 
+  AlertTopicSlackWebhookLogGroup:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+      LogGroupName: !Sub "/runs-on/${AWS::StackName}/lambda/alert-topic-slack-webhook"
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+
+  AlertTopicSlackWebhookLogsPolicy:
+    Condition: AlertTopicSlackWebhookProvided
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AlertTopicSlackWebhookLogs
+      Roles:
+        - !Ref AlertTopicSlackWebhookRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "${AlertTopicSlackWebhookLogGroup.Arn}:*"
+
   AlertTopicSlackWebhookSubscription:
     Condition: AlertTopicSlackWebhookProvided
     Type: AWS::SNS::Subscription
     DependsOn:
       - AlertTopicSlackWebhookPermission
+      - AlertTopicSlackWebhookLogsPolicy
     Properties:
       Protocol: lambda
       TopicArn: !Ref AlertTopic
