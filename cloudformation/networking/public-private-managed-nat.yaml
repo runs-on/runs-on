@@ -10,7 +10,7 @@ Parameters:
   SshAllowedCidrBlock:
     Description: The CIDR block that can SSH into the VPC instances. If empty, no SSH access will be allowed.
     Type: String
-    Default: 0.0.0.0/0
+    Default: ""
 
 Mappings:
   SubnetConfig:
