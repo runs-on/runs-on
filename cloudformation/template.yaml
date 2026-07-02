@@ -67,7 +67,7 @@ Parameters:
   LicenseKey:
     Type: String
     Description: |
-      License key for RunsOn, either as a string or SSM parameter ARN (with the format `arn:aws:ssm:REGION:ACCOUNT:parameter/STACK_NAME/license-key`). Get one at https://runs-on.com/pricing.
+      License key for RunsOn, either as a string or SSM parameter ARN (with the format `arn:PARTITION:ssm:REGION:ACCOUNT:parameter/STACK_NAME/license-key`). Get one at https://runs-on.com/pricing.
     NoEcho: true
     MinLength: 1
 
@@ -317,8 +317,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.1.3
-      ImageTag: v3.1.3@sha256:4e464e38792a8838c2847a0c0393dba4f504065249b257d38f85df4bd7c81ce6
+      AppTag: v3.1.4-rc.1
+      ImageTag: v3.1.4-rc.1@sha256:e6dedcf309757ce25ff533b6d56c90d54c0e8514ad42a993de4829e7a266a8d7
   AppSize:
     small:
       Cpu: 256
@@ -353,6 +353,9 @@ Conditions:
   CreateEfs: !Equals [!Ref EnableEfs, "true"]
   CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
   NetworkFirewallEnabled: !Not [!Equals [!Ref NetworkFirewallPolicyArn, ""]]
+  # EC2's IAM service principal only uses the China suffix in aws-cn;
+  # other supported partitions keep the commercial service principal.
+  IsChinaPartition: !Equals [!Ref AWS::Partition, "aws-cn"]
   NetworkFirewallDisabled: !Equals [!Ref NetworkFirewallPolicyArn, ""]
 Resources:
   VPC:
@@ -1824,8 +1827,8 @@ Resources:
             Principal: "*"
             Action: "s3:*"
             Resource:
-              - !Sub "arn:aws:s3:::${S3BucketCache}"
-              - !Sub "arn:aws:s3:::${S3BucketCache}/*"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/*"
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -1884,8 +1887,8 @@ Resources:
             Principal: "*"
             Action: "s3:*"
             Resource:
-              - !Sub "arn:aws:s3:::${S3BucketLogging}"
-              - !Sub "arn:aws:s3:::${S3BucketLogging}/*"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketLogging}"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketLogging}/*"
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -1895,13 +1898,13 @@ Resources:
               Service: logging.s3.amazonaws.com
             Action: "s3:PutObject"
             Resource:
-              - !Sub "arn:aws:s3:::${S3BucketLogging}/s3-cache-access-logs/*"
+              - !Sub "arn:${AWS::Partition}:s3:::${S3BucketLogging}/s3-cache-access-logs/*"
             Condition:
               StringEquals:
                 aws:SourceAccount: !Sub ${AWS::AccountId}
               ArnLike:
                 aws:Sourcearn:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
 
   EC2InstanceResourceGroup:
     Type: AWS::ResourceGroups::Group
@@ -1939,14 +1942,15 @@ Resources:
       ManagedPolicyArns:
         !If
           - RunnerCustomPolicyProvided
-          - [!Ref RunnerCustomPolicy, "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly"]
-          - ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore", "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly"]
+          - - !Ref RunnerCustomPolicy
+            - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+          - - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: ec2.amazonaws.com
+              Service: !If [IsChinaPartition, "ec2.amazonaws.com.cn", "ec2.amazonaws.com"]
             Action: sts:AssumeRole
       Policies:
         - PolicyName: ReadOnly
@@ -1977,7 +1981,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ec2:CreateTags
-                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ARN": "${ec2:SourceInstanceARN}"
@@ -1989,8 +1993,8 @@ Resources:
                 Action:
                   - ec2:CreateTags
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:*:snapshot/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:*:snapshot/*"
         - PolicyName: SendLogs
           PolicyDocument:
             Version: "2012-10-17"
@@ -2033,13 +2037,13 @@ Resources:
                 Action:
                   - s3:GetBucketLocation
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                   - s3:ListBucketMultipartUploads
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
                 Condition:
                   StringLike:
                     s3:prefix:
@@ -2056,7 +2060,7 @@ Resources:
                   - s3:DeleteObject
                   - s3:ListMultipartUploadParts
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/cache/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/cache/*"
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -2065,14 +2069,14 @@ Resources:
                   - !Join
                     - ""
                     - [
-                        !Sub "arn:aws:s3:::${S3BucketCache}/runners/",
+                        !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
               - Effect: Allow
                 Action:
                   - s3:GetObject
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/agents/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/agents/*"
         - PolicyName: VolumeSnapshotDescribe
           PolicyDocument:
             Version: "2012-10-17"
@@ -2091,8 +2095,8 @@ Resources:
                   - ec2:CreateVolume
                   - ec2:CreateSnapshot
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
         - PolicyName: VolumeSnapshotLifecycle
           PolicyDocument:
             Version: "2012-10-17"
@@ -2104,9 +2108,9 @@ Resources:
                   - ec2:DeleteVolume
                   - ec2:DeleteSnapshot
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
@@ -2118,7 +2122,7 @@ Resources:
                 Action:
                   - ec2:MonitorInstances
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
@@ -2134,9 +2138,9 @@ Resources:
                     - bedrock:InvokeModelWithResponseStream
                     - bedrock:ListInferenceProfiles
                   Resource:
-                    - "arn:aws:bedrock:*:*:foundation-model/*"
-                    - "arn:aws:bedrock:*:*:inference-profile/*"
-                    - "arn:aws:bedrock:*:*:application-inference-profile/*"
+                    - !Sub "arn:${AWS::Partition}:bedrock:*:*:foundation-model/*"
+                    - !Sub "arn:${AWS::Partition}:bedrock:*:*:inference-profile/*"
+                    - !Sub "arn:${AWS::Partition}:bedrock:*:*:application-inference-profile/*"
           - !Ref AWS::NoValue
         - !If
           - CreateEfs
@@ -2150,7 +2154,7 @@ Resources:
                     - elasticfilesystem:ClientMount
                     - elasticfilesystem:ClientWrite
                     - elasticfilesystem:DescribeMountTargets
-                  Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${EfsFileSystem}"
+                  Resource: !Sub "arn:${AWS::Partition}:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${EfsFileSystem}"
                 - Effect: Allow
                   Action:
                     # Required by efs-utils helper to find mount target IP
@@ -2291,7 +2295,7 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -2591,7 +2595,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ssm:GetParameter
-                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
               - Effect: Allow
                 Action:
                   - sns:ListSubscriptionsByTopic
@@ -2599,11 +2603,11 @@ Resources:
               - Effect: Allow
                 Action:
                   - iam:GetRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
               - Effect: Allow
                 Action:
                   - iam:CreateServiceLinkedRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
                 Condition:
                   StringEquals:
                     "iam:AWSServiceName": "spot.amazonaws.com"
@@ -2954,7 +2958,7 @@ Resources:
           RUNS_ON_STACK_CONFIG_SECRET_VERSION: !GetAtt StackConfigMaterializer.StackConfigSecretVersion
           RUNS_ON_LICENSE_STATUS_SSM_PARAMETER: !Ref RunsOnLicenseStatusParameter
           RUNS_ON_APP_TAG: !FindInMap [App, Tags, AppTag]
-          RUNS_ON_PUBLIC_BASE_URL: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+          RUNS_ON_PUBLIC_BASE_URL: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod"
           RUNS_ON_TOPIC_ARN: !Ref AlertTopic
           RUNS_ON_SYSTEM_QUEUE_URL: !Ref RunsOnQueueSystem
       Tags:
@@ -5649,7 +5653,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodAnySetup:
     Condition: AdminRoutesEnabled
@@ -5662,7 +5666,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodAnySetupProxy:
     Condition: AdminRoutesEnabled
@@ -5675,7 +5679,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
 
   # Aikido exemption: GitHub webhook ingress is intentionally public. API Gateway cannot require
   # AWS auth or API keys for GitHub delivery; the Lambda only enqueues the raw payload and
@@ -5690,7 +5694,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodGetReadyz:
     Condition: AdminRoutesEnabled
@@ -5703,7 +5707,7 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiDeploymentWithSetup:
     Condition: AdminRoutesEnabled
@@ -5754,7 +5758,7 @@ Resources:
       - RunsOnPublicIngressRestApiStage
     Properties:
       WebACLArn: !GetAtt RunsOnPublicIngressWebAcl.Arn
-      ResourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${RunsOnPublicIngressRestApi}/stages/prod"
+      ResourceArn: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${RunsOnPublicIngressRestApi}/stages/prod"
 
   RunsOnPublicIngressRestApiInvokePublicIngressPermission:
     Type: AWS::Lambda::Permission
@@ -5762,7 +5766,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref RunsOnPublicIngressFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/POST/github/webhooks"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/POST/github/webhooks"
 
   RunsOnPublicIngressRestApiInvokeGitHubAppsSetupPermission:
     Condition: AdminRoutesEnabled
@@ -5771,7 +5775,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref RunsOnGitHubAppsSetupFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/GET/*"
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RunsOnPublicIngressRestApi}/prod/GET/*"
 
   RunsOnStackConfigSecret:
     Type: AWS::SecretsManager::Secret
@@ -6337,7 +6341,7 @@ Resources:
         NetworkingStack: "embedded"
         DeploymentMethod: "cloudformation"
         Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
-        IngressURL: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+        IngressURL: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod"
         ServiceLogGroupName: !Ref RunsOnWorkerLogGroup
       LaunchTemplateLinuxDefault: !Sub "${EC2FleetLaunchTemplateLinuxDefault}:${EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber}"
       LaunchTemplateLinuxDefaultNested: !GetAtt ManagedLaunchTemplateLinuxDefaultNested.LaunchTemplateRef
@@ -6408,11 +6412,11 @@ Resources:
                 # alongside PassRole below.
                 Action:
                   - iam:GetRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
               - Effect: Allow
                 Action:
                   - iam:CreateServiceLinkedRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
                 Condition:
                   StringEquals:
                     "iam:AWSServiceName": "spot.amazonaws.com"
@@ -6426,17 +6430,17 @@ Resources:
                   - ec2:CreateTags
                   - ec2:RunInstances
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}::image/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:launch-template/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:launch-template/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/*"
                   # Spot launches authorize RunInstances and tag-on-create
                   # CreateTags against the spot-instances-request resource.
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:spot-instances-request/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:spot-instances-request/*"
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -6447,7 +6451,7 @@ Resources:
                   - ssm:PutParameter
                   - ssm:GetParameter
                   - ssm:GetParameters
-                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
@@ -6459,7 +6463,7 @@ Resources:
                   - ec2:TerminateInstances
                   - ec2:StopInstances
                   - ec2:StartInstances
-                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
@@ -6468,15 +6472,15 @@ Resources:
                   - ec2:DeleteVolume
                   - ec2:DeleteSnapshot
                 Resource:
-                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                  - !Sub "arn:aws:ec2:${AWS::Region}::snapshot/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
                 Condition:
                   StringEquals:
                     "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Sub "arn:aws:s3:::${S3BucketCache}"
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
                 Condition:
                   StringLike:
                     s3:prefix:
@@ -6491,9 +6495,9 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource:
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/cache/*"
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/runners/*"
-                  - !Sub "arn:aws:s3:::${S3BucketCache}/agents/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/cache/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/agents/*"
               - Effect: Allow
                 Action:
                   - sns:Publish
@@ -7159,7 +7163,7 @@ Outputs:
     Value: !Ref AWS::AccountId
   RunsOnEntryPoint:
     Description: Entrypoint for the RunsOn service
-    Value: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+    Value: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod"
   RunsOnServiceLogGroupName:
     Description: Log group for the RunsOn service
     Value: !Ref RunsOnWorkerLogGroup
