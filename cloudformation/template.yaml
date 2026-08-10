@@ -341,8 +341,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.2.1
-      ImageTag: v3.2.1@sha256:5ca31645324e11f2b7425ff120a14b6987aa34854ddd59824e48c22c84a00f05
+      AppTag: v3.2.2-rc.1
+      ImageTag: v3.2.2-rc.1@sha256:e9bb583a491090ca376a0f5426de5f950ed4a7fac41de8be7777e8a8d0d5c8da
   AppSize:
     small:
       Cpu: 256
@@ -3149,14 +3149,31 @@ Resources:
               const payload = payloadBuffer(request).toString('utf8');
 
               let parsedBody;
+              let parseError = false;
               try {
                 parsedBody = JSON.parse(payload);
               } catch (_) {
                 parsedBody = null;
+                parseError = true;
               }
 
               const logFields = webhookLogFields(parsedBody, eventType, deliveryId);
               log('info', 'Received GitHub webhook', logFields);
+              let invalidReason = '';
+              if (!deliveryId) invalidReason = 'missing_delivery_id';
+              else if (!eventType) invalidReason = 'missing_event_type';
+              else if (!provided) invalidReason = 'missing_signature';
+              else if (parseError) invalidReason = 'invalid_json';
+              else if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) invalidReason = 'invalid_json_object';
+
+              if (invalidReason) {
+                log('warn', 'Dropping malformed GitHub webhook', {
+                  delivery_id: deliveryId,
+                  event_type: eventType,
+                  reason: invalidReason,
+                });
+                return jsonResponse(202, { status: 'ignored', reason: 'invalid_payload' });
+              }
               if (!shouldEnqueueWebhook(parsedBody, eventType)) {
                 log('info', 'Skipping GitHub webhook without RunsOn labels', logFields);
                 return jsonResponse(202, { status: 'ignored' });
