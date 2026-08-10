@@ -177,7 +177,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable per-repository/per-branch isolation for Magic Cache data under scoped-cache/*. Direct S3 cache integrations keep instance-profile access to the stack-shared cache/* namespace and are not repository-isolated. Enabling later moves Magic Cache objects to a new prefix (one-time cache re-warm)."
+    Description: "Enable per-repository/per-branch isolation for the magic cache. When enabled, runners use the credential broker Lambda for scoped S3 credentials and lose direct access to the shared cache prefix. Enabling later moves cache objects to a new prefix (one-time cache re-warm)."
 
   EnableStickyDiskIsolation:
     Type: String
@@ -285,16 +285,12 @@ Parameters:
   OtelExporterEndpoint:
     Type: String
     Default: ""
-    AllowedPattern: '(^$|.*\S.*)'
-    ConstraintDescription: "must be empty or contain at least one non-whitespace character"
     Description: "OTLP endpoint URL (e.g., ingest.eu.signoz.cloud:443, or https://otlp-gateway-prod-eu-west-0.grafana.net/otlp). Only HTTP(s) protocol is supported. Leave empty for no metrics export."
 
   OtelExporterHeaders:
     Type: String
     Default: ""
     NoEcho: true
-    AllowedPattern: '(^$|^\s*[^,\s=][^,=]*\s*=\s*[^,\s][^,]*\s*(,\s*[^,\s=][^,=]*\s*=\s*[^,\s][^,]*\s*)*$)'
-    ConstraintDescription: "must be empty or contain comma-separated key=value pairs with non-empty keys and values"
     Description: "Headers for OTLP endpoint in W3C Baggage format: 'key1=value1,key2=value2' (e.g., 'signoz-ingestion-key=ABCD1234'). Leave empty if not required."
 
   OtelExporterTemporality:
@@ -307,13 +303,11 @@ Parameters:
 
   CostReportsEnabled:
     Type: String
-    Default: "daily"
+    Default: "true"
     AllowedValues:
-      - "no"
-      - "daily"
-      - "weekly"
-      - "monthly"
-    Description: "Cost report email cadence. Use no to disable reports. Legacy true/false values must be replaced with daily/no when upgrading."
+      - "true"
+      - "false"
+    Description: Enable or disable cost reports sent by email.
 
   AlertTopicSlackWebhookUrl:
     Type: String
@@ -341,8 +335,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.2.2
-      ImageTag: v3.2.2@sha256:e9bb583a491090ca376a0f5426de5f950ed4a7fac41de8be7777e8a8d0d5c8da
+      AppTag: v3.1.4-rc.6
+      ImageTag: v3.1.4-rc.6@sha256:970d4772c4822b756de043c76bf6f3257577495023442bbb06e8fbb9b4194eac
   AppSize:
     small:
       Cpu: 256
@@ -356,19 +350,9 @@ Mappings:
     xhigh:
       Cpu: 512
       Memory: 1024
-  CostReportSchedule:
-    # Unused when reports are disabled, but keeps the mapping total for every allowed value.
-    "no":
-      Expression: "cron(5 0 * * ? *)"
-    daily:
-      Expression: "cron(5 0 * * ? *)"
-    weekly:
-      Expression: "cron(5 0 ? * MON *)"
-    monthly:
-      Expression: "cron(5 0 1 * ? *)"
 
 Conditions:
-  CostReportsEnabled: !Not [!Equals [!Ref CostReportsEnabled, "no"]]
+  CostReportsEnabled: !Equals [!Ref CostReportsEnabled, "true"]
   AppBudgetEnabled: !Not [!Equals [!Ref AppBudgetDailyUsd, 0]]
   AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
   PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
@@ -385,16 +369,8 @@ Conditions:
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
   BedrockEnabled: !Equals [!Ref EnableBedrock, "true"]
   CacheIsolationEnabled: !Equals [!Ref EnableCacheIsolation, "true"]
+  CacheIsolationDisabled: !Equals [!Ref EnableCacheIsolation, "false"]
   StickyDiskIsolationDisabled: !Equals [!Ref EnableStickyDiskIsolation, "false"]
-  RunnerConfigAutoExtendsEnabled: !And [!Not [!Equals [!Ref RunnerConfigAutoExtendsFrom, ""]], !Not [!Equals [!Ref RunnerConfigAutoExtendsFrom, "."]]]
-  OtelExporterConfigured: !Not [!Equals [!Ref OtelExporterEndpoint, ""]]
-  OtelExporterHeadersConfigured: !Not [!Equals [!Ref OtelExporterHeaders, ""]]
-  IntegrationStepSecurityConfigured: !Not [!Equals [!Ref IntegrationStepSecurityApiKey, ""]]
-  RunnerCustomTagsConfigured:
-    Fn::Not:
-      - Fn::Equals:
-          - Fn::Join: [",", !Ref RunnerCustomTags]
-          - ""
   CreateEfs: !Equals [!Ref EnableEfs, "true"]
   CreateEphemeralRegistry: !Equals [!Ref EnableEphemeralRegistry, "true"]
   NetworkFirewallEnabled: !Not [!Equals [!Ref NetworkFirewallPolicyArn, ""]]
@@ -2159,32 +2135,38 @@ Resources:
                       - agents/*
                       - !Join ["", ["runners/", "${aws:userid}", "/"]]
                       - !Join ["", ["runners/", "${aws:userid}", "/*"]]
-              # Direct cache clients intentionally share cache/* across every
-              # repository attached to this stack. Repository prefixes prevent
-              # collisions; they are not an IAM isolation boundary.
-              - Effect: Allow
-                Action:
-                  - s3:ListBucket
-                  - s3:ListBucketMultipartUploads
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
-                Condition:
-                  StringLike:
-                    s3:prefix:
-                      - cache
-                      - cache/*
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                  - s3:ListMultipartUploadParts
-                  # Direct clients abort unfinished multipart uploads on
-                  # canceled or failed saves; without this they linger until
-                  # lifecycle expiry.
-                  - s3:AbortMultipartUpload
-                Resource:
-                  - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/cache/*"
+              # Cache isolation off: pre-broker direct access to the whole
+              # cache/ tree with raw instance credentials (daemon writes under
+              # cache/v1/).
+              - !If
+                - CacheIsolationDisabled
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                    - s3:ListBucketMultipartUploads
+                  Resource:
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}"
+                  Condition:
+                    StringLike:
+                      s3:prefix:
+                        - cache
+                        - cache/*
+                - !Ref AWS::NoValue
+              - !If
+                - CacheIsolationDisabled
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:PutObject
+                    - s3:DeleteObject
+                    - s3:ListMultipartUploadParts
+                    # The cache daemon aborts unfinished multipart uploads on
+                    # canceled or failed saves; without this they linger until
+                    # lifecycle expiry.
+                    - s3:AbortMultipartUpload
+                  Resource:
+                    - !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/cache/*"
+                - !Ref AWS::NoValue
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -2222,11 +2204,10 @@ Resources:
         # Scoped Magic Cache namespace: only broker-minted sessions (tagged by
         # the trust policy and carrying the broker-only STS session-name
         # prefix) may touch scoped-cache/*. The namespace deliberately lives
-        # outside cache/, so the direct cache/* grants never reach it and plain
-        # instance-profile credentials get an implicit deny. Direct clients
-        # such as runs-on/cache, sccache, and gocacheprog keep using the
-        # stack-shared cache/* namespace. The broker's per-token session policy
-        # narrows scoped-cache/* access to the job's exact repository and scopes.
+        # outside cache/, so the legacy cache/* grants never reach it and plain
+        # instance-profile credentials get an implicit deny. The broker's
+        # per-token session policy then narrows these allows to the job's
+        # exact repository and scopes.
         - PolicyName: ScopedCacheBrokerAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -2412,7 +2393,7 @@ Resources:
     Condition: CostReportsEnabled
     Type: AWS::Scheduler::Schedule
     Properties:
-      ScheduleExpression: !FindInMap [CostReportSchedule, !Ref CostReportsEnabled, Expression]
+      ScheduleExpression: "cron(5 0 * * ? *)"
       ScheduleExpressionTimezone: "UTC"
       FlexibleTimeWindow:
         Mode: "OFF"
@@ -4500,22 +4481,6 @@ Resources:
             return value === true || value === 'true';
           }
 
-          function optionalBoolValue(value) {
-            if (value === undefined || value === null || value === '') return null;
-            return boolValue(value);
-          }
-
-          function optionalNumberValue(value) {
-            if (value === undefined || value === null || value === '') return null;
-            const parsed = Number(value);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
-
-          function optionalStringValue(value) {
-            const normalized = trim(value);
-            return normalized || null;
-          }
-
           function parseJSON(value, label) {
             const raw = trim(value);
             if (!raw) return {};
@@ -4593,119 +4558,11 @@ Resources:
             return result;
           }
 
-          // The stack and Fleet config secrets contain credentials and infrastructure
-          // identifiers. Keep diagnostics on an explicit allowlist instead of returning
-          // either secret wholesale.
-          function normalizeStackSettings(config = {}) {
-            const source = config.DiagnosticSettings || config.diagnostic_settings || {};
-            const infra = config.infra || {};
-            const cache = source.cache || {};
-            const stickyDisk = source.sticky_disk || {};
-            const storage = source.storage || {};
-            const buildkit = source.buildkit || {};
-            const runner = source.runner || {};
-            const scheduling = source.scheduling || {};
-            const network = source.network || {};
-            const runtime = source.runtime || {};
-            const telemetry = source.telemetry || {};
-            const integrations = source.integrations || {};
-            const brokerConfigured = trim(
-              config.CacheCredentialBrokerFunctionName || infra.cache_credential_broker_function_name,
-            ) !== '';
-
-            return {
-              schema_version: optionalNumberValue(source.schema_version) || 1,
-              app_tag: optionalStringValue(source.app_tag || config.AppTag || infra.app_tag),
-              deployment_method: optionalStringValue(
-                source.deployment_method || config.DeploymentMethod || infra.deployment_method,
-              ),
-              cache: {
-                isolation_enabled: cache.isolation_enabled === undefined
-                  ? brokerConfigured
-                  : optionalBoolValue(cache.isolation_enabled),
-                credential_broker_configured: brokerConfigured,
-                expiration_days: optionalNumberValue(cache.expiration_days),
-                bucket_versioning_enabled: optionalBoolValue(cache.bucket_versioning_enabled),
-                mandatory_extras: Array.isArray(cache.mandatory_extras)
-                  ? stringSet(cache.mandatory_extras)
-                  : null,
-              },
-              sticky_disk: {
-                isolation_enabled: optionalBoolValue(stickyDisk.isolation_enabled),
-                configured_runner_count: optionalNumberValue(stickyDisk.configured_runner_count),
-              },
-              storage: {
-                ebs_encryption_mode: optionalStringValue(storage.ebs_encryption_mode),
-                efs_enabled: optionalBoolValue(storage.efs_enabled),
-              },
-              buildkit: {
-                ephemeral_registry_enabled: optionalBoolValue(buildkit.ephemeral_registry_enabled),
-                pull_through_rule_count: optionalNumberValue(buildkit.pull_through_rule_count),
-                docker_hub_mirror_enabled: optionalBoolValue(buildkit.docker_hub_mirror_enabled),
-              },
-              runner: {
-                max_runtime_minutes: optionalNumberValue(runner.max_runtime_minutes),
-                config_auto_extends_enabled: optionalBoolValue(runner.config_auto_extends_enabled),
-                custom_policy_count: optionalNumberValue(runner.custom_policy_count),
-                custom_tags_configured: optionalBoolValue(runner.custom_tags_configured),
-                bedrock_enabled: optionalBoolValue(runner.bedrock_enabled),
-              },
-              scheduling: {
-                spot_circuit_breaker: optionalStringValue(scheduling.spot_circuit_breaker),
-              },
-              network: {
-                private_mode: optionalStringValue(network.private_mode),
-                ipv6_enabled: optionalBoolValue(network.ipv6_enabled),
-                ssh_allowed: optionalBoolValue(network.ssh_allowed),
-                public_subnet_count: optionalNumberValue(network.public_subnet_count),
-                private_subnet_count: optionalNumberValue(network.private_subnet_count),
-              },
-              runtime: {
-                app_size: optionalStringValue(runtime.app_size),
-                capacity_provider: optionalStringValue(runtime.capacity_provider),
-                maintenance_mode: optionalBoolValue(runtime.maintenance_mode),
-                github_api_strategy: optionalStringValue(runtime.github_api_strategy),
-              },
-              telemetry: {
-                exporter_configured: optionalBoolValue(telemetry.exporter_configured),
-                headers_configured: optionalBoolValue(telemetry.headers_configured),
-                temporality: optionalStringValue(telemetry.temporality),
-                logs_enabled: optionalBoolValue(telemetry.logs_enabled),
-                traces_enabled: optionalBoolValue(telemetry.traces_enabled),
-                logger_level: optionalStringValue(telemetry.logger_level),
-                ec2_log_group_configured: optionalBoolValue(telemetry.ec2_log_group_configured),
-              },
-              integrations: {
-                step_security_configured: optionalBoolValue(integrations.step_security_configured),
-              },
-            };
-          }
-
           function instanceIDFromRunnerName(runnerName) {
             const parts = trim(runnerName).split('--');
             if (parts.length < 2) return '';
             const instanceID = trim(parts[1]);
             return instanceID.startsWith('i-') ? instanceID : '';
-          }
-
-          function normalizeSpotInterruption(record, product) {
-            const isFleet = product === 'fleet';
-            const detected = boolValue(isFleet ? record?.spot_interrupted : record?.was_interrupted);
-            const instanceIDs = isFleet && Array.isArray(record?.interrupted_instance_ids)
-              ? stringSet(record.interrupted_instance_ids)
-              : null;
-            let source = '';
-            if (isFleet) {
-              source = record?.spot_interruption_source || (detected ? 'claim_record' : '');
-            } else if (detected) {
-              source = 'workflow_job_record';
-            }
-            return {
-              detected,
-              interrupted_at: isFleet ? optionalStringValue(record?.spot_interrupted_at) : null,
-              source: optionalStringValue(source),
-              instance_ids: instanceIDs,
-            };
           }
 
           function createdAtFromLocal(record) {
@@ -4777,7 +4634,6 @@ Resources:
               instance_ids: instanceIDs,
               status: trim(record.status),
               scheduling_state: trim(record.scheduling_state),
-              spot_interruption: normalizeSpotInterruption(record, 'flex'),
               created_at: createdAtFromLocal(record),
               completed_at: trim(record.completed_at),
               record,
@@ -4801,7 +4657,6 @@ Resources:
               instance_ids: instanceIDs,
               status: trim(record.state),
               scheduling_state: trim(record.state),
-              spot_interruption: normalizeSpotInterruption(record, 'fleet'),
               created_at: createdAtFromLocal(record),
               completed_at: trim(record.completed_at),
               record,
@@ -4926,37 +4781,10 @@ Resources:
             };
           }
 
-          async function loadSecretJSONWithProvenance(aws, secretID, label, versionID = '') {
-            if (!trim(secretID)) throw new Error(`${label} secret ARN is not configured`);
-            const input = { SecretId: secretID };
-            const pinnedVersionID = trim(versionID);
-            if (pinnedVersionID) input.VersionId = pinnedVersionID;
-            const output = await aws.getSecretValue(input);
-            return {
-              value: parseJSON(output?.SecretString, label),
-              versionPinned: pinnedVersionID !== '',
-            };
-          }
-
           async function loadSecretJSON(aws, secretID, label) {
-            return (await loadSecretJSONWithProvenance(aws, secretID, label)).value;
-          }
-
-          function attachCurrentStackSettings(response, configSecret) {
-            response.stack_settings = normalizeStackSettings(configSecret.value);
-            // Retained records do not carry the config version used by their worker, so
-            // identify these as resolver-deployment settings instead of job-effective.
-            response.stack_settings_provenance = {
-              source: 'resolver_deployment_config',
-              scope: 'current_stack',
-              version_pinned: configSecret.versionPinned,
-              job_effective: 'unknown',
-            };
-            response.diagnostics.push({
-              level: 'info',
-              code: 'stack_settings_scope_current',
-              message: 'Stack settings describe the resolver deployment config; the diagnosed job-effective config version is not recorded.',
-            });
+            if (!trim(secretID)) throw new Error(`${label} secret ARN is not configured`);
+            const output = await aws.getSecretValue({ SecretId: secretID });
+            return parseJSON(output?.SecretString, label);
           }
 
           async function getFlexRecord(aws, tableName, jobID) {
@@ -5157,14 +4985,11 @@ Resources:
 
           async function resolveFlex(aws, facts, options) {
             const response = baseResponse('flex', facts, process.env.RUNS_ON_STACK_NAME);
-            const stackConfigSecret = await loadSecretJSONWithProvenance(
+            const stackConfig = await loadSecretJSON(
               aws,
               process.env.RUNS_ON_STACK_CONFIG_SECRET_ARN,
               'stack config',
-              process.env.RUNS_ON_STACK_CONFIG_SECRET_VERSION,
             );
-            const stackConfig = stackConfigSecret.value;
-            attachCurrentStackSettings(response, stackConfigSecret);
             const githubAppsSecretARN = trim(process.env.RUNS_ON_GITHUB_APPS_SECRET_ARN || stackConfig.GitHubAppsSecretArn);
             const tableName = trim(process.env.RUNS_ON_WORKFLOW_JOBS_TABLE || stackConfig.WorkflowJobsTable);
             if (!tableName) throw new Error('workflow jobs table is not configured');
@@ -5213,15 +5038,12 @@ Resources:
           }
 
           async function resolveFleet(aws, facts, options) {
-            const configSecret = await loadSecretJSONWithProvenance(
+            const config = await loadSecretJSON(
               aws,
               process.env.RUNS_ON_FLEET_CONFIG_SECRET_ARN,
               'fleet config',
-              process.env.RUNS_ON_FLEET_CONFIG_SECRET_VERSION,
             );
-            const config = configSecret.value;
             const response = baseResponse('fleet', facts, config?.infra?.stack_name);
-            attachCurrentStackSettings(response, configSecret);
             const tableName = trim(process.env.RUNS_ON_CLAIMS_TABLE || config?.infra?.claim_table_name);
             if (!tableName) throw new Error('fleet claims table is not configured');
             if (!facts.workflow_job_id) throw new Error('workflow_job_id is required');
@@ -5308,8 +5130,6 @@ Resources:
             unmarshalItem,
             normalizeFlexRecord,
             normalizeFleetClaim,
-            normalizeSpotInterruption,
-            normalizeStackSettings,
             handler,
           };
   RunsOnGitHubWafSyncFunction:
@@ -6008,10 +5828,6 @@ Resources:
           const issuer = normalizeOptionalURL(configuredIssuer || (enterpriseURL ? `${enterpriseURL}/_services/token` : 'https://token.actions.githubusercontent.com'));
           const bucketArn = process.env.CACHE_BUCKET_ARN;
           const bucketName = bucketNameFromArn(bucketArn);
-          // This broker isolates only Magic Cache data under scoped-cache/*. Direct S3
-          // clients use the runner instance profile and the stack-shared cache/*
-          // namespace; repository prefixes there prevent collisions but are not an IAM
-          // isolation boundary. Keep cache/* out of every broker session policy.
           // The control planes (fleet and flex) publish GitHub's OIDC JWKS to this key
           // every 5 minutes (pkg/jwkscache); the broker validates runtime tokens
           // exclusively against that S3 copy and never fetches from GitHub itself. The
@@ -7459,7 +7275,7 @@ Resources:
         LocksTable: !Ref RunsOnLocksTable
         WorkflowJobsTable: !Ref RunsOnWorkflowJobsTable
         JobDiagnosticsResolverFunctionName: !Ref RunsOnJobDiagnosticsResolverFunction
-        CostReportsEnabled: !If [CostReportsEnabled, "true", "false"]
+        CostReportsEnabled: !Ref CostReportsEnabled
         CostAllocationTag: !Ref CostAllocationTag
         SpotCircuitBreaker: !Ref SpotCircuitBreaker
         IntegrationStepSecurityApiKey: !Ref IntegrationStepSecurityApiKey
@@ -7469,53 +7285,6 @@ Resources:
         Ec2InstanceLogGroupArn: !GetAtt EC2InstanceLogGroup.Arn
         IngressURL: !Sub "https://${RunsOnPublicIngressRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod"
         ServiceLogGroupName: !Ref RunsOnWorkerLogGroup
-        DiagnosticSettings:
-          schema_version: 1
-          app_tag: !FindInMap [App, Tags, AppTag]
-          deployment_method: "cloudformation"
-          cache:
-            isolation_enabled: !If [CacheIsolationEnabled, true, false]
-            expiration_days: !Ref S3CacheExpirationInDays
-            bucket_versioning_enabled: false
-            mandatory_extras: []
-          sticky_disk:
-            isolation_enabled: !If [StickyDiskIsolationDisabled, false, true]
-          storage:
-            ebs_encryption_mode: !If [HasEncryptEbs, "aws-managed", "unspecified"]
-            efs_enabled: !If [CreateEfs, true, false]
-          buildkit:
-            ephemeral_registry_enabled: !If [CreateEphemeralRegistry, true, false]
-            pull_through_rule_count: 0
-            docker_hub_mirror_enabled: false
-          runner:
-            max_runtime_minutes: !Ref RunnerMaxRuntime
-            config_auto_extends_enabled: !If [RunnerConfigAutoExtendsEnabled, true, false]
-            custom_policy_count: !If [RunnerCustomPolicyProvided, 1, 0]
-            custom_tags_configured: !If [RunnerCustomTagsConfigured, true, false]
-            bedrock_enabled: !If [BedrockEnabled, true, false]
-          scheduling:
-            spot_circuit_breaker: !Ref SpotCircuitBreaker
-          network:
-            private_mode: !Ref Private
-            ipv6_enabled: !If [HasIpv6Enabled, true, false]
-            ssh_allowed: !If [HasSSHAllowed, true, false]
-            public_subnet_count: 2
-            private_subnet_count: 2
-          runtime:
-            app_size: !Ref AppSize
-            capacity_provider: !Ref AppCapacityProvider
-            maintenance_mode: !If [MaintenanceModeEnabled, true, false]
-            github_api_strategy: !Ref AppGithubApiStrategy
-          telemetry:
-            exporter_configured: !If [OtelExporterConfigured, true, false]
-            headers_configured: !If [OtelExporterHeadersConfigured, true, false]
-            temporality: !Ref OtelExporterTemporality
-            logs_enabled: !If [OtelExporterConfigured, true, false]
-            traces_enabled: true
-            logger_level: !Ref LoggerLevel
-            ec2_log_group_configured: true
-          integrations:
-            step_security_configured: !If [IntegrationStepSecurityConfigured, true, false]
       LaunchTemplateLinuxDefault: !Sub "${EC2FleetLaunchTemplateLinuxDefault}:${EC2FleetLaunchTemplateLinuxDefault.LatestVersionNumber}"
       LaunchTemplateLinuxDefaultNested: !GetAtt ManagedLaunchTemplateLinuxDefaultNested.LaunchTemplateRef
       LaunchTemplateWindowsDefault: !Sub "${EC2FleetLaunchTemplateWindowsDefault}:${EC2FleetLaunchTemplateWindowsDefault.LatestVersionNumber}"
