@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com
+Description: CloudFormation stack for https://runs-on.com (v3.3.0-rc.2)
 Transform: AWS::LanguageExtensions
 
 Metadata:
@@ -20,6 +20,7 @@ Metadata:
           - Ipv6Enabled
           - SSHAllowed
           - SSHCidrRange
+          - SSMAllowed
           - EnableWAF
           - EnableAdminRoutes
           - EncryptEbs
@@ -121,6 +122,14 @@ Parameters:
     Default: 0.0.0.0/0
     Description: CIDR range for inbound SSH access when SSHAllowed is true. Keep SSHAllowed false unless runner SSH access is required.
     MinLength: 1
+
+  SSMAllowed:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable SSM access for runner instances. When true, this attaches AmazonSSMManagedEC2InstanceDefaultPolicy to the runner instance role.
 
   EnableWAF:
     Type: String
@@ -341,8 +350,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.2.3
-      ImageTag: v3.2.3@sha256:6c2d5ede8996d875578e2fd6a5f472f89a75c7773525f1c747ec333065425e73
+      AppTag: v3.3.0-rc.2
+      ImageTag: v3.3.0-rc.2@sha256:28fd8690c230dd9c43fe975d0df449d36afa9e0f59776fd07a2c08f1778275f7
   AppSize:
     small:
       Cpu: 256
@@ -383,6 +392,7 @@ Conditions:
   AdminRoutesDisabled: !Equals [!Ref EnableAdminRoutes, "false"]
   HasIpv6Enabled: !Equals [!Ref Ipv6Enabled, "true"]
   HasSSHAllowed: !Equals [!Ref SSHAllowed, "true"]
+  HasSSMAllowed: !Equals [!Ref SSMAllowed, "true"]
   BedrockEnabled: !Equals [!Ref EnableBedrock, "true"]
   CacheIsolationEnabled: !Equals [!Ref EnableCacheIsolation, "true"]
   StickyDiskIsolationDisabled: !Equals [!Ref EnableStickyDiskIsolation, "false"]
@@ -1999,11 +2009,8 @@ Resources:
       # AssumeRole (the instance's own IMDS credentials rotate independently).
       MaxSessionDuration: 43200
       ManagedPolicyArns:
-        !If
-          - RunnerCustomPolicyProvided
-          - - !Ref RunnerCustomPolicy
-            - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
-          - - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !If [RunnerCustomPolicyProvided, !Ref RunnerCustomPolicy, !Ref AWS::NoValue]
+        - !If [HasSSMAllowed, !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedEC2InstanceDefaultPolicy", !Ref AWS::NoValue]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -3354,14 +3361,39 @@ Resources:
             };
           }
 
+          function githubEndpoints(raw) {
+            // Mirror pkg/githubplatform Resolve: tolerate a terminal /api/v3 path and
+            // normalize the public GitHub hosts back to the github.com platform.
+            const configured = String(raw || '').trim().replace(/\/+$/, '').replace(/\/api\/v3$/i, '');
+            if (!configured || /^https:\/\/(?:www\.|api\.)?github\.com(?::\d+)?$/i.test(configured)) {
+              return { platform: 'github.com', webUrl: 'https://github.com/', apiUrl: 'https://api.github.com/' };
+            }
+
+            try {
+              const parsed = new URL(configured);
+              const match = parsed.hostname.toLowerCase().match(/^(?:api\.)?([^.]+)\.ghe\.com$/);
+              if (match) {
+                const webHost = `${match[1]}.ghe.com`;
+                return {
+                  platform: 'ghe.com',
+                  webUrl: `${parsed.protocol}//${webHost}/`,
+                  apiUrl: `${parsed.protocol}//api.${webHost}/`,
+                };
+              }
+            } catch (_error) {
+              // Preserve the configured value in the setup link so the resulting error
+              // points at the invalid customer input instead of github.com.
+            }
+
+            return { platform: 'ghes', webUrl: configured + '/', apiUrl: configured + '/api/v3/' };
+          }
+
           function githubBaseUrl() {
-            const enterprise = String(process.env.RUNS_ON_GITHUB_ENTERPRISE_URL || '').trim();
-            return enterprise ? enterprise.replace(/\/+$/, '') + '/' : 'https://github.com/';
+            return githubEndpoints(process.env.RUNS_ON_GITHUB_ENTERPRISE_URL).webUrl;
           }
 
           function githubApiUrl() {
-            const enterprise = String(process.env.RUNS_ON_GITHUB_ENTERPRISE_URL || '').trim();
-            return enterprise ? enterprise.replace(/\/+$/, '') + '/api/v3/' : 'https://api.github.com/';
+            return githubEndpoints(process.env.RUNS_ON_GITHUB_ENTERPRISE_URL).apiUrl;
           }
 
           function normalizedHeaders(headers) {
@@ -4411,6 +4443,7 @@ Resources:
           module.exports = {
             buildPendingPersistedGitHubApps,
             createHandler,
+            githubEndpoints,
             handler: createHandler(),
             renderSetupSuccessPage,
           };
@@ -4820,10 +4853,20 @@ Resources:
 
           function githubAPIBase(config = {}) {
             const enterpriseURL = trim(config.GithubEnterpriseUrl || config.github_enterprise_url);
-            if (enterpriseURL) return enterpriseURL.replace(/\/+$/, '') + '/api/v3';
             const baseURL = trim(config.github_base_url);
-            if (baseURL && !/^https:\/\/github\.com\/?$/i.test(baseURL)) return baseURL.replace(/\/+$/, '') + '/api/v3';
-            return 'https://api.github.com';
+            const configured = (enterpriseURL || baseURL).replace(/\/+$/, '');
+            if (!configured || /^https:\/\/(?:www\.)?github\.com$/i.test(configured) || /^https:\/\/api\.github\.com$/i.test(configured)) {
+              return 'https://api.github.com';
+            }
+            try {
+              const parsed = new URL(configured);
+              const match = parsed.hostname.toLowerCase().match(/^(?:api\.)?([^.]+)\.ghe\.com$/);
+              if (match) return `${parsed.protocol}//api.${match[1]}.ghe.com`;
+            } catch (_error) {
+              // Fall through to the GHES-compatible path. The request will report the
+              // invalid configured URL through the existing diagnostics.
+            }
+            return configured.replace(/\/api\/v3$/i, '') + '/api/v3';
           }
 
           function base64URL(value) {
@@ -5304,6 +5347,7 @@ Resources:
             WORKFLOW_RUN_ID_INDEX,
             createHandler,
             createAppJWT,
+            githubAPIBase,
             parseJobURL,
             unmarshalItem,
             normalizeFlexRecord,
@@ -6005,7 +6049,17 @@ Resources:
 
           const enterpriseURL = normalizeOptionalURL(process.env.GITHUB_ENTERPRISE_URL || '');
           const configuredIssuer = String(process.env.GITHUB_TOKEN_ISSUER || '').trim();
-          const issuer = normalizeOptionalURL(configuredIssuer || (enterpriseURL ? `${enterpriseURL}/_services/token` : 'https://token.actions.githubusercontent.com'));
+          const issuer = normalizeOptionalURL(configuredIssuer || defaultIssuerForEnterpriseURL(enterpriseURL));
+
+          // Mirrors the platform-aware issuer derivation in the Terraform locals and
+          // pkg/githubplatform: GHE.com tenants issue from token.actions.SUB.ghe.com,
+          // GHES from {enterprise}/_services/token, github.com from the fixed issuer.
+          function defaultIssuerForEnterpriseURL(url) {
+            if (!url) return 'https://token.actions.githubusercontent.com';
+            const match = url.toLowerCase().match(/^https:\/\/(?:api\.)?([^./]+)\.ghe\.com$/);
+            if (match) return `https://token.actions.${match[1]}.ghe.com`;
+            return `${url}/_services/token`;
+          }
           const bucketArn = process.env.CACHE_BUCKET_ARN;
           const bucketName = bucketNameFromArn(bucketArn);
           // This broker isolates only Magic Cache data under scoped-cache/*. Direct S3
@@ -6586,6 +6640,7 @@ Resources:
             handler,
             buildAssumeRoleInput,
             buildSessionPolicy,
+            defaultIssuerForEnterpriseURL,
             instanceIDFromCallerUserID,
             normalizeAccessControls,
             normalizeCallerIdentityProof,
