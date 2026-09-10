@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.3.0)
+Description: CloudFormation stack for https://runs-on.com (v3.3.1)
 Transform: AWS::LanguageExtensions
 
 Metadata:
@@ -350,8 +350,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.3.0
-      ImageTag: v3.3.0@sha256:28fd8690c230dd9c43fe975d0df449d36afa9e0f59776fd07a2c08f1778275f7
+      AppTag: v3.3.1
+      ImageTag: v3.3.1@sha256:d5194302c11127f8158e21154c6daeed4343d34615e0f98d6270ed6ff506c929
   AppSize:
     small:
       Cpu: 256
@@ -7666,6 +7666,10 @@ Resources:
                   - iam:PassRole
                   - iam:GetRole
                 Resource: !GetAtt EC2InstanceRole.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license-key"
               - Effect: Allow
                 Action:
                   - ssm:PutParameter
