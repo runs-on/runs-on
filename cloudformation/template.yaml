@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.3.1)
+Description: CloudFormation stack for https://runs-on.com (v3.3.2-rc.1)
 Transform: AWS::LanguageExtensions
 
 Metadata:
@@ -350,8 +350,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.3.1
-      ImageTag: v3.3.1@sha256:d5194302c11127f8158e21154c6daeed4343d34615e0f98d6270ed6ff506c929
+      AppTag: v3.3.2-rc.1
+      ImageTag: v3.3.2-rc.1@sha256:53df89ebc3396f87b88790807fe6be04b01242bad0c52122fab9795690d18533
   AppSize:
     small:
       Cpu: 256
@@ -5102,30 +5102,6 @@ Resources:
             }
           }
 
-          async function persistFleetWorkflowJobID(aws, tableName, claim, workflowJobID, diagnostics) {
-            const pk = trim(claim?.pk);
-            const sk = trim(claim?.sk);
-            if (!pk || !sk || !workflowJobID) return;
-            try {
-              await aws.updateItem({
-                TableName: tableName,
-                Key: {
-                  pk: { S: pk },
-                  sk: { S: sk },
-                },
-                UpdateExpression: 'SET workflow_job_id = if_not_exists(workflow_job_id, :workflow_job_id)',
-                ExpressionAttributeValues: {
-                  ':workflow_job_id': { N: String(workflowJobID) },
-                },
-              });
-            } catch (error) {
-              diagnostics.push({
-                level: 'warn',
-                code: 'workflow_job_id_update_failed',
-                message: String(error?.message || error),
-              });
-            }
-          }
 
           function observedDeliveries(record) {
             const deliveries = Array.isArray(record?.webhook_deliveries) ? record.webhook_deliveries : [];
@@ -5306,7 +5282,6 @@ Resources:
             }
             if (claim) {
               response.local = normalizeFleetClaim(claim);
-              await persistFleetWorkflowJobID(aws, tableName, claim, facts.workflow_job_id, response.diagnostics);
             } else if (response.github.workflow_job?.runner_name) {
               const instanceID = instanceIDFromRunnerName(response.github.workflow_job.runner_name);
               response.diagnostics.push({
