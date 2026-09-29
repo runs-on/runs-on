@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.3.2)
+Description: CloudFormation stack for https://runs-on.com (v3.4.0-rc.1)
 Transform: AWS::LanguageExtensions
 
 Metadata:
@@ -38,6 +38,7 @@ Metadata:
           - RunnerCustomTags
           - RunnerMaxRuntime
           - RunnerConfigAutoExtendsFrom
+          - EnableWarmPools
           - S3CacheExpirationInDays
       - Label:
           default: "App runtime and maintenance [optional]"
@@ -229,6 +230,14 @@ Parameters:
     MinLength: 1
     Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from `<repo-name>/.github/runs-on.yml`. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
+  EnableWarmPools:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Whether this stack keeps warm pool instances. When false, jobs with a pool= label still run on this stack, on a newly launched instance."
+
   S3CacheExpirationInDays:
     Type: Number
     Default: 10
@@ -350,8 +359,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.3.2
-      ImageTag: v3.3.2@sha256:53df89ebc3396f87b88790807fe6be04b01242bad0c52122fab9795690d18533
+      AppTag: v3.4.0-rc.1
+      ImageTag: v3.4.0-rc.1@sha256:7d50486efc409a994defd1edbe02345667f78c7bd8b77cf0d7eb2885e2e70726
   AppSize:
     small:
       Cpu: 256
@@ -396,6 +405,7 @@ Conditions:
   BedrockEnabled: !Equals [!Ref EnableBedrock, "true"]
   CacheIsolationEnabled: !Equals [!Ref EnableCacheIsolation, "true"]
   StickyDiskIsolationDisabled: !Equals [!Ref EnableStickyDiskIsolation, "false"]
+  WarmPoolsDisabled: !Equals [!Ref EnableWarmPools, "false"]
   RunnerConfigAutoExtendsEnabled: !And [!Not [!Equals [!Ref RunnerConfigAutoExtendsFrom, ""]], !Not [!Equals [!Ref RunnerConfigAutoExtendsFrom, "."]]]
   OtelExporterConfigured: !Not [!Equals [!Ref OtelExporterEndpoint, ""]]
   OtelExporterHeadersConfigured: !Not [!Equals [!Ref OtelExporterHeaders, ""]]
@@ -4589,6 +4599,11 @@ Resources:
               workflow_run_id: numberValue(event?.workflow_run_id || fromURL.workflow_run_id),
               workflow_job_id: numberValue(event?.workflow_job_id || fromURL.workflow_job_id),
               include_delivery_metadata: event?.include_delivery_metadata !== false,
+              // Repeat polls from a caller that already holds the GitHub workflow job
+              // and run skip GitHub. runner_name is the cached job's runner, which Fleet
+              // still needs to match claims.
+              github_cached: event?.github_cached === true,
+              runner_name: trim(event?.runner_name),
             };
           }
 
@@ -5191,6 +5206,10 @@ Resources:
 
             const record = await getFlexRecord(aws, tableName, facts.workflow_job_id);
             response.local = normalizeFlexRecord(record);
+            if (facts.github_cached) {
+              response.status = response.local ? 'found' : 'not_found';
+              return response;
+            }
 
             const githubSecret = await loadSecretJSON(aws, githubAppsSecretARN, 'github apps config');
             const credentials = appCredentialsFromFlexSecret(githubSecret);
@@ -5260,15 +5279,21 @@ Resources:
             }
             const installationID = credentials.type === 'app' ? installation.installationID : 0;
 
-            try {
-              response.github.workflow_job = normalizeWorkflowJob(
-                await githubClient.getWorkflowJob(credentials, facts.owner, facts.repo, facts.workflow_job_id, installationID),
-              );
-            } catch (error) {
-              response.diagnostics.push(githubFetchDiagnostic('github_workflow_job_fetch', error, credentials, facts.owner, facts.repo, 'workflow job', facts.workflow_job_id));
+            // Claim matching keys on the job's runner, so a cached poll fetches the job
+            // again only until GitHub has reported one.
+            let workflowJob = facts.github_cached && facts.runner_name ? { runner_name: facts.runner_name } : null;
+            if (!workflowJob) {
+              try {
+                workflowJob = normalizeWorkflowJob(
+                  await githubClient.getWorkflowJob(credentials, facts.owner, facts.repo, facts.workflow_job_id, installationID),
+                );
+                response.github.workflow_job = workflowJob;
+              } catch (error) {
+                response.diagnostics.push(githubFetchDiagnostic('github_workflow_job_fetch', error, credentials, facts.owner, facts.repo, 'workflow job', facts.workflow_job_id));
+              }
             }
 
-            const { claim, ambiguous, matchBasis, exactMatchCount } = chooseFleetClaim(claims, response.github.workflow_job);
+            const { claim, ambiguous, matchBasis, exactMatchCount } = chooseFleetClaim(claims, workflowJob);
             response.fleet = {
               claim_count: claims.length,
               exact_match_count: exactMatchCount,
@@ -5282,21 +5307,23 @@ Resources:
             }
             if (claim) {
               response.local = normalizeFleetClaim(claim);
-            } else if (response.github.workflow_job?.runner_name) {
-              const instanceID = instanceIDFromRunnerName(response.github.workflow_job.runner_name);
+            } else if (workflowJob?.runner_name) {
+              const instanceID = instanceIDFromRunnerName(workflowJob.runner_name);
               response.diagnostics.push({
                 level: 'warn',
                 code: 'fleet_claim_missing_for_runner',
-                message: `no Fleet claim matched runner ${response.github.workflow_job.runner_name}${instanceID ? ` (${instanceID})` : ''}`,
+                message: `no Fleet claim matched runner ${workflowJob.runner_name}${instanceID ? ` (${instanceID})` : ''}`,
               });
             }
 
-            try {
-              response.github.workflow_run = normalizeWorkflowRun(
-                await githubClient.getWorkflowRun(credentials, facts.owner, facts.repo, facts.workflow_run_id, installationID),
-              );
-            } catch (error) {
-              response.diagnostics.push(githubFetchDiagnostic('github_workflow_run_fetch', error, credentials, facts.owner, facts.repo, 'workflow run', facts.workflow_run_id));
+            if (!facts.github_cached) {
+              try {
+                response.github.workflow_run = normalizeWorkflowRun(
+                  await githubClient.getWorkflowRun(credentials, facts.owner, facts.repo, facts.workflow_run_id, installationID),
+                );
+              } catch (error) {
+                response.diagnostics.push(githubFetchDiagnostic('github_workflow_run_fetch', error, credentials, facts.owner, facts.repo, 'workflow run', facts.workflow_run_id));
+              }
             }
 
             response.github.deliveries = [];
@@ -6074,7 +6101,7 @@ Resources:
             const token = await validateRuntimeToken(input.runtime_token);
             const ac = normalizeAccessControls(token.payload.ac);
             // The cache prefix is a pure function of the GitHub-signed token: the same
-            // signature that authorizes the ac scopes carries the repository IDs, so a
+            // signature that authorizes the ac scopes carries the repository ID, so a
             // token can only ever mint credentials into its own repository's prefix.
             const { ownerID, repoID } = tokenRepositoryIDs(token.payload);
             const repository = repositoryPath(ownerID, repoID);
@@ -6331,21 +6358,37 @@ Resources:
             return normalizeRoleSessionName(userID.slice(userID.lastIndexOf(':') + 1));
           }
 
+          // unassertedOwnerID is the owner segment for tokens without a
+          // repository_owner_id claim. GitHub IDs are positive, so it never collides
+          // with a real owner's prefix.
+          const unassertedOwnerID = 0;
+
           // tokenRepositoryIDs extracts the GitHub numeric repository and owner
-          // identifiers from a validated runtime token payload. GitHub mints
-          // repository_id / repository_owner_id as decimal-string claims (per the
-          // committed fixtures in test/fixtures/runtime-token-claims). Both are
-          // required: the signed IDs are the sole scoping authority, so a token
-          // without them cannot mint scoped credentials.
+          // identifiers from a validated runtime token payload. GitHub mints them as
+          // decimal-string claims (test/fixtures/runtime-token-claims). repository_id
+          // is required and is the isolation key: repository IDs are unique and never
+          // reused within an issuer, and this broker trusts exactly one issuer. The
+          // owner only namespaces the prefix. GHE.com (data residency) tokens omit
+          // repository_owner_id (their owner_id is the repository's node ID), so those
+          // tokens use unassertedOwnerID; a present but malformed claim still fails
+          // closed.
           function tokenRepositoryIDs(payload) {
+            const repoID = requiredNumericClaim(payload.repository_id, 'repository_id');
+            if (claimMissing(payload.repository_owner_id)) {
+              return { ownerID: unassertedOwnerID, repoID };
+            }
             return {
               ownerID: requiredNumericClaim(payload.repository_owner_id, 'repository_owner_id'),
-              repoID: requiredNumericClaim(payload.repository_id, 'repository_id'),
+              repoID,
             };
           }
 
+          function claimMissing(raw) {
+            return raw === undefined || raw === null || raw === '';
+          }
+
           function requiredNumericClaim(raw, name) {
-            if (raw === undefined || raw === null || raw === '') {
+            if (claimMissing(raw)) {
               throw new Error(`runtime token has no ${name} claim`);
             }
             const value = Number(raw);
@@ -6358,10 +6401,11 @@ Resources:
           // repositoryPath is the {ownerId}/{repoId} pair used in scoped prefixes and
           // the STS session tag. IDs are immutable, so the layout is rename-proof.
           function repositoryPath(ownerID, repoID) {
-            for (const [name, value] of [['owner id', ownerID], ['repository id', repoID]]) {
-              if (!Number.isSafeInteger(value) || value <= 0) {
-                throw new Error(`repository ${name} is invalid`);
-              }
+            if (!Number.isSafeInteger(ownerID) || ownerID < unassertedOwnerID) {
+              throw new Error('repository owner id is invalid');
+            }
+            if (!Number.isSafeInteger(repoID) || repoID <= 0) {
+              throw new Error('repository id is invalid');
             }
             return `${ownerID}/${repoID}`;
           }
@@ -7476,6 +7520,7 @@ Resources:
         RunnerCustomTags: !Join [",", !Ref RunnerCustomTags]
         RunnerMaxRuntime: !Ref RunnerMaxRuntime
         RunnerConfigAutoExtendsFrom: !Ref RunnerConfigAutoExtendsFrom
+        WarmPoolsDisabled: !If [WarmPoolsDisabled, "true", "false"]
         EbsEncryptionKey: !If [HasEncryptEbs, "alias/aws/ebs", ""]
         AppGithubApiStrategy: !Ref AppGithubApiStrategy
         AppTag: !FindInMap [App, Tags, AppTag]
