@@ -52,6 +52,7 @@ Metadata:
           - LoggerLevel
           - SpotCircuitBreaker
           - MaintenanceMode
+          - AppIdleScaleToZeroMinutes
       - Label:
           default: "Observability, cost, and integrations [optional]"
         Parameters:
@@ -301,6 +302,13 @@ Parameters:
       - "false"
     Description: "Enable maintenance mode (scales the worker service to zero)"
 
+  AppIdleScaleToZeroMinutes:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 1440
+    Description: "Stop the RunsOn control plane after this many minutes without GitHub webhooks, and start it again when a webhook is queued (0 disables). Meant for test or rarely used stacks: the first job after an idle period waits for the worker to start (typically 2-5 minutes, longer after several idle hours), and while the worker is stopped it does not enforce RunnerMaxRuntime or react to Spot interruptions. Ignored when MaintenanceMode is enabled."
+
   # Observability, cost, and integrations [optional]
   OtelExporterEndpoint:
     Type: String
@@ -398,6 +406,9 @@ Conditions:
   RunnerCustomPolicyProvided: !Not [!Equals [!Ref RunnerCustomPolicy, ""]]
   AppCustomPolicyProvided: !Not [!Equals [!Ref AppCustomPolicy, ""]]
   MaintenanceModeEnabled: !Equals [!Ref MaintenanceMode, "true"]
+  AppScaleToZeroEnabled: !And
+    - !Not [!Equals [!Ref AppIdleScaleToZeroMinutes, 0]]
+    - !Not [!Condition MaintenanceModeEnabled]
   WafEnabled: !Equals [!Ref EnableWAF, "true"]
   AdminRoutesEnabled: !Equals [!Ref EnableAdminRoutes, "true"]
   AdminRoutesDisabled: !Equals [!Ref EnableAdminRoutes, "false"]
@@ -7939,7 +7950,12 @@ Resources:
     Type: AWS::ECS::Service
     Properties:
       Cluster: !Ref RunsOnWorkerCluster
-      DesiredCount: !If [MaintenanceModeEnabled, 0, 1]
+      # With idle scale-to-zero, Application Auto Scaling owns the desired count,
+      # so stack updates leave the current value alone.
+      DesiredCount: !If
+        - MaintenanceModeEnabled
+        - 0
+        - !If [AppScaleToZeroEnabled, !Ref AWS::NoValue, 1]
       CapacityProviderStrategy:
         - CapacityProvider: !Ref AppCapacityProvider
           Weight: 1
@@ -7963,6 +7979,86 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+
+  # Idle scale-to-zero: webhooks wait in the FIFO queue while the worker is
+  # stopped, so a queued webhook starts it and a quiet period stops it again.
+  RunsOnWorkerScalableTarget:
+    Condition: AppScaleToZeroEnabled
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      ServiceNamespace: ecs
+      ScalableDimension: ecs:service:DesiredCount
+      ResourceId: !Sub "service/${RunsOnWorkerCluster}/${RunsOnWorkerService.Name}"
+      MinCapacity: 0
+      MaxCapacity: 1
+
+  RunsOnWorkerScaleOutPolicy:
+    Condition: AppScaleToZeroEnabled
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-worker-start-on-webhook"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref RunsOnWorkerScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ExactCapacity
+        Cooldown: 60
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+
+  RunsOnWorkerScaleInPolicy:
+    Condition: AppScaleToZeroEnabled
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-worker-stop-when-idle"
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref RunsOnWorkerScalableTarget
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ExactCapacity
+        Cooldown: 60
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: 0
+
+  RunsOnWorkerWebhookQueuedAlarm:
+    Condition: AppScaleToZeroEnabled
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "RunsOn idle scale-to-zero: a GitHub webhook is waiting, start the worker."
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt RunsOnQueueWebhooks.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref RunsOnWorkerScaleOutPolicy
+
+  RunsOnWorkerIdleAlarm:
+    Condition: AppScaleToZeroEnabled
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "RunsOn idle scale-to-zero: no GitHub webhook for ${AppIdleScaleToZeroMinutes} minutes, stop the worker."
+      Namespace: AWS/SQS
+      MetricName: NumberOfMessagesSent
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt RunsOnQueueWebhooks.QueueName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: !Ref AppIdleScaleToZeroMinutes
+      DatapointsToAlarm: !Ref AppIdleScaleToZeroMinutes
+      Threshold: 0
+      ComparisonOperator: LessThanOrEqualToThreshold
+      # SQS stops publishing metrics for inactive queues; no data means no webhooks.
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref RunsOnWorkerScaleInPolicy
 
   DailyCostBudget:
     Condition: AppBudgetEnabled
