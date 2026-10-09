@@ -1,198 +1,189 @@
 {
-  "description": "Daily view of RunsOn Flex and Fleet: job outcomes, queue time, capacity usage, cost, and incidents.",
+  "description": "Control-plane internals for diagnosing slow launches, stuck capacity, throttling, and missing cost estimates.",
   "image": "",
   "layout": [
     {
       "h": 5,
-      "i": "1074764f-6c47-5ca3-b56f-e6c73b5a7310",
+      "i": "3bf870c7-1ffa-48d9-a151-fa95bd1f4a33",
       "moved": false,
       "static": false,
-      "w": 3,
+      "w": 6,
       "x": 0,
       "y": 0
     },
     {
       "h": 5,
-      "i": "53e1c635-3266-4652-afa6-587b6db2af8d",
+      "i": "0b81afec-d6a0-4fdc-ad10-fe67c1fc26e6",
       "moved": false,
       "static": false,
-      "w": 3,
-      "x": 3,
-      "y": 0
-    },
-    {
-      "h": 5,
-      "i": "2f7fe711-0047-4346-a5a5-ee54df85bd05",
-      "moved": false,
-      "static": false,
-      "w": 3,
+      "w": 6,
       "x": 6,
       "y": 0
     },
     {
-      "h": 5,
-      "i": "7d153934-a3e5-4ddd-832d-d7e59fded580",
+      "h": 7,
+      "i": "14dea89d-9c5d-480a-a131-fcac62b8ae26",
       "moved": false,
       "static": false,
-      "w": 3,
-      "x": 9,
-      "y": 0
-    },
-    {
-      "h": 5,
-      "i": "d3e5197c-aeba-4ac5-97f5-1b4412c1ec8a",
-      "moved": false,
-      "static": false,
-      "w": 3,
+      "w": 6,
       "x": 0,
       "y": 5
     },
     {
-      "h": 5,
-      "i": "eaab9a37-d81c-4c32-a416-88bd2af23bb8",
+      "h": 7,
+      "i": "41b05df7-a1d6-43d5-a005-9ca3f8363d32",
       "moved": false,
       "static": false,
-      "w": 3,
-      "x": 3,
-      "y": 5
-    },
-    {
-      "h": 5,
-      "i": "f7655d40-1fc8-45a4-8674-a31da2b9adf8",
-      "moved": false,
-      "static": false,
-      "w": 3,
+      "w": 6,
       "x": 6,
       "y": 5
     },
     {
-      "h": 5,
-      "i": "248648db-aa8f-4188-be45-e0d0349006c4",
-      "moved": false,
-      "static": false,
-      "w": 3,
-      "x": 9,
-      "y": 5
-    },
-    {
       "h": 7,
-      "i": "ed8eea4b-90b5-4b63-8ab6-0dfa7f8ca6bf",
+      "i": "0ea94902-fdb4-48e9-a59a-a32ce5dc75af",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 0,
-      "y": 10
+      "y": 12
     },
     {
       "h": 7,
-      "i": "7c082b29-a480-4e52-83ef-4d86f70d319e",
+      "i": "38ee083f-7218-4b97-a98e-7ee119fc1e28",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 6,
-      "y": 10
+      "y": 12
     },
     {
       "h": 7,
-      "i": "9d053d87-734c-5ddd-aeb3-fb313e4882b8",
+      "i": "2a7e8ff1-1e70-45f9-a3a0-b0150e1e7cc9",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 0,
+      "y": 19
+    },
+    {
+      "h": 7,
+      "i": "2a8a15b0-cab1-4393-a684-fcee96b13635",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 4,
+      "y": 19
+    },
+    {
+      "h": 7,
+      "i": "e8790746-d118-40b3-ac58-d094ea0c901f",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 8,
+      "y": 19
+    },
+    {
+      "h": 7,
+      "i": "bd45c5e9-0cb3-4ccd-ae42-b73fb0da5b5d",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 0,
+      "y": 26
+    },
+    {
+      "h": 7,
+      "i": "5d06248d-bddc-449a-a549-f6ed3ee8e90d",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 4,
+      "y": 26
+    },
+    {
+      "h": 7,
+      "i": "234693f6-4444-4fe8-a2a4-8bcdce0675a3",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 8,
+      "y": 26
+    },
+    {
+      "h": 7,
+      "i": "bcae63e8-fdcc-41b5-a076-e2957ee0ee80",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 0,
-      "y": 17
+      "y": 33
     },
     {
       "h": 7,
-      "i": "886e1d40-9809-4663-aee0-5420fb97db3a",
+      "i": "ae98d1b5-7390-4414-acb9-b7ffaf79f529",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 6,
-      "y": 17
+      "y": 33
     },
     {
       "h": 7,
-      "i": "934e2290-8c23-4340-aded-471e4b968f3c",
+      "i": "401e14ca-ea19-483f-ad1e-8090415b7a4c",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 0,
-      "y": 24
+      "y": 40
     },
     {
       "h": 7,
-      "i": "708e54c6-65bb-47da-a323-1e07fa7411a4",
+      "i": "91fd75ef-a01d-4576-a373-9b039b0f50b5",
       "moved": false,
       "static": false,
       "w": 6,
       "x": 6,
-      "y": 24
+      "y": 40
     },
     {
       "h": 7,
-      "i": "1de7f338-3857-4749-a22b-355a94f88ded",
+      "i": "62fce71e-4e10-4dbd-a4ee-8d3b807c5f65",
       "moved": false,
       "static": false,
-      "w": 6,
+      "w": 4,
       "x": 0,
-      "y": 31
+      "y": 47
     },
     {
       "h": 7,
-      "i": "25a8f16d-00bf-4de1-a9da-eedc7c149a8d",
+      "i": "8ddd87b0-0ad1-47f8-a215-29bf3fd6f6e4",
       "moved": false,
       "static": false,
-      "w": 6,
-      "x": 6,
-      "y": 31
+      "w": 4,
+      "x": 4,
+      "y": 47
     },
     {
-      "h": 10,
-      "i": "91e9e775-4975-4208-9aa1-e2cf42cfc02f",
+      "h": 7,
+      "i": "0605e70e-9f2f-4437-a4f1-a1e93993671d",
       "moved": false,
       "static": false,
-      "w": 12,
-      "x": 0,
-      "y": 38
-    },
-    {
-      "h": 10,
-      "i": "ace32cbf-8e54-4a7a-a4e3-85769895be84",
-      "moved": false,
-      "static": false,
-      "w": 12,
-      "x": 0,
-      "y": 48
-    },
-    {
-      "h": 8,
-      "i": "351d96e0-346b-497d-a229-31451e8cc0a1",
-      "moved": false,
-      "static": false,
-      "w": 6,
-      "x": 0,
-      "y": 58
-    },
-    {
-      "h": 8,
-      "i": "dd38ca7c-7a2e-4a5f-adaa-2b920443a762",
-      "moved": false,
-      "static": false,
-      "w": 6,
-      "x": 6,
-      "y": 58
+      "w": 4,
+      "x": 8,
+      "y": 47
     }
   ],
   "panelMap": {},
   "tags": [
     "runs-on",
-    "operator",
+    "troubleshooting",
     "flex",
     "fleet"
   ],
-  "title": "RunsOn · Operations",
+  "title": "RunsOn · Troubleshooting",
   "uploadedGrafana": false,
-  "uuid": "68753430-fb63-57bb-bbf5-2c445b452358",
+  "uuid": "24906028-209b-5d6b-bdd5-3e674f76cc18",
   "variables": {
     "fcfa3da7-8ac2-4e55-a7e5-b63799e4364d": {
       "allSelected": true,
@@ -232,63 +223,6 @@
       "textboxValue": "",
       "type": "DYNAMIC"
     },
-    "1f0c6b09-da50-4b16-a16f-f0aef6215ee5": {
-      "allSelected": true,
-      "customValue": "",
-      "defaultValue": "",
-      "description": "",
-      "dynamicVariablesAttribute": "org",
-      "dynamicVariablesSource": "All telemetry",
-      "haveCustomValuesSelected": false,
-      "id": "1f0c6b09-da50-4b16-a16f-f0aef6215ee5",
-      "modificationUUID": "bc9ea832-993f-476c-aaa0-a8f9b11702a5",
-      "multiSelect": true,
-      "name": "Organization",
-      "order": 2,
-      "queryValue": "",
-      "showALLOption": true,
-      "sort": "ASC",
-      "textboxValue": "",
-      "type": "DYNAMIC"
-    },
-    "59441d80-bc89-44bc-a340-bc5d4929175a": {
-      "allSelected": true,
-      "customValue": "",
-      "defaultValue": "",
-      "description": "",
-      "dynamicVariablesAttribute": "repo",
-      "dynamicVariablesSource": "All telemetry",
-      "haveCustomValuesSelected": false,
-      "id": "59441d80-bc89-44bc-a340-bc5d4929175a",
-      "modificationUUID": "c7639138-5b42-4fce-a39b-f0d1b548aaaf",
-      "multiSelect": true,
-      "name": "Repository",
-      "order": 3,
-      "queryValue": "",
-      "showALLOption": true,
-      "sort": "ASC",
-      "textboxValue": "",
-      "type": "DYNAMIC"
-    },
-    "07836196-6713-431a-a84d-76edf7b30cd7": {
-      "allSelected": true,
-      "customValue": "",
-      "defaultValue": "",
-      "description": "",
-      "dynamicVariablesAttribute": "workflow_path",
-      "dynamicVariablesSource": "All telemetry",
-      "haveCustomValuesSelected": false,
-      "id": "07836196-6713-431a-a84d-76edf7b30cd7",
-      "modificationUUID": "24a60341-a228-439d-a462-e381537b7cdf",
-      "multiSelect": true,
-      "name": "Workflow",
-      "order": 4,
-      "queryValue": "",
-      "showALLOption": true,
-      "sort": "ASC",
-      "textboxValue": "",
-      "type": "DYNAMIC"
-    },
     "45a46909-3ec6-4265-a6c1-863a99acca47": {
       "allSelected": true,
       "customValue": "",
@@ -307,6 +241,44 @@
       "sort": "ASC",
       "textboxValue": "",
       "type": "DYNAMIC"
+    },
+    "01221d4a-23d2-4dd0-aca7-3255ba45200f": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "pool_name",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "01221d4a-23d2-4dd0-aca7-3255ba45200f",
+      "modificationUUID": "2da01e6e-e5ef-415c-a46a-b94698543585",
+      "multiSelect": true,
+      "name": "Pool",
+      "order": 6,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
+    },
+    "6622896f-9e0a-4837-a0d6-e55a0fccc1a0": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "fleet_name",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "6622896f-9e0a-4837-a0d6-e55a0fccc1a0",
+      "modificationUUID": "c042d08e-1b9a-417e-ac74-bc5b2d40664c",
+      "multiSelect": true,
+      "name": "Fleet",
+      "order": 7,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
     }
   },
   "version": "v5",
@@ -320,10 +292,10 @@
       },
       "customLegendColors": {},
       "decimalPrecision": 2,
-      "description": "Distinct completed jobs in the selected period, from job_summary events.",
+      "description": "One means Spot launches are temporarily suppressed for the selected Flex or Fleet service.",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "1074764f-6c47-5ca3-b56f-e6c73b5a7310",
+      "id": "3bf870c7-1ffa-48d9-a151-fa95bd1f4a33",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -338,14 +310,22 @@
             {
               "aggregations": [
                 {
-                  "expression": "count_distinct(event_id)"
+                  "metricName": "runs_on_spot_circuit_breaker_active",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "max",
+                  "temporality": "",
+                  "timeAggregation": "latest"
                 }
               ],
-              "dataSource": "logs",
+              "dataSource": "metrics",
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
               },
               "functions": [],
               "groupBy": [],
@@ -371,159 +351,7 @@
             "query": ""
           }
         ],
-        "id": "d7476dd1-f53c-509b-bb11-c9b8807b1555",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Overview · Jobs completed",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 2,
-      "description": "Failures divided by terminal success/failure outcomes; cancelled and skipped jobs are excluded.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "53e1c635-3266-4652-afa6-587b6db2af8d",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "zero",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "expression": "count()"
-                }
-              ],
-              "dataSource": "logs",
-              "disabled": true,
-              "expression": "A",
-              "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND attribute.conclusion = 'failure' AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            },
-            {
-              "aggregations": [
-                {
-                  "expression": "count()"
-                }
-              ],
-              "dataSource": "logs",
-              "disabled": true,
-              "expression": "B",
-              "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND attribute.conclusion IN ('success', 'failure') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "B",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [
-            {
-              "disabled": false,
-              "expression": "A / B",
-              "legend": "Failure rate",
-              "queryName": "F1"
-            }
-          ],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "46b581e8-083e-47e9-a7f2-6121b0244472",
+        "id": "0139615c-8934-45a4-a139-ce8f0cdb6546",
         "promql": [
           {
             "disabled": false,
@@ -581,18 +409,18 @@
       "stackedBarChart": false,
       "thresholds": [
         {
-          "index": "failure",
-          "thresholdOperator": ">",
-          "thresholdValue": 0,
-          "thresholdUnit": "percentunit",
+          "index": "breaker",
+          "thresholdOperator": ">=",
+          "thresholdValue": 1,
+          "thresholdUnit": "none",
           "thresholdColor": "#e5484d",
-          "thresholdFormat": "Text",
-          "thresholdLabel": "Failures present"
+          "thresholdFormat": "Background",
+          "thresholdLabel": "Circuit breaker active"
         }
       ],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Overview · Failure rate",
-      "yAxisUnit": "percentunit"
+      "title": "Health · Spot circuit breaker",
+      "yAxisUnit": "none"
     },
     {
       "bucketCount": 30,
@@ -603,139 +431,10 @@
       },
       "customLegendColors": {},
       "decimalPrecision": 2,
-      "description": "Time from GitHub queueing to job start.",
+      "description": "Fraction of completed jobs with complete EC2 and EBS estimates since process start.",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "2f7fe711-0047-4346-a5a5-ee54df85bd05",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "zero",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_overall_queue_duration_seconds.bucket",
-                  "reduceTo": "avg",
-                  "spaceAggregation": "p95",
-                  "temporality": "",
-                  "timeAggregation": "rate"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "P95",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "ab81882f-638c-4d24-ac78-eec39b6f287b",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Overview · Queue time p95",
-      "yAxisUnit": "s"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 2,
-      "description": "Sum of available job cost estimates for completed jobs during the selected period.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "7d153934-a3e5-4ddd-832d-d7e59fded580",
+      "id": "0b81afec-d6a0-4fdc-ad10-fe67c1fc26e6",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -750,14 +449,22 @@
             {
               "aggregations": [
                 {
-                  "expression": "sum(estimated_cost_usd)"
+                  "metricName": "runs_on_job_cost_estimate_coverage",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "latest"
                 }
               ],
-              "dataSource": "logs",
+              "dataSource": "metrics",
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND attribute.estimated_cost_usd EXISTS AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
               },
               "functions": [],
               "groupBy": [],
@@ -783,7 +490,7 @@
             "query": ""
           }
         ],
-        "id": "d25860dc-42ca-4090-93a6-57b75a2085e9",
+        "id": "06dbe682-9427-44c3-a514-ca81c13afb7a",
         "promql": [
           {
             "disabled": false,
@@ -839,10 +546,20 @@
       "softMin": 0,
       "spanGaps": true,
       "stackedBarChart": false,
-      "thresholds": [],
+      "thresholds": [
+        {
+          "index": "coverage",
+          "thresholdOperator": "<",
+          "thresholdValue": 0.9,
+          "thresholdUnit": "percentunit",
+          "thresholdColor": "#f5a623",
+          "thresholdFormat": "Text",
+          "thresholdLabel": "Coverage below 90%"
+        }
+      ],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Overview · Estimated cost for period",
-      "yAxisUnit": "usd"
+      "title": "Health · Cost estimate coverage",
+      "yAxisUnit": "percentunit"
     },
     {
       "bucketCount": 30,
@@ -852,533 +569,17 @@
         "linksData": []
       },
       "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Highest total runner vCPUs in the selected period, sampled once per interval: the latest value of each series, summed. A burst between two samples is not seen.",
+      "decimalPrecision": 2,
+      "description": "Current reconciliation, scheduling, and provisioning work waiting to be processed.",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "d3e5197c-aeba-4ac5-97f5-1b4412c1ec8a",
+      "id": "14dea89d-9c5d-480a-a131-fcac62b8ae26",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
       "lineStyle": "solid",
       "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_runner_vcpus",
-                  "reduceTo": "max",
-                  "spaceAggregation": "sum",
-                  "temporality": "",
-                  "timeAggregation": "latest"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "vCPUs",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "f5860c63-e16a-4def-9038-f649a8751b79",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Runner vCPUs (peak)",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Latest total runner vCPUs. Default vCPUs of active runner instances: Flex instances attached to a job, Fleet instances of non-terminal claims including idle registered runners. Warm-pool standby capacity is excluded.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "eaab9a37-d81c-4c32-a416-88bd2af23bb8",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_runner_vcpus",
-                  "reduceTo": "last",
-                  "spaceAggregation": "sum",
-                  "temporality": "",
-                  "timeAggregation": "latest"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "vCPUs",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "235e0412-dfa6-47f7-b758-b6064686b3d3",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Runner vCPUs (current)",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Highest number of jobs running at once in the selected period, sampled once per interval: the latest value of each series, summed. A burst between two samples is not seen.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "f7655d40-1fc8-45a4-8674-a31da2b9adf8",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_jobs_in_progress",
-                  "reduceTo": "max",
-                  "spaceAggregation": "sum",
-                  "temporality": "",
-                  "timeAggregation": "latest"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "Jobs",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "e9239628-5a75-49f0-8339-fd0b5dd83ed1",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Jobs in progress (peak)",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Latest number of running jobs. Jobs running on RunsOn runners: Flex jobs GitHub reports in progress, Fleet claims whose job started and has not completed. Idle and warm runners are not jobs.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "248648db-aa8f-4188-be45-e0d0349006c4",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "value",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_jobs_in_progress",
-                  "reduceTo": "last",
-                  "spaceAggregation": "sum",
-                  "temporality": "",
-                  "timeAggregation": "latest"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [],
-              "having": {
-                "expression": ""
-              },
-              "legend": "Jobs",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "057cce04-7527-4852-aaa8-6406a30ff4ab",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Jobs in progress (current)",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Default vCPUs of active runner instances: Flex instances attached to a job, Fleet instances of non-terminal claims including idle registered runners. Warm-pool standby capacity is excluded. Each point is the total at the end of its interval: the latest value of each series, summed.",
-      "fillMode": "none",
-      "fillSpans": false,
-      "id": "ed8eea4b-90b5-4b63-8ab6-0dfa7f8ca6bf",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "linear",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
+      "nullZeroValues": "zero",
       "opacity": "1",
       "panelTypes": "graph",
       "query": {
@@ -1387,7 +588,7 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_runner_vcpus",
+                  "metricName": "runs_on_reconciler_backlog",
                   "reduceTo": "avg",
                   "spaceAggregation": "sum",
                   "temporality": "",
@@ -1398,7 +599,7 @@
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
               },
               "filters": {
                 "items": [],
@@ -1409,114 +610,17 @@
               "having": {
                 "expression": ""
               },
-              "legend": "vCPUs",
+              "legend": "Reconciler",
               "limit": null,
               "orderBy": [],
               "queryName": "A",
               "source": "",
               "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "c4865852-8935-499f-aeaf-3a2c6a270093",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Runner vCPUs over time",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 0,
-      "description": "Jobs running on RunsOn runners: Flex jobs GitHub reports in progress, Fleet claims whose job started and has not completed. Idle and warm runners are not jobs. Each point is the total at the end of its interval: the latest value of each series, summed.",
-      "fillMode": "none",
-      "fillSpans": false,
-      "id": "7c082b29-a480-4e52-83ef-4d86f70d319e",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "linear",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "graph",
-      "query": {
-        "builder": {
-          "queryData": [
+            },
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_jobs_in_progress",
+                  "metricName": "runs_on_jobs_awaiting_launch",
                   "reduceTo": "avg",
                   "spaceAggregation": "sum",
                   "temporality": "",
@@ -1525,9 +629,9 @@
               ],
               "dataSource": "metrics",
               "disabled": false,
-              "expression": "A",
+              "expression": "B",
               "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
               },
               "filters": {
                 "items": [],
@@ -1538,10 +642,42 @@
               "having": {
                 "expression": ""
               },
-              "legend": "Jobs",
+              "legend": "Awaiting launch",
               "limit": null,
               "orderBy": [],
-              "queryName": "A",
+              "queryName": "B",
+              "source": "",
+              "stepInterval": 60
+            },
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_provisioning_backlog",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "C",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [],
+              "having": {
+                "expression": ""
+              },
+              "legend": "Provisioning",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "C",
               "source": "",
               "stepInterval": 60
             }
@@ -1557,7 +693,7 @@
             "query": ""
           }
         ],
-        "id": "fe0d2fad-1e76-480b-ad15-f5442c718ab8",
+        "id": "c973eee5-b482-4e48-aee1-ac406e5787f7",
         "promql": [
           {
             "disabled": false,
@@ -1612,10 +748,20 @@
       "softMax": 0,
       "softMin": 0,
       "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
+      "stackedBarChart": true,
+      "thresholds": [
+        {
+          "index": "backlog",
+          "thresholdOperator": ">",
+          "thresholdValue": 0,
+          "thresholdUnit": "none",
+          "thresholdColor": "#f5a623",
+          "thresholdFormat": "Text",
+          "thresholdLabel": "Backlog present"
+        }
+      ],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Usage · Jobs in progress over time",
+      "title": "Capacity · Control-plane backlog",
       "yAxisUnit": "none"
     },
     {
@@ -1627,10 +773,10 @@
       },
       "customLegendColors": {},
       "decimalPrecision": 2,
-      "description": "Distinct completed jobs per interval, by GitHub conclusion.",
+      "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "9d053d87-734c-5ddd-aeb3-fb313e4882b8",
+      "id": "41b05df7-a1d6-43d5-a005-9ca3f8363d32",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -1638,37 +784,45 @@
       "mergeAllActiveQueries": false,
       "nullZeroValues": "zero",
       "opacity": "1",
-      "panelTypes": "bar",
+      "panelTypes": "graph",
       "query": {
         "builder": {
           "queryData": [
             {
               "aggregations": [
                 {
-                  "expression": "count_distinct(event_id)"
+                  "metricName": "runs_on_jobs_awaiting_launch",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
                 }
               ],
-              "dataSource": "logs",
+              "dataSource": "metrics",
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
               },
               "functions": [],
               "groupBy": [
                 {
                   "dataType": "string",
-                  "id": "conclusion--string--tag",
+                  "id": "reason--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "conclusion",
+                  "key": "reason",
                   "type": "tag"
                 }
               ],
               "having": {
                 "expression": ""
               },
-              "legend": "{{conclusion}}",
+              "legend": "",
               "limit": null,
               "orderBy": [],
               "queryName": "A",
@@ -1687,7 +841,7 @@
             "query": ""
           }
         ],
-        "id": "7dace006-9de9-52d7-824f-fba2637e5def",
+        "id": "a65d713e-6fd3-4999-a2b9-ec7bd6d8a7d4",
         "promql": [
           {
             "disabled": false,
@@ -1745,7 +899,7 @@
       "stackedBarChart": true,
       "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Jobs · Completed jobs by conclusion",
+      "title": "Capacity · Jobs awaiting launch by reason",
       "yAxisUnit": "none"
     },
     {
@@ -1757,10 +911,10 @@
       },
       "customLegendColors": {},
       "decimalPrecision": 2,
-      "description": "Time from GitHub queueing a job to the job starting on a runner (p50, p95, p99).",
+      "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "886e1d40-9809-4663-aee0-5420fb97db3a",
+      "id": "0ea94902-fdb4-48e9-a59a-a32ce5dc75af",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -1775,7 +929,745 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_overall_queue_duration_seconds.bucket",
+                  "metricName": "runs_on_runner_instances",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "product--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "product",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "instance_lifecycle--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "instance_lifecycle",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "state--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "state",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "b5cb6eda-79dd-45d7-a997-57e98a14d320",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": true,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Capacity · Runner instances by lifecycle and state",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "38ee083f-7218-4b97-a98e-7ee119fc1e28",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "bar",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_launch_attempts_total",
+                  "reduceTo": "sum",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "increase"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "product--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "product",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "instance_lifecycle--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "instance_lifecycle",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "status--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "status",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "ba89289f-332e-4b00-adad-3af19decd715",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": true,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Provisioning · Launch attempts",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Flex only. Current pool inventory grouped by pool and state.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "2a7e8ff1-1e70-45f9-a3a0-b0150e1e7cc9",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_pool_instances",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-flex' AND resource.deployment.environment IN $Environment AND attribute.pool_name IN $Pool"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "pool_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "pool_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "state--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "state",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "41a917cf-727e-48e8-ac3f-1aa8b311bad6",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": true,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Capacity · Flex pool instances",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Fleet only. Desired capacity calculated from assigned scale-set demand.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "2a8a15b0-cab1-4393-a684-fcee96b13635",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_fleet_desired_runners",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-fleet' AND resource.deployment.environment IN $Environment AND attribute.fleet_name IN $Fleet"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "fleet_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "fleet_name",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "a03f3d4d-5e5d-4c38-a9db-97cfe9098602",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Capacity · Fleet desired runners",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Fleet only. Current durable claims by bounded lifecycle state.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "e8790746-d118-40b3-ac58-d094ea0c901f",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_fleet_claims",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-fleet' AND resource.deployment.environment IN $Environment AND attribute.fleet_name IN $Fleet"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "fleet_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "fleet_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "state--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "state",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "85a71bbd-eb6d-4515-aed2-6592152c7bf0",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": true,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Capacity · Fleet claims by state",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "RunsOn queue to scheduling.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "bd45c5e9-0cb3-4ccd-ae42-b73fb0da5b5d",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_internal_queue_duration_seconds.bucket",
                   "reduceTo": "avg",
                   "spaceAggregation": "p50",
                   "temporality": "",
@@ -1786,7 +1678,7 @@
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
               },
               "filters": {
                 "items": [],
@@ -1807,7 +1699,7 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_overall_queue_duration_seconds.bucket",
+                  "metricName": "runs_on_internal_queue_duration_seconds.bucket",
                   "reduceTo": "avg",
                   "spaceAggregation": "p95",
                   "temporality": "",
@@ -1818,7 +1710,7 @@
               "disabled": false,
               "expression": "B",
               "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
               },
               "filters": {
                 "items": [],
@@ -1839,7 +1731,7 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_overall_queue_duration_seconds.bucket",
+                  "metricName": "runs_on_internal_queue_duration_seconds.bucket",
                   "reduceTo": "avg",
                   "spaceAggregation": "p99",
                   "temporality": "",
@@ -1850,7 +1742,7 @@
               "disabled": false,
               "expression": "C",
               "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.instance_lifecycle IN $Lifecycle"
               },
               "filters": {
                 "items": [],
@@ -1880,7 +1772,7 @@
             "query": ""
           }
         ],
-        "id": "cb511666-3e78-4500-a4d5-d8782bea855a",
+        "id": "80d51e4f-d3c2-4fdc-a644-30a9c393aa65",
         "promql": [
           {
             "disabled": false,
@@ -1938,292 +1830,8 @@
       "stackedBarChart": false,
       "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Jobs · Queue time",
+      "title": "Provisioning · Internal queue duration",
       "yAxisUnit": "s"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 4,
-      "description": "",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "934e2290-8c23-4340-aded-471e4b968f3c",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "bar",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "expression": "sum(estimated_cost_usd)"
-                }
-              ],
-              "dataSource": "logs",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND attribute.estimated_cost_usd EXISTS AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "functions": [],
-              "groupBy": [
-                {
-                  "dataType": "string",
-                  "id": "product--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "product",
-                  "type": "tag"
-                }
-              ],
-              "having": {
-                "expression": ""
-              },
-              "legend": "{{product}}",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "52e4788c-e4c5-496a-a530-b79dbc7baae0",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": true,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Cost · Estimated spend over time",
-      "yAxisUnit": "usd"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {},
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 4,
-      "description": "Hourly upper-bound estimate based on full volume size; EBS bills changed blocks.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "id": "708e54c6-65bb-47da-a323-1e07fa7411a4",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "graph",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "metricName": "runs_on_sticky_snapshot_estimated_cost_usd_per_hour",
-                  "reduceTo": "avg",
-                  "spaceAggregation": "sum",
-                  "temporality": "",
-                  "timeAggregation": "latest"
-                }
-              ],
-              "dataSource": "metrics",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow"
-              },
-              "filters": {
-                "items": [],
-                "op": "AND"
-              },
-              "functions": [],
-              "groupBy": [
-                {
-                  "dataType": "string",
-                  "id": "org--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "org",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "repo--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "repo",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "workflow_path--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "workflow_path",
-                  "type": "tag"
-                }
-              ],
-              "having": {
-                "expression": ""
-              },
-              "legend": "{{org}}/{{repo}} · {{workflow_path}}",
-              "limit": null,
-              "orderBy": [],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "d5f9119d-8e6d-432a-aae4-bb29be5cd875",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Cost · Retained sticky snapshot estimate",
-      "yAxisUnit": "usdph"
     },
     {
       "bucketCount": 30,
@@ -2237,7 +1845,145 @@
       "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "1de7f338-3857-4749-a22b-355a94f88ded",
+      "id": "5d06248d-bddc-449a-a549-f6ed3ee8e90d",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_provisioning_stage_duration_seconds.bucket",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "p95",
+                  "temporality": "",
+                  "timeAggregation": "rate"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "provisioning_stage--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "provisioning_stage",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "{{provisioning_stage}} P95",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "dc54079d-97bc-4410-acc4-89c6cc0f14c5",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Provisioning · Worker pass p95",
+      "yAxisUnit": "s"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "234693f6-4444-4fe8-a2a4-8bcdce0675a3",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -2252,7 +1998,7 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_provisioning_failures_total",
+                  "metricName": "runs_on_provisioning_retries_total",
                   "reduceTo": "sum",
                   "spaceAggregation": "sum",
                   "temporality": "",
@@ -2278,22 +2024,6 @@
                   "isJSON": false,
                   "key": "provisioning_stage",
                   "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "error_code--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "error_code",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "instance_lifecycle--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "instance_lifecycle",
-                  "type": "tag"
                 }
               ],
               "having": {
@@ -2318,7 +2048,7 @@
             "query": ""
           }
         ],
-        "id": "9285f910-75de-4349-a48a-08596f61748a",
+        "id": "47f1399f-512d-4c34-ae9b-287e78d40dc9",
         "promql": [
           {
             "disabled": false,
@@ -2374,19 +2104,9 @@
       "softMin": 0,
       "spanGaps": true,
       "stackedBarChart": true,
-      "thresholds": [
-        {
-          "index": "failure",
-          "thresholdOperator": ">",
-          "thresholdValue": 0,
-          "thresholdUnit": "none",
-          "thresholdColor": "#e5484d",
-          "thresholdFormat": "Text",
-          "thresholdLabel": "Failures present"
-        }
-      ],
+      "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Reliability · Provisioning failures",
+      "title": "Provisioning · Retries",
       "yAxisUnit": "none"
     },
     {
@@ -2401,7 +2121,299 @@
       "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "25a8f16d-00bf-4de1-a9da-eedc7c149a8d",
+      "id": "bcae63e8-fdcc-41b5-a076-e2957ee0ee80",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_aws_operation_duration_seconds.bucket",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "p95",
+                  "temporality": "",
+                  "timeAggregation": "rate"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "aws_operation--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "aws_operation",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "outcome--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "outcome",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "ce3c048b-c3e0-4d7b-a7e2-661c79f3eb56",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Dependencies · AWS operations p95",
+      "yAxisUnit": "s"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "ae98d1b5-7390-4414-acb9-b7ffaf79f529",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_github_operation_duration_seconds.bucket",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "p95",
+                  "temporality": "",
+                  "timeAggregation": "rate"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "github_operation--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "github_operation",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "outcome--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "outcome",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "276db99b-2549-4e6e-abe6-f4143e4f849f",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Dependencies · GitHub operations p95",
+      "yAxisUnit": "s"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "401e14ca-ea19-483f-ad1e-8090415b7a4c",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -2416,7 +2428,7 @@
             {
               "aggregations": [
                 {
-                  "metricName": "runs_on_spot_interruptions_total",
+                  "metricName": "runs_on_aws_operations_total",
                   "reduceTo": "sum",
                   "spaceAggregation": "sum",
                   "temporality": "",
@@ -2437,10 +2449,18 @@
               "groupBy": [
                 {
                   "dataType": "string",
-                  "id": "instance_family--string--tag",
+                  "id": "aws_operation--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "instance_family",
+                  "key": "aws_operation",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "outcome--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "outcome",
                   "type": "tag"
                 }
               ],
@@ -2466,7 +2486,7 @@
             "query": ""
           }
         ],
-        "id": "0ecfb2d5-7910-47fb-a955-08fdbe9bee32",
+        "id": "6be09513-cc11-401b-a8e1-c9ea9ed0843c",
         "promql": [
           {
             "disabled": false,
@@ -2524,390 +2544,7 @@
       "stackedBarChart": true,
       "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Reliability · Spot interruptions",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {
-        "A.estimated_cost": "usd",
-        "estimated_cost": "usd",
-        "A.runner_time": "s",
-        "runner_time": "s",
-        "A.avg_duration": "s",
-        "avg_duration": "s",
-        "A.avg_queue": "s",
-        "avg_queue": "s"
-      },
-      "columnWidths": {
-        "org": 140,
-        "repo": 180,
-        "workflow_path": 300
-      },
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 3,
-      "description": "Completed workflows ranked by estimated cost. Groups with no priced job summaries show $0; use Cost estimate coverage to judge completeness. Click an organization, repository, or workflow cell and choose Dashboard Variables → Set to drill into the jobs below.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "hiddenColumns": [],
-      "id": "91e9e775-4975-4208-9aa1-e2cf42cfc02f",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "table",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "expression": "sum(estimated_cost_usd)",
-                  "alias": "estimated_cost"
-                },
-                {
-                  "expression": "sum(job_duration_seconds)",
-                  "alias": "runner_time"
-                },
-                {
-                  "expression": "count()",
-                  "alias": "job_runs"
-                },
-                {
-                  "expression": "avg(job_duration_seconds)",
-                  "alias": "avg_duration"
-                },
-                {
-                  "expression": "avg(overall_queue_duration_seconds)",
-                  "alias": "avg_queue"
-                },
-                {
-                  "expression": "count_distinct(job_name)",
-                  "alias": "distinct_jobs"
-                }
-              ],
-              "dataSource": "logs",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "functions": [],
-              "groupBy": [
-                {
-                  "dataType": "string",
-                  "id": "org--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "org",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "repo--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "repo",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "workflow_path--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "workflow_path",
-                  "type": "tag"
-                }
-              ],
-              "having": {
-                "expression": ""
-              },
-              "legend": "",
-              "limit": 100,
-              "orderBy": [
-                {
-                  "columnName": "estimated_cost",
-                  "order": "desc"
-                }
-              ],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "3c7077ae-006a-4568-a286-c1190994c2f1",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Drill-down · Workflows",
-      "yAxisUnit": "none"
-    },
-    {
-      "bucketCount": 30,
-      "bucketWidth": 0,
-      "columnUnits": {
-        "A.estimated_cost": "usd",
-        "estimated_cost": "usd",
-        "A.runner_time": "s",
-        "runner_time": "s",
-        "A.avg_duration": "s",
-        "avg_duration": "s",
-        "A.avg_queue": "s",
-        "avg_queue": "s"
-      },
-      "columnWidths": {
-        "org": 140,
-        "repo": 180,
-        "workflow_path": 260,
-        "job_name": 260
-      },
-      "contextLinks": {
-        "linksData": []
-      },
-      "customLegendColors": {},
-      "decimalPrecision": 3,
-      "description": "Job statistics for the selected organization, repository, and workflow. Groups with no priced job summaries show $0; use Cost estimate coverage to judge completeness. Set variables from the workflow table above to narrow this table.",
-      "fillMode": "none",
-      "fillSpans": true,
-      "hiddenColumns": [],
-      "id": "ace32cbf-8e54-4a7a-a4e3-85769895be84",
-      "isLogScale": false,
-      "legendPosition": "bottom",
-      "lineInterpolation": "spline",
-      "lineStyle": "solid",
-      "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
-      "opacity": "1",
-      "panelTypes": "table",
-      "query": {
-        "builder": {
-          "queryData": [
-            {
-              "aggregations": [
-                {
-                  "expression": "sum(estimated_cost_usd)",
-                  "alias": "estimated_cost"
-                },
-                {
-                  "expression": "sum(job_duration_seconds)",
-                  "alias": "runner_time"
-                },
-                {
-                  "expression": "count()",
-                  "alias": "job_runs"
-                },
-                {
-                  "expression": "avg(job_duration_seconds)",
-                  "alias": "avg_duration"
-                },
-                {
-                  "expression": "avg(overall_queue_duration_seconds)",
-                  "alias": "avg_queue"
-                },
-                {
-                  "expression": "count_distinct(instance_type)",
-                  "alias": "instance_types"
-                }
-              ],
-              "dataSource": "logs",
-              "disabled": false,
-              "expression": "A",
-              "filter": {
-                "expression": "attribute.metric_type = 'job_summary' AND resource.deployment.environment IN $Environment AND attribute.product IN $Product AND attribute.org IN $Organization AND attribute.repo IN $Repository AND attribute.workflow_path IN $Workflow AND attribute.instance_lifecycle IN $Lifecycle"
-              },
-              "functions": [],
-              "groupBy": [
-                {
-                  "dataType": "string",
-                  "id": "org--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "org",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "repo--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "repo",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "workflow_path--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "workflow_path",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "job_name--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "job_name",
-                  "type": "tag"
-                }
-              ],
-              "having": {
-                "expression": ""
-              },
-              "legend": "",
-              "limit": 100,
-              "orderBy": [
-                {
-                  "columnName": "estimated_cost",
-                  "order": "desc"
-                }
-              ],
-              "queryName": "A",
-              "source": "",
-              "stepInterval": 60
-            }
-          ],
-          "queryFormulas": [],
-          "queryTraceOperator": []
-        },
-        "clickhouse_sql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "id": "cbb78dc5-449c-4eb6-a100-b4eab7127d47",
-        "promql": [
-          {
-            "disabled": false,
-            "legend": "",
-            "name": "A",
-            "query": ""
-          }
-        ],
-        "queryType": "builder"
-      },
-      "selectedLogFields": [
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "timestamp",
-          "signal": "logs",
-          "type": "log"
-        },
-        {
-          "dataType": "",
-          "fieldContext": "log",
-          "fieldDataType": "",
-          "isIndexed": false,
-          "name": "body",
-          "signal": "logs",
-          "type": "log"
-        }
-      ],
-      "selectedTracesFields": [
-        {
-          "fieldContext": "resource",
-          "fieldDataType": "string",
-          "name": "service.name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "string",
-          "name": "name",
-          "signal": "traces"
-        },
-        {
-          "fieldContext": "span",
-          "fieldDataType": "",
-          "name": "duration_nano",
-          "signal": "traces"
-        }
-      ],
-      "showPoints": false,
-      "softMax": 0,
-      "softMin": 0,
-      "spanGaps": true,
-      "stackedBarChart": false,
-      "thresholds": [],
-      "timePreferance": "GLOBAL_TIME",
-      "title": "Drill-down · Jobs",
+      "title": "Dependencies · AWS operations by outcome",
       "yAxisUnit": "none"
     },
     {
@@ -2922,7 +2559,7 @@
       "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "351d96e0-346b-497d-a229-31451e8cc0a1",
+      "id": "91fd75ef-a01d-4576-a373-9b039b0f50b5",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
@@ -2937,31 +2574,47 @@
             {
               "aggregations": [
                 {
-                  "expression": "count()"
+                  "metricName": "runs_on_github_operations_total",
+                  "reduceTo": "sum",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "increase"
                 }
               ],
-              "dataSource": "logs",
+              "dataSource": "metrics",
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "log.severity_number >= 10 AND resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
               },
               "functions": [],
               "groupBy": [
                 {
                   "dataType": "string",
-                  "id": "service.name--string--tag",
+                  "id": "github_operation--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "service.name",
+                  "key": "github_operation",
                   "type": "tag"
                 },
                 {
                   "dataType": "string",
-                  "id": "severity_text--string--tag",
+                  "id": "github_app_label--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "severity_text",
+                  "key": "github_app_label",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "outcome--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "outcome",
                   "type": "tag"
                 }
               ],
@@ -2987,7 +2640,7 @@
             "query": ""
           }
         ],
-        "id": "c75872da-2d9c-4338-a471-51c990231675",
+        "id": "a4e7545c-45fc-4eeb-a3c9-2348962a03ff",
         "promql": [
           {
             "disabled": false,
@@ -3045,7 +2698,7 @@
       "stackedBarChart": true,
       "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Incidents · Warning and error frequency",
+      "title": "Dependencies · GitHub operations by outcome",
       "yAxisUnit": "none"
     },
     {
@@ -3057,73 +2710,57 @@
       },
       "customLegendColors": {},
       "decimalPrecision": 2,
-      "description": "Recent Spot interruption and error events. Use the global time picker to narrow investigation.",
+      "description": "",
       "fillMode": "none",
       "fillSpans": true,
-      "id": "dd38ca7c-7a2e-4a5f-adaa-2b920443a762",
+      "id": "62fce71e-4e10-4dbd-a4ee-8d3b807c5f65",
       "isLogScale": false,
       "legendPosition": "bottom",
       "lineInterpolation": "spline",
       "lineStyle": "solid",
       "mergeAllActiveQueries": false,
-      "nullZeroValues": "null",
+      "nullZeroValues": "zero",
       "opacity": "1",
-      "panelTypes": "table",
+      "panelTypes": "bar",
       "query": {
         "builder": {
           "queryData": [
             {
               "aggregations": [
                 {
-                  "expression": "count()"
+                  "metricName": "runs_on_rate_limiter_waits_total",
+                  "reduceTo": "sum",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "increase"
                 }
               ],
-              "dataSource": "logs",
+              "dataSource": "metrics",
               "disabled": false,
               "expression": "A",
               "filter": {
-                "expression": "(attribute.metric_type = 'spot_interruption' OR log.severity_number >= 17) AND resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
               },
               "functions": [],
               "groupBy": [
                 {
                   "dataType": "string",
-                  "id": "metric_type--string--tag",
+                  "id": "limiter--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "metric_type",
+                  "key": "limiter",
                   "type": "tag"
                 },
                 {
                   "dataType": "string",
-                  "id": "service.name--string--tag",
+                  "id": "outcome--string--tag",
                   "isColumn": false,
                   "isJSON": false,
-                  "key": "service.name",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "severity_text--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "severity_text",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "repo_full_name--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "repo_full_name",
-                  "type": "tag"
-                },
-                {
-                  "dataType": "string",
-                  "id": "instance_id--string--tag",
-                  "isColumn": false,
-                  "isJSON": false,
-                  "key": "instance_id",
+                  "key": "outcome",
                   "type": "tag"
                 }
               ],
@@ -3131,7 +2768,7 @@
                 "expression": ""
               },
               "legend": "",
-              "limit": 100,
+              "limit": null,
               "orderBy": [],
               "queryName": "A",
               "source": "",
@@ -3149,7 +2786,153 @@
             "query": ""
           }
         ],
-        "id": "93b21ce6-137c-4d35-a6c7-e5e653366201",
+        "id": "3d3a267d-0ae0-4c23-adba-3b7f90803463",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": true,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Dependencies · Rate-limiter waits",
+      "yAxisUnit": "none"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "8ddd87b0-0ad1-47f8-a215-29bf3fd6f6e4",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_rate_limiter_wait_duration_seconds.bucket",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "p95",
+                  "temporality": "",
+                  "timeAggregation": "rate"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "limiter--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "limiter",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "outcome--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "outcome",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "0292feb4-2456-459e-a3ec-814c5157e3b7",
         "promql": [
           {
             "disabled": false,
@@ -3207,7 +2990,155 @@
       "stackedBarChart": false,
       "thresholds": [],
       "timePreferance": "GLOBAL_TIME",
-      "title": "Incidents · Recent operational events",
+      "title": "Dependencies · Rate-limiter wait duration p95",
+      "yAxisUnit": "s"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "0605e70e-9f2f-4437-a4f1-a1e93993671d",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "runs_on_rate_limiter_tokens",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "latest"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name IN ('runs-on-flex', 'runs-on-fleet') AND resource.deployment.environment IN $Environment"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "limiter--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "limiter",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "d9f11974-782b-4c41-a571-80ef0ff40dfd",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [
+        {
+          "index": "tokens",
+          "thresholdOperator": "<=",
+          "thresholdValue": 0,
+          "thresholdUnit": "none",
+          "thresholdColor": "#e5484d",
+          "thresholdFormat": "Text",
+          "thresholdLabel": "Exhausted"
+        }
+      ],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Dependencies · Rate-limiter tokens",
       "yAxisUnit": "none"
     }
   ]

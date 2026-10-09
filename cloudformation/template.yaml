@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.4.0)
+Description: CloudFormation stack for https://runs-on.com (v3.5.0-rc.1)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -14,6 +14,10 @@ Metadata:
           - LicenseKey
           - EmailAddress
           - Environment
+      - Label:
+          default: "GitHub Enterprise [optional]"
+        Parameters:
+          - GithubEnterpriseUrl
       - Label:
           default: "Networking and security [optional]"
         Parameters:
@@ -87,6 +91,14 @@ Parameters:
     Default: "production"
     MinLength: 1
     Description: "Make RunsOn only listen to jobs with an `env` job label matching this value. Only change this if you know what you are doing. See https://runs-on.com/configuration/environments/ for more details."
+
+  # GitHub Enterprise [optional]
+  GithubEnterpriseUrl:
+    Type: String
+    Default: ""
+    AllowedPattern: '^$|^https://\S+$'
+    ConstraintDescription: "must be empty or an https URL"
+    Description: "Web URL (https) of your GitHub Enterprise Cloud with data residency tenant (e.g. https://my-company.ghe.com) or GitHub Enterprise Server instance (e.g. https://github.example.com). Leave empty for github.com. Not compatible with EnableWAF=true, which only knows the github.com webhook IP ranges."
 
   # Networking and security [optional]
   VpcCidrBlock:
@@ -230,7 +242,7 @@ Parameters:
     Type: String
     Default: ".github-private"
     MinLength: 1
-    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository. The config will be read from `<repo-name>/.github/runs-on.yml`. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
+    Description: "When set to a repository name (e.g., '.github-private'), forces all repository configurations to extend from that repository, replacing any `_extends` they declare. The config will be read from `<repo-name>/.github/runs-on.yml`. This allows you to provide a base configuration that applies to all repositories, even if they don't have a local runs-on.yml file. Set to '.' to disable auto-extend and use each repository's local extends (if any). Make sure the GitHub App has access to the specified repository."
 
   EnableWarmPools:
     Type: String
@@ -275,7 +287,7 @@ Parameters:
   AppRegistry:
     Type: String
     Default: "public.ecr.aws/c5h5o9k1/runs-on/runs-on"
-    Description: "Docker image (public) registry for the RunsOn service."
+    Description: "Container image repository for the RunsOn service: an ECR Public repository, or a private ECR repository in this account and region."
 
   LoggerLevel:
     Type: String
@@ -323,7 +335,7 @@ Parameters:
     AllowedValues:
       - "cumulative"
       - "delta"
-    Description: "OTLP metrics temporality. Use cumulative (default) or delta (required by Datadog)."
+    Description: "OTLP metrics temporality. Use cumulative (default, for Prometheus-compatible backends) or delta (recommended for SigNoz, required by Datadog). Delta applies to counters and histograms; up-down counters stay cumulative."
 
   CostReportsEnabled:
     Type: String
@@ -361,8 +373,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.4.0
-      ImageTag: v3.4.0@sha256:08c80b917f9c3e7e3968e2e030ced82b2fd5319b03679339484c2debeb4c6eb5
+      AppTag: v3.5.0-rc.1
+      ImageTag: v3.5.0-rc.1@sha256:2737b8539ea802e1723fa696b5432debdb3a87243a9870a843da37a2cb765687
   AppSize:
     small:
       Cpu: 256
@@ -386,6 +398,13 @@ Mappings:
       Expression: "cron(5 0 ? * MON *)"
     monthly:
       Expression: "cron(5 0 1 * ? *)"
+
+Rules:
+  ManagedWafRequiresGithubDotCom:
+    RuleCondition: !Not [!Equals [!Ref GithubEnterpriseUrl, ""]]
+    Assertions:
+      - Assert: !Equals [!Ref EnableWAF, "false"]
+        AssertDescription: "EnableWAF=true is only supported for github.com: the managed WAF allows the github.com webhook IP ranges, which do not cover GHE.com or GitHub Enterprise Server. Set EnableWAF=false when GithubEnterpriseUrl is set."
 
 Conditions:
   CostReportsEnabled: !Not [!Equals [!Ref CostReportsEnabled, "no"]]
@@ -1882,6 +1901,14 @@ Resources:
             ExpirationInDays: !Ref S3CacheExpirationInDays
             NoncurrentVersionExpiration:
               NoncurrentDays: 1
+          # Runner telemetry captures live outside cache/, which every runner
+          # can read; they keep the cache retention.
+          - Id: ExpireTelemetry
+            Prefix: telemetry/
+            Status: Enabled
+            ExpirationInDays: !Ref S3CacheExpirationInDays
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
           - Id: CleanupIncompleteMultipartUploads
             Status: Enabled
             AbortIncompleteMultipartUpload:
@@ -2241,6 +2268,20 @@ Resources:
                     - [
                         !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/stickydisk-clean/*",
+                      ]
+              # The agent uploads the runner's telemetry capture to its own
+              # telemetry/ prefix at shutdown. Captured logs and spans can hold
+              # a repository's private data, so runners may write only their
+              # own prefix and read none.
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Join
+                    - ""
+                    - [
+                        !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/telemetry/",
+                        "${aws:userid}/*",
                       ]
               - Effect: Allow
                 Action:
@@ -3291,6 +3332,7 @@ Resources:
       Environment:
         Variables:
           RUNS_ON_GITHUB_ORG: !Ref GithubOrganization
+          RUNS_ON_GITHUB_ENTERPRISE_URL: !Ref GithubEnterpriseUrl
           RUNS_ON_GITHUB_APPS_SECRET_ARN: !Ref RunsOnGitHubAppsSecret
           RUNS_ON_STACK_CONFIG_SECRET_ARN: !Ref RunsOnStackConfigSecret
           RUNS_ON_STACK_CONFIG_SECRET_VERSION: !GetAtt StackConfigMaterializer.StackConfigSecretVersion
@@ -4485,7 +4527,7 @@ Resources:
           RUNS_ON_STACK_CONFIG_SECRET_ARN: !Ref RunsOnStackConfigSecret
           RUNS_ON_GITHUB_APPS_SECRET_ARN: !Ref RunsOnGitHubAppsSecret
           RUNS_ON_WORKFLOW_JOBS_TABLE: !Ref RunsOnWorkflowJobsTable
-          RUNS_ON_GITHUB_ENTERPRISE_URL: ""
+          RUNS_ON_GITHUB_ENTERPRISE_URL: !Ref GithubEnterpriseUrl
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -6036,11 +6078,8 @@ Resources:
         Variables:
           CACHE_BUCKET_ARN: !GetAtt S3BucketCache.Arn
           RUNNER_ROLE_ARN: !GetAtt EC2InstanceRole.Arn
-          # CloudFormation deployments are github.com-only today (the stack
-          # config pins GithubEnterpriseUrl empty); wired explicitly so GHES
-          # support only needs real values here, mirroring the Terraform
-          # control-plane modules.
-          GITHUB_ENTERPRISE_URL: ""
+          # The token issuer is derived from GITHUB_ENTERPRISE_URL when empty.
+          GITHUB_ENTERPRISE_URL: !Ref GithubEnterpriseUrl
           GITHUB_TOKEN_ISSUER: ""
       Tags:
         - Key: !Ref CostAllocationTag
@@ -7524,6 +7563,7 @@ Resources:
         BucketCache: !Ref S3BucketCache
         CacheCredentialBrokerFunctionName: !If [CacheIsolationEnabled, !Ref RunsOnCacheCredentialBrokerFunction, ""]
         InstanceRoleName: !Ref EC2InstanceRole
+        InstanceRoleId: !GetAtt EC2InstanceRole.RoleId
         SshAllowed: !Ref SSHAllowed
         PublicSubnetIds: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
         PrivateSubnetIds: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
@@ -7536,7 +7576,7 @@ Resources:
         AppGithubApiStrategy: !Ref AppGithubApiStrategy
         AppTag: !FindInMap [App, Tags, AppTag]
         GitHubAppsSecretArn: !Ref RunsOnGitHubAppsSecret
-        GithubEnterpriseUrl: ""
+        GithubEnterpriseUrl: !Ref GithubEnterpriseUrl
         StackName: !Ref AWS::StackName
         AppSize: !Ref AppSize
         QueueWebhooks: !Ref RunsOnQueueWebhooks
@@ -7707,6 +7747,22 @@ Resources:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/license/status"
+              # The daily cost report records whether costs are non-zero, and
+              # the cost allocation tag alert reads it back.
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/costs/non-zero"
+              # The server publishes each built-in image's current AMI under
+              # /<stack>/images for EC2 Image Builder recipes and other consumers.
+              - Effect: Allow
+                Action:
+                  - ssm:GetParametersByPath
+                  - ssm:PutParameter
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/images"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/images/*"
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
@@ -7885,8 +7941,17 @@ Resources:
       RuntimePlatform:
         CpuArchitecture: ARM64
         OperatingSystemFamily: LINUX
+      # Read-only root filesystem (Security Hub ECS.5). Fargate has no tmpfs,
+      # so /tmp (worker heartbeat) is an empty task volume.
+      Volumes:
+        - Name: tmp
       ContainerDefinitions:
         - Name: runs-on-worker
+          ReadonlyRootFilesystem: true
+          MountPoints:
+            - SourceVolume: tmp
+              ContainerPath: /tmp
+              ReadOnly: false
           Image: !Sub
             - "${AppRegistry}:${ImageTag}"
             - ImageTag: !FindInMap [App, Tags, ImageTag]
@@ -7922,7 +7987,7 @@ Resources:
             Interval: 5
             Timeout: 5
             Retries: 3
-            StartPeriod: 15
+            StartPeriod: 240
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -8522,6 +8587,45 @@ Resources:
                 "region": "${AWS::Region}",
                 "title": "Job Failure Rate",
                 "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 24,
+              "width": 9,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${RunsOnWorkerLogGroup}'\n| filter metric_type = \"operator_snapshot\"\n| stats max(runner_vcpus_total) as vCPUs by bin(5m) as t\n| sort t asc",
+                "region": "${AWS::Region}",
+                "title": "Runner vCPUs (5min peaks)",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 9,
+              "y": 24,
+              "width": 9,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${RunsOnWorkerLogGroup}'\n| filter metric_type = \"operator_snapshot\"\n| stats max(jobs_in_progress_total) as JobsInProgress by bin(5m) as t\n| sort t asc",
+                "region": "${AWS::Region}",
+                "title": "Jobs in Progress (5min peaks)",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "log",
+              "x": 18,
+              "y": 24,
+              "width": 6,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${RunsOnWorkerLogGroup}'\n| filter metric_type = \"operator_snapshot\"\n| stats max(runner_vcpus_total) as PeakVCPUs, latest(runner_vcpus_total) as CurrentVCPUs, max(jobs_in_progress_total) as PeakJobsInProgress, latest(jobs_in_progress_total) as CurrentJobsInProgress",
+                "region": "${AWS::Region}",
+                "title": "Runner Usage (Current Period)",
+                "view": "table"
               }
             }
           ]
