@@ -1,0 +1,1338 @@
+{
+  "description": "CPU and memory of RunsOn runners per job, from runner host metrics (requires extras=otel).",
+  "image": "",
+  "layout": [
+    {
+      "h": 5,
+      "i": "935f428a-8b27-54d2-b89c-d1c1e0002a64",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "h": 5,
+      "i": "447e3aad-24f4-5505-9c73-7acd510f3aaf",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 4,
+      "y": 0
+    },
+    {
+      "h": 5,
+      "i": "c2d12f04-e109-50a2-810d-150573e73630",
+      "moved": false,
+      "static": false,
+      "w": 4,
+      "x": 8,
+      "y": 0
+    },
+    {
+      "h": 8,
+      "i": "99e373ed-e27a-5241-982c-5b923b0914fb",
+      "moved": false,
+      "static": false,
+      "w": 6,
+      "x": 0,
+      "y": 5
+    },
+    {
+      "h": 8,
+      "i": "e8fea41e-9f84-50e9-9748-9017c9b114d7",
+      "moved": false,
+      "static": false,
+      "w": 6,
+      "x": 6,
+      "y": 5
+    },
+    {
+      "h": 8,
+      "i": "012794c8-13e6-5894-b8d4-e1e82401aee0",
+      "moved": false,
+      "static": false,
+      "w": 6,
+      "x": 0,
+      "y": 13
+    },
+    {
+      "h": 8,
+      "i": "4583020a-88d2-579f-82e7-d25d396c028c",
+      "moved": false,
+      "static": false,
+      "w": 6,
+      "x": 6,
+      "y": 13
+    },
+    {
+      "h": 10,
+      "i": "8bbd7c79-58cc-51b6-86b4-09041cb3b16c",
+      "moved": false,
+      "static": false,
+      "w": 12,
+      "x": 0,
+      "y": 21
+    }
+  ],
+  "panelMap": {},
+  "tags": [
+    "runs-on",
+    "runners",
+    "flex",
+    "fleet"
+  ],
+  "title": "RunsOn · Runners",
+  "uploadedGrafana": false,
+  "uuid": "9259407f-d93f-567d-9386-96336ad09b75",
+  "variables": {
+    "fcfa3da7-8ac2-4e55-a7e5-b63799e4364d": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "deployment.environment",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "fcfa3da7-8ac2-4e55-a7e5-b63799e4364d",
+      "modificationUUID": "cf532f48-0891-45ec-aa97-1600336dc866",
+      "multiSelect": true,
+      "name": "Environment",
+      "order": 0,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
+    },
+    "4d50509b-3ae4-5c3a-9f1c-9e304651aa34": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "repo_full_name",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "4d50509b-3ae4-5c3a-9f1c-9e304651aa34",
+      "modificationUUID": "e84b412e-3bb0-5699-acce-5cb6c1099820",
+      "multiSelect": true,
+      "name": "Repository",
+      "order": 1,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
+    },
+    "ac7c79b8-ee32-5639-ae25-0930f428e21e": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "workflow_path",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "ac7c79b8-ee32-5639-ae25-0930f428e21e",
+      "modificationUUID": "2585b9d4-63f2-54a6-9e49-9bf7a0b1d069",
+      "multiSelect": true,
+      "name": "Workflow",
+      "order": 2,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
+    },
+    "5f9041bb-8c7c-58e0-8635-6a4795a73358": {
+      "allSelected": true,
+      "customValue": "",
+      "defaultValue": "",
+      "description": "",
+      "dynamicVariablesAttribute": "job_key",
+      "dynamicVariablesSource": "All telemetry",
+      "haveCustomValuesSelected": false,
+      "id": "5f9041bb-8c7c-58e0-8635-6a4795a73358",
+      "modificationUUID": "698ca53d-d94b-5521-a559-5cfe363f0c0c",
+      "multiSelect": true,
+      "name": "Job",
+      "order": 3,
+      "queryValue": "",
+      "showALLOption": true,
+      "sort": "ASC",
+      "textboxValue": "",
+      "type": "DYNAMIC"
+    }
+  },
+  "version": "v5",
+  "widgets": [
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Share of the selected runners' combined CPU time that was not idle, so a runner with more cores weighs more. Only samples taken while a runner runs a job carry its job key, so boot and idle time are excluded.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "935f428a-8b27-54d2-b89c-d1c1e0002a64",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "value",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.cpu.utilization",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "avg"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": true,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'idle'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [
+            {
+              "disabled": false,
+              "expression": "(1 - A) * 100",
+              "legend": "",
+              "queryName": "F1"
+            }
+          ],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "e16a7b39-f65f-565d-87e9-52681c5ace28",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Average CPU busy",
+      "yAxisUnit": "percent"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Average memory in use per runner (system.memory.usage, state=used). Only samples taken while a runner runs a job carry its job key, so boot and idle time are excluded.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "447e3aad-24f4-5505-9c73-7acd510f3aaf",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "value",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.memory.usage",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "avg"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'used'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "77be1a41-20b5-534a-bc02-fcea96edb607",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Average memory used",
+      "yAxisUnit": "bytes"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Highest memory in use on any selected runner during the period.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "id": "c2d12f04-e109-50a2-810d-150573e73630",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "value",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.memory.usage",
+                  "reduceTo": "max",
+                  "spaceAggregation": "max",
+                  "temporality": "",
+                  "timeAggregation": "max"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'used'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "840f09d5-3560-524b-8af2-ccc33ca48f24",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Peak memory used",
+      "yAxisUnit": "bytes"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Share of CPU time not idle on each runner, averaged across its cores. Filter by repository, workflow, or job to see one job's runners.",
+      "fillMode": "none",
+      "fillSpans": false,
+      "id": "99e373ed-e27a-5241-982c-5b923b0914fb",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "linear",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "null",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.cpu.utilization",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "avg"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": true,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'idle'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "job_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "job_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "service.instance.id--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service.instance.id",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [
+            {
+              "disabled": false,
+              "expression": "(1 - A) * 100",
+              "legend": "{{job_name}} · {{service.instance.id}}",
+              "queryName": "F1"
+            }
+          ],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "27ff8f54-1927-511e-a5ef-3b1aab23968c",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · CPU busy per runner",
+      "yAxisUnit": "percent"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Highest memory in use on each runner in each interval (system.memory.usage, state=used), so short peaks stay visible.",
+      "fillMode": "none",
+      "fillSpans": false,
+      "id": "e8fea41e-9f84-50e9-9748-9017c9b114d7",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "linear",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "null",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.memory.usage",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "sum",
+                  "temporality": "",
+                  "timeAggregation": "max"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'used'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "job_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "job_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "service.instance.id--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "service.instance.id",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "{{job_name}} · {{service.instance.id}}",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "7065fbcc-ace3-5bdc-9875-7ac6cf5d51d3",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Memory used per runner",
+      "yAxisUnit": "bytes"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Share of CPU time not idle across all cores of each job's runners, grouped by its key in the workflow file so matrix combinations count together, and by workflow, repository and environment. A runner with more cores weighs more; the table below weighs runners equally.",
+      "fillMode": "none",
+      "fillSpans": false,
+      "id": "012794c8-13e6-5894-b8d4-e1e82401aee0",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "linear",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "null",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.cpu.utilization",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "avg"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": true,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'idle'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "job_key--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "job_key",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "workflow_path--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "workflow_path",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "repo_full_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "repo_full_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "deployment.environment--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "deployment.environment",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [
+            {
+              "disabled": false,
+              "expression": "(1 - A) * 100",
+              "legend": "{{job_key}} · {{workflow_path}} · {{repo_full_name}} · {{deployment.environment}}",
+              "queryName": "F1"
+            }
+          ],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "edd13be4-e8f8-5e5f-a21d-a7e8ab2b4b7b",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Average CPU busy by job",
+      "yAxisUnit": "percent"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 2,
+      "description": "Average across the runners of each job of their highest memory in use in each interval, grouped by job key, workflow, repository and environment.",
+      "fillMode": "none",
+      "fillSpans": false,
+      "id": "4583020a-88d2-579f-82e7-d25d396c028c",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "linear",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "null",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.memory.usage",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "max"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS AND attribute.state = 'used'"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "job_key--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "job_key",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "workflow_path--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "workflow_path",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "repo_full_name--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "repo_full_name",
+                  "type": "tag"
+                },
+                {
+                  "dataType": "string",
+                  "id": "deployment.environment--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "deployment.environment",
+                  "type": "tag"
+                }
+              ],
+              "having": {
+                "expression": ""
+              },
+              "legend": "{{job_key}} · {{workflow_path}} · {{repo_full_name}} · {{deployment.environment}}",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "22a9b4f4-eb2b-5a7b-bb6c-7d60dfc6f786",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "builder"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Average memory used by job",
+      "yAxisUnit": "bytes"
+    },
+    {
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {
+        "Avg CPU busy": "percent",
+        "Median CPU busy": "percent",
+        "Avg memory": "bytes",
+        "Median memory": "bytes",
+        "Peak memory": "bytes"
+      },
+      "columnWidths": {},
+      "contextLinks": {
+        "linksData": []
+      },
+      "customColTitles": {
+        "A.sum(estimated_cost_usd)": "Estimated cost",
+        "A.sum(job_duration_seconds)": "Runner time",
+        "A.count()": "Job runs",
+        "A.avg(job_duration_seconds)": "Avg duration",
+        "A.avg(overall_queue_duration_seconds)": "Avg queue",
+        "A.count_distinct(instance_type)": "Runner variants"
+      },
+      "customLegendColors": {},
+      "decimalPrecision": 1,
+      "description": "Per job (grouped by its key in the workflow file, so matrix combinations count together): runners observed, matrix variants, the average and median across runners of each runner's average CPU busy and memory in use, and the highest memory any runner used. Covers the selected time range in every environment; uses ClickHouse SQL to compute medians.",
+      "fillMode": "none",
+      "fillSpans": true,
+      "hiddenColumns": [],
+      "id": "8bbd7c79-58cc-51b6-86b4-09041cb3b16c",
+      "isLogScale": false,
+      "legendPosition": "bottom",
+      "lineInterpolation": "spline",
+      "lineStyle": "solid",
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "null",
+      "opacity": "1",
+      "panelTypes": "table",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregations": [
+                {
+                  "metricName": "system.cpu.utilization",
+                  "reduceTo": "avg",
+                  "spaceAggregation": "avg",
+                  "temporality": "",
+                  "timeAggregation": "avg"
+                }
+              ],
+              "dataSource": "metrics",
+              "disabled": false,
+              "expression": "A",
+              "filter": {
+                "expression": "resource.service.name = 'runs-on-agent' AND resource.deployment.environment IN $Environment AND resource.repo_full_name IN $Repository AND resource.workflow_path IN $Workflow AND resource.job_key IN $Job AND resource.job_key EXISTS"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "functions": [],
+              "groupBy": [],
+              "having": {
+                "expression": ""
+              },
+              "legend": "",
+              "limit": null,
+              "orderBy": [],
+              "queryName": "A",
+              "source": "",
+              "stepInterval": 60
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": "WITH\n  series AS (\n    SELECT DISTINCT\n      fingerprint,\n      JSONExtractString(labels, 'deployment.environment') AS environment,\n      JSONExtractString(labels, 'repo_full_name') AS repository,\n      JSONExtractString(labels, 'workflow_path') AS workflow,\n      JSONExtractString(labels, 'job_name') AS job_name,\n      JSONExtractString(labels, 'job_key') AS job_key,\n      JSONExtractString(labels, 'service.instance.id') AS runner\n    FROM signoz_metrics.distributed_time_series_v4\n    WHERE metric_name IN ('system.cpu.utilization', 'system.memory.usage')\n      AND JSONExtractString(labels, 'service.name') = 'runs-on-agent'\n      AND JSONExtractString(labels, 'job_name') != ''\n      AND JSONExtractString(labels, 'state') IN ('idle', 'used')\n      AND unix_milli >= intDiv($start_timestamp_ms, 3600000) * 3600000\n      AND unix_milli < $end_timestamp_ms\n  ),\n  -- GLOBAL joins: on a multi-shard cluster, ClickHouse rejects a join whose\n  -- right side reads a distributed table unless it is broadcast.\n  -- A runner reports job_key once its job starts. Group by the key so matrix\n  -- combinations count together, and keep only samples taken under the key;\n  -- runners from agents without job_key fall back to the display name.\n  runner_keys AS (\n    SELECT runner, max(job_key) AS runner_key\n    FROM series\n    GROUP BY runner\n  ),\n  job_series AS (\n    SELECT\n      series.fingerprint, series.environment, series.repository, series.workflow,\n      series.job_name, series.runner,\n      if(runner_keys.runner_key != '', runner_keys.runner_key, series.job_name) AS job\n    FROM series\n    GLOBAL INNER JOIN runner_keys USING (runner)\n    WHERE series.job_key = runner_keys.runner_key\n  ),\n  per_runner AS (\n    SELECT\n      environment, repository, workflow, job, runner,\n      any(job_name) AS job_name,\n      -- OrNull: a runner without one of the metrics (older agents export no\n      -- memory bytes) must not turn the job's averages into NaN.\n      1 - avgOrNullIf(value, metric_name = 'system.cpu.utilization') AS busy,\n      avgOrNullIf(value, metric_name = 'system.memory.usage') AS memory,\n      maxOrNullIf(value, metric_name = 'system.memory.usage') AS memory_max\n    FROM signoz_metrics.distributed_samples_v4\n    GLOBAL INNER JOIN job_series USING (fingerprint)\n    WHERE metric_name IN ('system.cpu.utilization', 'system.memory.usage')\n      AND unix_milli >= $start_timestamp_ms\n      AND unix_milli < $end_timestamp_ms\n    GROUP BY environment, repository, workflow, job, runner\n  )\nSELECT\n  job AS `Job`,\n  count() AS `Runners`,\n  uniqExact(job_name) AS `Variants`,\n  round(100 * avg(busy), 1) AS `Avg CPU busy`,\n  -- quantileExact returns the upper middle value; this one interpolates.\n  round(100 * quantileExactInclusive(0.5)(busy), 1) AS `Median CPU busy`,\n  avg(memory) AS `Avg memory`,\n  quantileExactInclusive(0.5)(memory) AS `Median memory`,\n  max(memory_max) AS `Peak memory`,\n  workflow AS `Workflow`,\n  repository AS `Repository`,\n  environment AS `Environment`\nFROM per_runner\nGROUP BY job, workflow, repository, environment\nORDER BY `Runners` DESC, `Avg CPU busy` DESC\nLIMIT 200"
+          }
+        ],
+        "id": "fde7bc3d-bad2-5d98-bba4-4c3b1bdef7e9",
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "queryType": "clickhouse_sql"
+      },
+      "selectedLogFields": [
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "timestamp",
+          "signal": "logs",
+          "type": "log"
+        },
+        {
+          "dataType": "",
+          "fieldContext": "log",
+          "fieldDataType": "",
+          "isIndexed": false,
+          "name": "body",
+          "signal": "logs",
+          "type": "log"
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "fieldContext": "resource",
+          "fieldDataType": "string",
+          "name": "service.name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "string",
+          "name": "name",
+          "signal": "traces"
+        },
+        {
+          "fieldContext": "span",
+          "fieldDataType": "",
+          "name": "duration_nano",
+          "signal": "traces"
+        }
+      ],
+      "showPoints": false,
+      "softMax": 0,
+      "softMin": 0,
+      "spanGaps": true,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "title": "Runners · Resource usage by job",
+      "yAxisUnit": "none"
+    }
+  ]
+}
