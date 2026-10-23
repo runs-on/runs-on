@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.5.0)
+Description: CloudFormation stack for https://runs-on.com (v3.6.0-rc.2)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -46,6 +46,7 @@ Metadata:
           - RunnerConfigAutoExtendsFrom
           - EnableWarmPools
           - S3CacheExpirationInDays
+          - MandatoryExtras
       - Label:
           default: "App runtime and maintenance [optional]"
         Parameters:
@@ -257,6 +258,13 @@ Parameters:
     Default: 10
     Description: "Number of days to keep cache entries in the S3 cache bucket."
 
+  MandatoryExtras:
+    Type: String
+    Default: ""
+    AllowedPattern: '^$|^[a-z0-9-]+(\+[a-z0-9-]+)*$'
+    ConstraintDescription: "must be empty or extras joined with +, e.g. s3-cache+git-cache"
+    Description: "Runner extras that are always enabled for every runner, regardless of job labels or repository config, joined with + as in the `extras` job label (e.g. s3-cache+git-cache). Leave empty to let each job choose its extras."
+
   # App runtime and maintenance [optional]
   AppSize:
     Type: String
@@ -297,7 +305,7 @@ Parameters:
       - "debug"
       - "info"
       - "warn"
-    Description: "Log level for the RunsOn server. Options: trace (most verbose), debug, info (default), warn (least verbose)."
+    Description: "Log level for the RunsOn server and the runner agent. Options: trace (most verbose), debug, info (default), warn (least verbose)."
 
   SpotCircuitBreaker:
     Type: String
@@ -373,8 +381,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.5.0
-      ImageTag: v3.5.0@sha256:eb2a7a059c1859de1e565152b0c4fc548d9a35cf551aff1aa500b8bb1ea5a4fc
+      AppTag: v3.6.0-rc.2
+      ImageTag: v3.6.0-rc.2@sha256:34335d2c7e8b97c0c8b30959cca4431971714d995b66f10d077bd61437657524
   AppSize:
     small:
       Cpu: 256
@@ -408,6 +416,7 @@ Rules:
 
 Conditions:
   CostReportsEnabled: !Not [!Equals [!Ref CostReportsEnabled, "no"]]
+  HasMandatoryExtras: !Not [!Equals [!Ref MandatoryExtras, ""]]
   AppBudgetEnabled: !Not [!Equals [!Ref AppBudgetDailyUsd, 0]]
   AlertTopicSlackWebhookProvided: !Not [!Equals [!Ref AlertTopicSlackWebhookUrl, ""]]
   PrivateEnabled: !Not [!Equals [!Ref Private, "false"]]
@@ -456,6 +465,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-VPC
 
@@ -474,6 +485,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1RouteTable
 
@@ -486,6 +499,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2RouteTable
 
@@ -563,6 +578,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
 
@@ -591,6 +608,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
 
@@ -605,6 +624,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnetGateway1
 
@@ -618,6 +639,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-NatGatewayElasticIP
 
@@ -646,6 +669,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet1
 
@@ -674,6 +699,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2
 
@@ -698,6 +725,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-InternetGateway
 
@@ -716,6 +745,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicRouteTable
 
@@ -766,6 +797,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-FirewallSubnet1
 
@@ -782,6 +815,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-FirewallSubnet2
 
@@ -795,6 +830,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-FirewallSubnet1RouteTable
 
@@ -808,6 +845,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-FirewallSubnet2RouteTable
 
@@ -859,6 +898,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-NetworkFirewall
 
@@ -875,6 +916,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   NetworkFirewallLoggingConfiguration:
     Type: AWS::NetworkFirewall::LoggingConfiguration
@@ -917,6 +960,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   NetworkFirewallEndpointResolverFunction:
     Type: AWS::Lambda::Function
@@ -934,6 +979,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -1163,6 +1210,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   NetworkFirewallEndpointResolverLogsPolicy:
     Type: AWS::IAM::Policy
@@ -1208,6 +1257,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet1FirewallRouteTable
 
@@ -1221,6 +1272,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2FirewallRouteTable
 
@@ -1282,6 +1335,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-InternetGatewayRouteTable
 
@@ -1325,6 +1380,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-EFS
 
@@ -1345,6 +1402,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-EFSSecurityGroup
 
@@ -1402,6 +1461,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
   # --- End Ephemeral Registry Resources ---
 
   EC2FleetLaunchTemplateLinuxDefault:
@@ -1414,6 +1475,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefault"]]
       LaunchTemplateData:
@@ -1424,18 +1487,24 @@ Resources:
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
         EbsOptimized: "true"
@@ -1504,6 +1573,17 @@ Resources:
               EOF
               chmod a+x /usr/local/bin/runs-on-bootstrap.sh
 
+              # Docker's unit lowers dockerd's OOM score by 500, and `docker build` steps
+              # inherit it from dockerd's built-in BuildKit. A build that ran out of memory
+              # was then spared while the kernel killed the GitHub runner's Worker (0), and
+              # the job was lost. At 0, builds rank with containers. Docker starts on demand,
+              # after the enable below has reloaded systemd.
+              mkdir -p /etc/systemd/system/docker.service.d
+              cat <<'EOF' > /etc/systemd/system/docker.service.d/10-runs-on-oom-score.conf
+              [Service]
+              OOMScoreAdjust=0
+              EOF
+
               # The agent copies /var/log/cloud-init-output.log into /runs-on/output.log, so
               # bootstrap output must reach only the latter, or every line ships twice.
               cat <<'EOF' > /etc/systemd/system/runs-on-bootstrap.service
@@ -1525,6 +1605,11 @@ Resources:
               # customer lifecycle scripts and the runner's Worker to 0; the runner raises
               # job processes to +500.
               OOMScoreAdjust=-500
+              # Job steps run in this unit too. systemd stops a unit when the kernel kills
+              # one of its processes for memory (the default OOMPolicy=stop), and that would
+              # take down the agent and the Listener, which report the job. The killed step
+              # must fail on its own.
+              OOMPolicy=continue
 
               [Install]
               WantedBy=multi-user.target
@@ -1558,6 +1643,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefault"]]
       LaunchTemplateData:
@@ -1568,18 +1655,24 @@ Resources:
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
           - ResourceType: volume
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
           - ResourceType: network-interface
             Tags:
               - Key: !Ref CostAllocationTag
                 Value: !Ref AWS::StackName
               - Key: runs-on-stack-name
                 Value: !Ref AWS::StackName
+              - Key: aws-apn-id-135269210855
+                Value: pc:2b9joblhmcbhnqakspwshptlz
         IamInstanceProfile:
           Arn: !GetAtt EC2InstanceProfile.Arn
         EbsOptimized: "true"
@@ -1598,56 +1691,44 @@ Resources:
           Fn::Base64: !Sub
             # BEGIN AUTO-GENERATED WINDOWS USER-DATA
             - |
-              <powershell>
-              Get-Date -format s
-              $env:RUNS_ON_RUNNER_MAX_RUNTIME = "${RunnerMaxRuntime}"
-              $env:RUNS_ON_LOG_GROUP_NAME = "${EC2InstanceLogGroup}"
-              $env:AWS_REGION = "${Region}"
-              $env:RUNS_ON_S3_BUCKET_CACHE = "${S3BucketCache}"
+              <script>
+              @echo off
+              rem A batch script instead of PowerShell: on a fresh instance the first
+              rem powershell.exe pays 10 to 25 s loading .NET from a cold EBS volume before
+              rem the bootstrap can start, while cmd.exe starts at once.
+              echo %DATE% %TIME%
+              set RUNS_ON_RUNNER_MAX_RUNTIME=${RunnerMaxRuntime}
+              set RUNS_ON_LOG_GROUP_NAME=${EC2InstanceLogGroup}
+              set AWS_REGION=${Region}
+              set RUNS_ON_S3_BUCKET_CACHE=${S3BucketCache}
               ${EfsEnvLine}
               ${EphemeralRegistryEnvLine}
-              # Enable and start SSM Agent service
-              try {
-                Set-Service -Name "AmazonSSMAgent" -StartupType Automatic -ErrorAction SilentlyContinue
-                Start-Service -Name "AmazonSSMAgent" -ErrorAction SilentlyContinue
-                Write-Output "SSM Agent service enabled and started"
-              } catch {
-                Write-Output "Warning: Failed to start SSM Agent service: $($_.Exception.Message)"
-              }
-              $bootstrapBin = "C:\runs-on\bootstrap-${BootstrapTag}.exe"
-              $bootstrapFailed = $false
-              $bootstrapExitCode = 0
-              try {
-                New-Item -ItemType Directory -Force -Path (Split-Path $bootstrapBin)
-                if (-not (Test-Path $bootstrapBin)) {
-                  # Enable TLS 1.2 for Windows Server 2016 compatibility
-                  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                  # Disable progress bar for much faster downloads (can be 100x faster)
-                  $ProgressPreference = 'SilentlyContinue'
-                  Invoke-WebRequest -Uri "https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-$env:PROCESSOR_ARCHITECTURE.exe" -OutFile $bootstrapBin -UseBasicParsing
-                }
-                Add-MpPreference -ExclusionProcess $bootstrapBin -ErrorAction SilentlyContinue
-                & $bootstrapBin --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-$env:PROCESSOR_ARCHITECTURE.exe"
-                $bootstrapExitCode = $LASTEXITCODE
-                if ($bootstrapExitCode -ne 0) {
-                  throw "Bootstrap exited with code $bootstrapExitCode"
-                }
-              } catch {
-                $bootstrapFailed = $true
-                if ($bootstrapExitCode -eq 0) {
-                  $bootstrapExitCode = 1
-                }
-                Write-Output "Bootstrap failed: $($_.Exception.Message)"
-                throw
-              } finally {
-                if ($bootstrapFailed) {
-                  Write-Output "Bootstrap failed (exit code $bootstrapExitCode). Sleeping 60s for troubleshooting/log shipping..."
-                  Start-Sleep -Seconds 60
-                }
-                Write-Output "user-data: Going to shut down now..."
-                Stop-Computer -Force
-              }
-              </powershell>
+              rem Neither service is needed before the agent is up; both start in the background.
+              sc config AmazonSSMAgent start= auto >nul 2>&1
+              sc start AmazonSSMAgent >nul 2>&1
+              sc start docker >nul 2>&1
+              set BOOTSTRAP=C:\runs-on\bootstrap-${BootstrapTag}.exe
+              set BOOTSTRAP_URL=https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-%PROCESSOR_ARCHITECTURE%.exe
+              if not exist "%BOOTSTRAP%" (
+                mkdir C:\runs-on >nul 2>&1
+                where curl.exe >nul 2>&1 && curl.exe -fsSL --retry 3 -o "%BOOTSTRAP%" "%BOOTSTRAP_URL%"
+              )
+              rem Windows Server 2016 ships no curl.exe: fall back to PowerShell with TLS 1.2, as the previous user data did.
+              if not exist "%BOOTSTRAP%" (
+                powershell.exe -NoProfile -NonInteractive -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%BOOTSTRAP_URL%' -OutFile '%BOOTSTRAP%' -UseBasicParsing"
+              )
+              rem Only images that still ship Defender need the exclusion, and only they pay for PowerShell here.
+              sc query WinDefend >nul 2>&1 && powershell.exe -NoProfile -NonInteractive -Command "Add-MpPreference -ExclusionProcess '%BOOTSTRAP%' -ErrorAction SilentlyContinue"
+              "%BOOTSTRAP%" --exec --post-exec shutdown "${AgentS3Bucket}/agent-windows-%PROCESSOR_ARCHITECTURE%.exe"
+              set BOOTSTRAP_EXIT=%ERRORLEVEL%
+              if not "%BOOTSTRAP_EXIT%"=="0" (
+                echo Bootstrap failed with exit code %BOOTSTRAP_EXIT%. Sleeping 60s for troubleshooting/log shipping...
+                rem timeout.exe exits at once without a console stdin, which a detached EC2Launch script has none of.
+                ping -n 61 127.0.0.1 >nul
+              )
+              echo user-data: Going to shut down now...
+              shutdown /s /t 0 /f
+              </script>
               <detach>true</detach>
               <persist>true</persist>
             # END AUTO-GENERATED WINDOWS USER-DATA
@@ -1657,8 +1738,8 @@ Resources:
               S3BucketCache: !Ref S3BucketCache
               BootstrapTag: !FindInMap [App, Tags, BootstrapTag]
               AgentS3Bucket: !Join ["", ["s3://", !Ref S3BucketCache, "/agents/", !FindInMap [App, Tags, AppTag]]]
-              EfsEnvLine: !If [CreateEfs, !Sub '$env:RUNS_ON_EFS_ID = "${EfsFileSystem}"', '']
-              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub '$env:RUNS_ON_ECR_CACHE = "${EphemeralRegistry.RepositoryUri}"', '']
+              EfsEnvLine: !If [CreateEfs, !Sub 'set RUNS_ON_EFS_ID=${EfsFileSystem}', '']
+              EphemeralRegistryEnvLine: !If [CreateEphemeralRegistry, !Sub 'set RUNS_ON_ECR_CACHE=${EphemeralRegistry.RepositoryUri}', '']
 
   EC2FleetLaunchTemplateLinuxDefaultNested:
     Type: AWS::EC2::LaunchTemplate
@@ -1671,6 +1752,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxDefaultNested"]]
       LaunchTemplateData:
@@ -1699,6 +1782,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivate"]]
       LaunchTemplateData:
@@ -1727,6 +1812,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "LinuxPrivateNested"]]
       LaunchTemplateData:
@@ -1756,6 +1843,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsDefaultNested"]]
       LaunchTemplateData:
@@ -1784,6 +1873,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivate"]]
       LaunchTemplateData:
@@ -1812,6 +1903,8 @@ Resources:
               Value: !Ref AWS::StackName
             - Key: runs-on-stack-name
               Value: !Ref AWS::StackName
+            - Key: aws-apn-id-135269210855
+              Value: pc:2b9joblhmcbhnqakspwshptlz
             - Key: "runs-on/launch-template-name"
               Value: !Join ["-", [!Ref AWS::StackName, "WindowsPrivateNested"]]
       LaunchTemplateData:
@@ -1860,6 +1953,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   S3BucketCache:
     Type: AWS::S3::Bucket
@@ -1924,6 +2019,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: "runs-on/purpose"
           Value: "cache"
 
@@ -1983,6 +2080,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: "runs-on/purpose"
           Value: "s3-access-logs"
 
@@ -2036,6 +2135,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   EC2InstanceLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2046,6 +2147,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   EC2InstanceRole:
     Type: AWS::IAM::Role
@@ -2324,6 +2427,27 @@ Resources:
                     aws:userid: "*:runs-on-cache-i-*"
                   StringEquals:
                     aws:PrincipalTag/runs-on-cache-brokered: "true"
+              # The git cache (extras=git-cache) deletes coordination claims
+              # it gives up under a repository's git/ prefix.
+              - Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/scoped-cache/*/git/*"
+                Condition:
+                  StringLike:
+                    aws:userid: "*:runs-on-cache-i-*"
+                  StringEquals:
+                    aws:PrincipalTag/runs-on-cache-brokered: "true"
+              # With isolation, git cache entries live in each repository's
+              # scoped prefix. Entries stored in the shared prefix before
+              # isolation was enabled stay unreadable until they expire.
+              - !If
+                - CacheIsolationEnabled
+                - Effect: Deny
+                  Action:
+                    - s3:GetObject
+                  Resource: !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/cache/git/v1/*"
+                - !Ref AWS::NoValue
               # The agent invokes the broker with its instance-profile
               # session.
               - Effect: Allow
@@ -2470,6 +2594,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -2511,7 +2637,7 @@ Resources:
     Type: AWS::Scheduler::Schedule
     DependsOn: RunsOnGitHubRunnerCacheRefreshLogsPolicy
     Properties:
-      ScheduleExpression: "cron(15 0 * * ? *)"
+      ScheduleExpression: "cron(15 * * * ? *)"
       ScheduleExpressionTimezone: "UTC"
       FlexibleTimeWindow:
         Mode: "OFF"
@@ -2528,6 +2654,9 @@ Resources:
     Properties:
       ServiceToken: !GetAtt RunsOnGitHubRunnerCacheRefreshFunction.Arn
       Bucket: !Ref S3BucketCache
+      # Seed again on every upgrade, as Terraform does when the function
+      # changes, so a new runner source does not wait for the hourly refresh.
+      AppTag: !FindInMap [App, Tags, AppTag]
 
   SchedulerInvokeRole:
     Type: AWS::IAM::Role
@@ -2562,6 +2691,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnWorkerExecutionRole:
     Type: AWS::IAM::Role
@@ -2580,6 +2711,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnWorkerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2591,6 +2724,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2602,6 +2737,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubAppsSetupLogGroup:
     Condition: AdminRoutesEnabled
@@ -2614,6 +2751,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubWafSyncLogGroup:
     Condition: WafEnabled
@@ -2626,6 +2765,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubRunnerCacheRefreshLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2637,6 +2778,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnCacheCredentialBrokerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2648,6 +2791,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnJobDiagnosticsResolverLogGroup:
     Type: AWS::Logs::LogGroup
@@ -2659,6 +2804,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressLogsPolicy:
     Type: AWS::IAM::Policy
@@ -2766,6 +2913,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressAllowedIpsIPv6:
     Condition: WafEnabled
@@ -2781,6 +2930,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubWafSyncRole:
     Condition: WafEnabled
@@ -2810,6 +2961,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubRunnerCacheRefreshRole:
     Type: AWS::IAM::Role
@@ -2845,6 +2998,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnCacheCredentialBrokerRole:
     Type: AWS::IAM::Role
@@ -2861,6 +3016,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnCacheCredentialBrokerAssumeRunnerPolicy:
     Type: AWS::IAM::Policy
@@ -2927,6 +3084,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubAppsSetupRole:
     Condition: AdminRoutesEnabled
@@ -2999,6 +3158,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnJobDiagnosticsResolverRole:
     Type: AWS::IAM::Role
@@ -3030,6 +3191,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressFunction:
     Type: AWS::Lambda::Function
@@ -3049,6 +3212,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -3369,6 +3534,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -4517,7 +4684,7 @@ Resources:
               'export AWS_PROFILE=your-aws-admin-profile',
               ...(region ? [`export AWS_REGION=${region}`] : []),
               '# Check the stack and export its logs',
-              `roc doctor --stack ${stackName}`,
+              `roc stack doctor --stack ${stackName}`,
               '# Export everything about one job, from its GitHub URL',
               `roc logs ${githubBaseUrl()}OWNER/REPO/actions/runs/RUN/job/JOB --full --stack ${stackName}`,
             ].join('\n');
@@ -5115,6 +5282,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -6017,9 +6186,15 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
+
+          // CloudFormation creates the IP sets with these documentation addresses and
+          // reapplies them on any update to the sets. Terraform creates them empty.
+          const PLACEHOLDER_ADDRESSES = new Set(['192.0.2.1/32', '2001:db8::1/128']);
 
           function createDefaultAws() {
             let initialized = false;
@@ -6130,6 +6305,11 @@ Resources:
             return response.json();
           }
 
+          function needsSeed(addresses) {
+            const normalized = uniqueSorted(addresses);
+            return normalized.length === 0 || normalized.some((address) => PLACEHOLDER_ADDRESSES.has(address));
+          }
+
           async function syncIPSet(aws, params, desiredAddresses) {
             const current = await aws.getIPSet({
               Id: params.id,
@@ -6169,20 +6349,31 @@ Resources:
               throw new Error('Both IPv4 and IPv6 WAF IP set identifiers must be configured');
             }
 
+            const ipSets = {
+              ipv4: { id: config.ipv4Id, name: config.ipv4Name, scope: config.scope },
+              ipv6: { id: config.ipv6Id, name: config.ipv6Name, scope: config.scope },
+            };
+
+            // Stack deploys run the seed on every upgrade. Unauthenticated GitHub meta
+            // requests from Lambda's shared egress IPs get rate limited, so a seed only
+            // calls GitHub when a set still lacks the webhook ranges.
+            if (options.seed) {
+              const current = await Promise.all(Object.values(ipSets).map((params) => aws.getIPSet({
+                Id: params.id,
+                Name: params.name,
+                Scope: params.scope,
+              })));
+              if (!current.some((response) => needsSeed(response?.IPSet?.Addresses))) {
+                log('info', 'WAF IP sets already hold GitHub webhook CIDRs; the hourly sync keeps them current');
+                return { skipped: true };
+              }
+            }
+
             const meta = await fetchMeta(fetchImpl, config.metaUrl);
             const hooks = splitHookCidrs(meta);
 
-            const ipv4 = await syncIPSet(aws, {
-              id: config.ipv4Id,
-              name: config.ipv4Name,
-              scope: config.scope,
-            }, hooks.ipv4);
-
-            const ipv6 = await syncIPSet(aws, {
-              id: config.ipv6Id,
-              name: config.ipv6Name,
-              scope: config.scope,
-            }, hooks.ipv6);
+            const ipv4 = await syncIPSet(aws, ipSets.ipv4, hooks.ipv4);
+            const ipv6 = await syncIPSet(aws, ipSets.ipv6, hooks.ipv6);
 
             const result = {
               meta_url: config.metaUrl,
@@ -6193,7 +6384,7 @@ Resources:
             return result;
           }
 
-          async function sendCloudFormationResponse(event, status, data, reason) {
+          async function sendCloudFormationResponse(event, status, data, reason, fetchImpl = fetch) {
             const responseUrl = trimString(event?.ResponseURL);
             if (!responseUrl) return;
 
@@ -6207,7 +6398,7 @@ Resources:
               Data: data || {},
             });
 
-            await fetch(responseUrl, {
+            await fetchImpl(responseUrl, {
               method: 'PUT',
               headers: {
                 'content-type': '',
@@ -6222,25 +6413,35 @@ Resources:
           }
 
           async function createHandler(event, options = {}) {
+            const fetchImpl = options.fetchImpl || fetch;
             if (isCloudFormationCustomResourceEvent(event)) {
               if (event.RequestType === 'Delete') {
-                await sendCloudFormationResponse(event, 'SUCCESS', { skipped: true }, 'Delete request acknowledged');
+                await sendCloudFormationResponse(event, 'SUCCESS', { skipped: true }, 'Delete request acknowledged', fetchImpl);
                 return { skipped: true };
               }
 
               try {
-                const result = await performSync(event, options);
-                await sendCloudFormationResponse(event, 'SUCCESS', result);
+                const result = await performSync(event, { ...options, seed: true });
+                await sendCloudFormationResponse(event, 'SUCCESS', result, undefined, fetchImpl);
                 return result;
               } catch (error) {
                 const message = String(error?.message || error);
+                // A failed Update rolls the stack back, and the rollback runs this seed
+                // again: a second failure leaves the stack in UPDATE_ROLLBACK_FAILED.
+                // The hourly sync repairs the IP sets instead.
+                if (event.RequestType === 'Update') {
+                  log('warn', 'CloudFormation GitHub WAF seed failed; the hourly sync will retry', { error: message });
+                  await sendCloudFormationResponse(event, 'SUCCESS', { error: message }, message, fetchImpl);
+                  return { error: message };
+                }
                 log('error', 'CloudFormation GitHub WAF seed failed', { error: message });
-                await sendCloudFormationResponse(event, 'FAILED', { error: message }, message);
+                await sendCloudFormationResponse(event, 'FAILED', { error: message }, message, fetchImpl);
                 throw error;
               }
             }
 
-            return performSync(event, options);
+            // Terraform's lifecycle-scoped seed invocation adds a `tf` key to its input.
+            return performSync(event, { ...options, seed: !!event?.tf });
           }
 
           module.exports = {
@@ -6268,6 +6469,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -6280,13 +6483,16 @@ Resources:
           const { Readable } = require('node:stream');
           const { pipeline } = require('node:stream/promises');
 
-          const defaultReleaseUrl = 'https://api.github.com/repos/actions/runner/releases/latest';
-          // The same answer without an API quota: this page redirects to .../releases/tag/v<version>.
-          const releaseRedirectUrl = 'https://github.com/actions/runner/releases/latest';
+          // runs-on/runner publishes RunsOn's build of each actions/runner release as
+          // v<version>-runs-on.<revision>, with upstream's file names and a SHA256SUMS.
+          const defaultReleaseUrl = 'https://api.github.com/repos/runs-on/runner/releases/latest';
+          // The same answer without an API quota: this page redirects to .../releases/tag/<tag>.
+          const releaseRedirectUrl = 'https://github.com/runs-on/runner/releases/latest';
+          const releaseDownloadUrl = 'https://github.com/runs-on/runner/releases/download';
           const latestVersionAttempts = 3;
           const defaultPrefix = 'agents/github-runner';
           const defaultManifestKey = `${defaultPrefix}/latest.json`;
-          const runnerVersionPattern = /^\d+\.\d+\.\d+$/;
+          const releaseTagPattern = /^v(\d+\.\d+\.\d+)-runs-on\.\d+$/;
 
           function createDefaultAws() {
             let initialized = false;
@@ -6359,19 +6565,26 @@ Resources:
             };
           }
 
-          function runnerAssetSpecs(version) {
+          // parseReleaseTag returns the release a runs-on/runner tag names; version is
+          // the upstream version the runner reports to GitHub.
+          function parseReleaseTag(tag) {
+            const match = trimString(tag).match(releaseTagPattern);
+            return match ? { tag: match[0], version: match[1] } : null;
+          }
+
+          // The platforms RunsOn offers; the agent looks assets up by these keys.
+          function runnerAssetSpecs({ tag, version }) {
             return [
               { key: 'linux-x64', filename: `actions-runner-linux-x64-${version}.tar.gz`, contentType: 'application/gzip' },
               { key: 'linux-arm64', filename: `actions-runner-linux-arm64-${version}.tar.gz`, contentType: 'application/gzip' },
               { key: 'windows-x64', filename: `actions-runner-win-x64-${version}.zip`, contentType: 'application/zip' },
-              { key: 'windows-arm64', filename: `actions-runner-win-arm64-${version}.zip`, contentType: 'application/zip' },
             ].map((asset) => ({
               ...asset,
-              githubUrl: `https://github.com/actions/runner/releases/download/v${version}/${asset.filename}`,
+              githubUrl: `${releaseDownloadUrl}/${tag}/${asset.filename}`,
             }));
           }
 
-          async function fetchLatestVersionFromApi(fetchImpl, releaseUrl) {
+          async function fetchLatestReleaseFromApi(fetchImpl, releaseUrl) {
             const response = await fetchImpl(releaseUrl, {
               headers: {
                 Accept: 'application/json',
@@ -6387,42 +6600,42 @@ Resources:
             }
 
             const payload = await response.json();
-            const version = trimString(payload?.tag_name).replace(/^v/, '');
-            if (!runnerVersionPattern.test(version)) {
+            const release = parseReleaseTag(payload?.tag_name);
+            if (!release) {
               throw new Error(`GitHub latest runner release response did not include a valid tag_name: ${payload?.tag_name}`);
             }
-            return version;
+            return release;
           }
 
-          async function fetchLatestVersionFromRedirect(fetchImpl) {
+          async function fetchLatestReleaseFromRedirect(fetchImpl) {
             const response = await fetchImpl(releaseRedirectUrl, {
               redirect: 'manual',
               headers: { 'User-Agent': 'runs-on-github-runner-cache-refresh' },
             });
             const location = trimString(response.headers?.get?.('location'));
-            const version = (location.match(/\/releases\/tag\/v([^/?#]+)$/) || [])[1] || '';
-            if (!runnerVersionPattern.test(version)) {
-              throw new Error(`GitHub latest runner release redirect did not name a version (status ${response.status})`);
+            const release = parseReleaseTag((location.match(/\/releases\/tag\/([^/?#]+)$/) || [])[1]);
+            if (!release) {
+              throw new Error(`GitHub latest runner release redirect did not name a release (status ${response.status})`);
             }
-            return version;
+            return release;
           }
 
           function defaultSleep(ms) {
             return new Promise((resolve) => { setTimeout(resolve, ms); });
           }
 
-          // fetchLatestVersion asks the GitHub API, falls back to the release page's
+          // fetchLatestRelease asks the GitHub API, falls back to the release page's
           // redirect when the API is rate limited, and retries a few times.
-          async function fetchLatestVersion(fetchImpl, releaseUrl, sleep = defaultSleep) {
+          async function fetchLatestRelease(fetchImpl, releaseUrl, sleep = defaultSleep) {
             let lastError;
             for (let attempt = 1; attempt <= latestVersionAttempts; attempt += 1) {
               try {
-                return await fetchLatestVersionFromApi(fetchImpl, releaseUrl);
+                return await fetchLatestReleaseFromApi(fetchImpl, releaseUrl);
               } catch (error) {
                 lastError = error;
                 if (error.rateLimited) {
                   try {
-                    return await fetchLatestVersionFromRedirect(fetchImpl);
+                    return await fetchLatestReleaseFromRedirect(fetchImpl);
                   } catch (redirectError) {
                     log('warn', 'GitHub runner release redirect lookup failed', { error: String(redirectError?.message || redirectError) });
                   }
@@ -6506,6 +6719,24 @@ Resources:
             await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(filePath));
           }
 
+          // fetchChecksums reads the release's SHA256SUMS into a file name -> sha256 map.
+          async function fetchChecksums(fetchImpl, { tag }) {
+            const url = `${releaseDownloadUrl}/${tag}/SHA256SUMS`;
+            const response = await fetchImpl(url, {
+              headers: { 'User-Agent': 'runs-on-github-runner-cache-refresh' },
+              redirect: 'follow',
+            });
+            if (!response.ok) {
+              throw new Error(`GitHub runner checksums request failed with status ${response.status} for ${url}`);
+            }
+            const checksums = new Map();
+            for (const line of (await response.text()).split('\n')) {
+              const match = line.trim().match(/^([0-9a-f]{64})\s+\*?(\S+)$/);
+              if (match) checksums.set(match[2], match[1]);
+            }
+            return checksums;
+          }
+
           async function sha256ForFile(filePath) {
             const hash = createHash('sha256');
             const stream = fs.createReadStream(filePath);
@@ -6520,12 +6751,14 @@ Resources:
               trimString(existing?.sha256) === '';
           }
 
-          async function mirrorRunnerAsset(aws, fetchImpl, config, version, spec, existingManifest) {
-            const objectKey = joinS3Key(config.prefix, version, spec.filename);
+          async function mirrorRunnerAsset(aws, fetchImpl, config, release, spec, existingManifest, getChecksums) {
+            // The tag keeps a fork build apart from a same-version copy of another
+            // build, such as the stock runner older stacks mirrored.
+            const objectKey = joinS3Key(config.prefix, release.tag, spec.filename);
             const s3Url = `s3://${config.bucket}/${objectKey}`;
             const existingAsset = existingManifest?.assets?.[spec.key];
             if (
-              trimString(existingManifest?.version) === version &&
+              trimString(existingManifest?.version) === release.version &&
               !manifestAssetChanged(existingAsset, s3Url) &&
               await objectExists(aws, config.bucket, objectKey)
             ) {
@@ -6542,6 +6775,10 @@ Resources:
             try {
               await downloadToFile(fetchImpl, spec.githubUrl, tempPath);
               const sha256 = await sha256ForFile(tempPath);
+              const expected = (await getChecksums()).get(spec.filename);
+              if (sha256 !== expected) {
+                throw new Error(`${spec.filename} from ${release.tag} has sha256 ${sha256}, but SHA256SUMS lists ${expected || 'nothing'}`);
+              }
               await aws.putObject({
                 Bucket: config.bucket,
                 Key: objectKey,
@@ -6573,15 +6810,21 @@ Resources:
               throw new Error('RUNS_ON_RUNNER_CACHE_BUCKET must be configured');
             }
 
-            const version = await fetchLatestVersion(fetchImpl, config.releaseUrl, options.sleep);
+            const release = await fetchLatestRelease(fetchImpl, config.releaseUrl, options.sleep);
             const existingManifest = await loadExistingManifest(aws, config.bucket, config.manifestKey);
-            const specs = runnerAssetSpecs(version);
+            const specs = runnerAssetSpecs(release);
+            // Only a run that downloads something needs the checksums.
+            let checksums;
+            const getChecksums = () => {
+              checksums ||= fetchChecksums(fetchImpl, release);
+              return checksums;
+            };
 
             let reused = 0;
             let uploaded = 0;
             const assets = {};
             for (const spec of specs) {
-              const mirrored = await mirrorRunnerAsset(aws, fetchImpl, config, version, spec, existingManifest);
+              const mirrored = await mirrorRunnerAsset(aws, fetchImpl, config, release, spec, existingManifest, getChecksums);
               assets[spec.key] = mirrored.asset;
               if (mirrored.reused) {
                 reused += 1;
@@ -6590,7 +6833,7 @@ Resources:
               }
             }
 
-            const manifest = { version, assets };
+            const manifest = { version: release.version, tag: release.tag, assets };
             const changed = uploaded > 0 || !manifestsEqual(existingManifest, manifest);
             if (changed) {
               await aws.putObject({
@@ -6604,7 +6847,8 @@ Resources:
             const result = {
               bucket: config.bucket,
               manifest_key: config.manifestKey,
-              version,
+              version: release.version,
+              tag: release.tag,
               asset_count: specs.length,
               reused,
               uploaded,
@@ -6640,7 +6884,7 @@ Resources:
 
           function seedFailure(error) {
             const message = String(error?.message || error);
-            log('error', 'GitHub runner cache seed failed; the daily refresh will retry', { error: message });
+            log('error', 'GitHub runner cache seed failed; the hourly refresh will retry', { error: message });
             return { seeded: false, error: message };
           }
 
@@ -6655,7 +6899,7 @@ Resources:
                 return { skipped: true };
               }
 
-              // Seeding the cache at install time is an optimisation: the daily
+              // Seeding the cache at install time is an optimisation: the hourly
               // refresh fills it anyway, so a failure here must not roll the stack back.
               try {
                 const result = await performSync(event, options);
@@ -6663,7 +6907,7 @@ Resources:
                 return result;
               } catch (error) {
                 const result = seedFailure(error);
-                await sendCloudFormationResponse(event, 'SUCCESS', result, `Runner cache not seeded, the daily refresh will retry: ${result.error}`, options.fetchImpl || fetch);
+                await sendCloudFormationResponse(event, 'SUCCESS', result, `Runner cache not seeded, the hourly refresh will retry: ${result.error}`, options.fetchImpl || fetch);
                 return result;
               }
             }
@@ -6685,7 +6929,7 @@ Resources:
           module.exports = {
             configFromEvent,
             createHandler,
-            fetchLatestVersion,
+            fetchLatestRelease,
             handler: (event) => createHandler(event),
             runnerAssetSpecs,
             sendCloudFormationResponse,
@@ -6735,6 +6979,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           'use strict';
@@ -6806,6 +7052,10 @@ Resources:
             const { ownerID, repoID } = tokenRepositoryIDs(token.payload);
             const repository = repositoryPath(ownerID, repoID);
 
+            if (input.mode === 'git') {
+              return mintGitCredentials({ caller, ownerID, repoID, repository, ac, tokenExp: token.payload.exp });
+            }
+
             const readPrefixes = prefixesFor(ownerID, repoID, ac.readScopes);
             const writePrefixes = prefixesFor(ownerID, repoID, ac.writeScopes);
             if (readPrefixes.length === 0 && writePrefixes.length === 0) {
@@ -6832,6 +7082,66 @@ Resources:
               write_prefixes: writePrefixes,
               expires_at: assumed.Credentials.Expiration.toISOString(),
             };
+          }
+
+          // The git cache follows Magic Cache's scopes: a job stores fetch responses and
+          // coordination claims only under its own ref's prefix, and reads that prefix
+          // first, then those of the other refs its token may read (usually the default
+          // branch). A pull request therefore cannot store anything its base branch's
+          // jobs read.
+          async function mintGitCredentials({ caller, ownerID, repoID, repository, ac, tokenExp }) {
+            const prefixes = gitPrefixesFor(ownerID, repoID, ac);
+            if (prefixes.read.length === 0) {
+              throw new Error('runtime token has no usable cache scopes');
+            }
+            const assumed = await getSTSClient().send(new AssumeRoleCommand(buildAssumeRoleInput({
+              instanceID: caller.instanceID,
+              ownerID,
+              repoID,
+              durationSeconds: sessionDuration(tokenExp),
+              policy: buildGitSessionPolicy(prefixes),
+            })));
+            return {
+              access_key_id: assumed.Credentials.AccessKeyId,
+              secret_access_key: assumed.Credentials.SecretAccessKey,
+              session_token: assumed.Credentials.SessionToken,
+              expiration: assumed.Credentials.Expiration.toISOString(),
+              repository,
+              git_write_prefix: prefixes.write,
+              git_read_prefixes: prefixes.read,
+              expires_at: assumed.Credentials.Expiration.toISOString(),
+            };
+          }
+
+          // gitPrefixesFor returns where a token's job may store git cache entries (its
+          // one write scope; none when the token has no or several write scopes) and
+          // where it may read them, the write prefix first. The literal git segment
+          // keeps them apart from Magic Cache's scope segments.
+          function gitPrefixesFor(ownerID, repoID, ac) {
+            const root = `scoped-cache/${repositoryPath(ownerID, repoID)}/git`;
+            const write = ac.writeScopes.length === 1 ? `${root}/${scopeSegment(ac.writeScopes[0])}` : '';
+            const read = ac.readScopes.map((scope) => `${root}/${scopeSegment(scope)}`).filter((prefix) => prefix !== write);
+            return { write, read: write ? [write, ...read] : read };
+          }
+
+          // No s3:ListBucket: the git cache never lists, and reads the AccessDenied S3
+          // then returns for a missing object as a miss.
+          function buildGitSessionPolicy({ write, read }) {
+            const statements = [
+              {
+                Effect: 'Allow',
+                Action: 's3:GetObject',
+                Resource: read.map((prefix) => `${bucketArn}/${prefix}/*`),
+              },
+            ];
+            if (write) {
+              statements.push({
+                Effect: 'Allow',
+                Action: ['s3:PutObject', 's3:DeleteObject', 's3:AbortMultipartUpload'],
+                Resource: `${bucketArn}/${write}/*`,
+              });
+            }
+            return { Version: '2012-10-17', Statement: statements };
           }
 
           function getSTSClient() {
@@ -6877,8 +7187,13 @@ Resources:
               throw new Error('missing request body');
             }
             const runtimeToken = typeof body.runtime_token === 'string' ? body.runtime_token.trim() : '';
+            const mode = body.mode === undefined || body.mode === '' ? 'cache' : body.mode;
+            if (mode !== 'cache' && mode !== 'git') {
+              throw new Error('unknown broker mode');
+            }
             return {
               runtime_token: runtimeToken,
+              mode,
               caller_identity: normalizeCallerIdentityProof(body.caller_identity),
             };
           }
@@ -7261,7 +7576,7 @@ Resources:
             };
           }
 
-          function buildAssumeRoleInput({ instanceID, ownerID, repoID, durationSeconds, readPrefixes = [], writePrefixes = [] }) {
+          function buildAssumeRoleInput({ instanceID, ownerID, repoID, durationSeconds, readPrefixes = [], writePrefixes = [], policy }) {
             const input = {
               RoleArn: runnerRoleArn,
               // The runner role's scoped-cache grants also check aws:userid, whose
@@ -7285,7 +7600,7 @@ Resources:
             // credentials never leave the agent's cache server, so there is no base
             // boundary to merge and no packed-policy pressure from pass-through
             // statements.
-            input.Policy = JSON.stringify(buildSessionPolicy(ownerID, repoID, readPrefixes, writePrefixes));
+            input.Policy = JSON.stringify(policy || buildSessionPolicy(ownerID, repoID, readPrefixes, writePrefixes));
             if (input.Policy.length > maxAssumeRolePolicyChars) {
               throw new Error(`broker session policy exceeds STS plaintext limit (${input.Policy.length}/${maxAssumeRolePolicyChars} characters)`);
             }
@@ -7387,7 +7702,9 @@ Resources:
           module.exports = {
             handler,
             buildAssumeRoleInput,
+            buildGitSessionPolicy,
             buildSessionPolicy,
+            gitPrefixesFor,
             defaultIssuerForEnterpriseURL,
             instanceIDFromCallerUserID,
             normalizeAccessControls,
@@ -7437,6 +7754,12 @@ Resources:
       IPv4IPSetName: !Sub "${AWS::StackName}-allowed-ips-ipv4"
       IPv6IPSetId: !GetAtt RunsOnPublicIngressAllowedIpsIPv6.Id
       IPv6IPSetName: !Sub "${AWS::StackName}-allowed-ips-ipv6"
+      # Any update to the IP sets reapplies their placeholder addresses. These
+      # inputs change whenever the IP sets can, so the seed runs after them in
+      # the same stack update and re-syncs sets left with placeholders instead
+      # of waiting for the hourly run.
+      AppTag: !FindInMap [App, Tags, AppTag]
+      CostAllocationTag: !Ref CostAllocationTag
 
   RunsOnPublicIngressWebAcl:
     Condition: WafEnabled
@@ -7518,6 +7841,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressRestApi:
     Type: AWS::ApiGateway::RestApi
@@ -7531,6 +7856,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressRestApiSetupResource:
     Condition: AdminRoutesEnabled
@@ -7696,6 +8023,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnPublicIngressWebAclAssociation:
     Condition: WafEnabled
@@ -7735,6 +8064,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnGitHubAppsSecret:
     Type: AWS::SecretsManager::Secret
@@ -7746,6 +8077,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnLicenseStatusParameter:
     Type: AWS::SSM::Parameter
@@ -7756,6 +8089,7 @@ Resources:
         {"status":"verifying","valid":false,"message":"Verifying","errors":[],"app_version":""}
       Tags:
         runs-on-stack-name: !Ref AWS::StackName
+        aws-apn-id-135269210855: pc:2b9joblhmcbhnqakspwshptlz
 
   ManagedLaunchTemplateRole:
     Type: AWS::IAM::Role
@@ -7782,6 +8116,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   ManagedLaunchTemplateFunction:
     Type: AWS::Lambda::Function
@@ -7798,6 +8134,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           from __future__ import annotations
@@ -8121,6 +8459,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   ManagedLaunchTemplateLogsPolicy:
     Type: AWS::IAM::Policy
@@ -8161,6 +8501,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   StackConfigMaterializerFunction:
     Type: AWS::Lambda::Function
@@ -8177,6 +8519,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           import boto3,json,hashlib
@@ -8231,6 +8575,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   StackConfigMaterializerLogsPolicy:
     Type: AWS::IAM::Policy
@@ -8286,6 +8632,7 @@ Resources:
         WorkflowJobsTable: !Ref RunsOnWorkflowJobsTable
         JobDiagnosticsResolverFunctionName: !Ref RunsOnJobDiagnosticsResolverFunction
         CostReportsEnabled: !If [CostReportsEnabled, "true", "false"]
+        MandatoryExtras: !If [HasMandatoryExtras, !Split ["+", !Ref MandatoryExtras], !Ref AWS::NoValue]
         CostAllocationTag: !Ref CostAllocationTag
         SpotCircuitBreaker: !Ref SpotCircuitBreaker
         IntegrationStepSecurityApiKey: !Ref IntegrationStepSecurityApiKey
@@ -8303,7 +8650,7 @@ Resources:
             isolation_enabled: !If [CacheIsolationEnabled, true, false]
             expiration_days: !Ref S3CacheExpirationInDays
             bucket_versioning_enabled: false
-            mandatory_extras: []
+            mandatory_extras: !If [HasMandatoryExtras, !Split ["+", !Ref MandatoryExtras], []]
           sticky_disk:
             isolation_enabled: !If [StickyDiskIsolationDisabled, false, true]
           storage:
@@ -8361,6 +8708,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -8699,6 +9048,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnWorkerService:
     Type: AWS::ECS::Service
@@ -8728,6 +9079,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   DailyCostBudget:
     Condition: AppBudgetEnabled
@@ -8762,6 +9115,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnQueueWebhooksDeadLetter:
     Type: AWS::SQS::Queue
@@ -8803,6 +9158,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnQueueSystemDeadLetter:
     Type: AWS::SQS::Queue
@@ -8815,6 +9172,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnQueueSystem:
     Type: AWS::SQS::Queue
@@ -8833,6 +9192,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   RunsOnQueueEvents:
     Type: AWS::SQS::Queue
@@ -8846,6 +9207,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   # DynamoDB table for distributed locking
   RunsOnLocksTable:
@@ -8867,6 +9230,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   # DynamoDB table for workflow job tracking
   RunsOnWorkflowJobsTable:
@@ -8932,6 +9297,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   SpotInstanceEventRule:
     Type: AWS::Events::Rule
@@ -8973,6 +9340,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       DisplayName: RunsOn Alerts
 
   AlertTopicPolicy:
@@ -9017,6 +9386,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   AlertTopicSlackWebhookFunction:
     Condition: AlertTopicSlackWebhookProvided
@@ -9038,6 +9409,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
       Code:
         ZipFile: |
           import json,logging,os,time,urllib.error,urllib.request
@@ -9114,6 +9487,8 @@ Resources:
           Value: !Ref AWS::StackName
         - Key: runs-on-stack-name
           Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
 
   AlertTopicSlackWebhookLogsPolicy:
     Condition: AlertTopicSlackWebhookProvided
