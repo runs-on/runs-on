@@ -2,14 +2,18 @@
 
 ## Supported Versions
 
-The last 2 minor versions of the latest major are supported. When a new major version comes up, this table will reflect the support status for the previous major versions.
+Security fixes go into the last two minor versions of the latest major version.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| v2.8.x   | :white_check_mark: |
-| v2.7.x   | :white_check_mark: |
-| < v2.7  | :x:                |
+| v3.5.x  | :white_check_mark: |
+| v3.4.x  | :white_check_mark: |
+| < v3.4  | :x:                |
+
+To get a fix, [upgrade your stack](https://runs-on.com/docs/maintenance/upgrades/) to the latest patch release of a supported version.
 
 ## Reporting a Vulnerability
 
-Please disclose any security findings to <security@runs-on.com>. You can expect to get an update on any reported vulnerability within 2 business days.
+Email <security@runs-on.com>. RunsOn aims to acknowledge a report within five business days.
+
+The [vulnerability disclosure](https://runs-on.com/docs/control-plane/vulnerability-disclosure/) page lists what to include, the rules for testing and the safe harbor. The [security model](https://runs-on.com/docs/control-plane/security/) describes what runs in your AWS account and what RunsOn receives.
