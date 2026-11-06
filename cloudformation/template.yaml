@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.6.0)
+Description: CloudFormation stack for https://runs-on.com (v3.6.1-rc.1)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -381,8 +381,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.6.0
-      ImageTag: v3.6.0@sha256:734ccf223758533284bebd4db53b195475317975214a3d969d25ef8af2072530
+      AppTag: v3.6.1-rc.1
+      ImageTag: v3.6.1-rc.1@sha256:6a7bbf547560a12ed8b2b3e5683dddae1d2bdce750c7e8fea1b66b3325294cb1
   AppSize:
     small:
       Cpu: 256
