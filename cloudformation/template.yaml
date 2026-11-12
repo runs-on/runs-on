@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.6.0)
+Description: CloudFormation stack for https://runs-on.com (v3.6.1-rc.2)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -381,8 +381,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.6.0
-      ImageTag: v3.6.0@sha256:734ccf223758533284bebd4db53b195475317975214a3d969d25ef8af2072530
+      AppTag: v3.6.1-rc.2
+      ImageTag: v3.6.1-rc.2@sha256:df9d32b1b64329f3172501d9f59b16cf8f6f31552e75253dc26a937950814d5b
   AppSize:
     small:
       Cpu: 256
@@ -1562,10 +1562,14 @@ Resources:
               }
               trap _the_end EXIT INT TERM
 
+              # Download next to the target and rename only once curl succeeds: an HTTP
+              # error or a cut transfer must not leave a file that the next boot of a
+              # stopped pool instance would skip the download for and run.
               if [ ! -f "$BOOTSTRAP_BIN" ]; then
-                time curl -L --connect-timeout 3 --max-time 15 --retry 5 -s \
+                time curl -fsSL --connect-timeout 3 --max-time 15 --retry 5 \
                   "https://github.com/runs-on/bootstrap/releases/download/$RUNS_ON_BOOTSTRAP_TAG/bootstrap-$RUNS_ON_BOOTSTRAP_TAG-linux-$(uname -m)" \
-                  -o "$BOOTSTRAP_BIN"
+                  -o "$BOOTSTRAP_BIN.part"
+                mv -f "$BOOTSTRAP_BIN.part" "$BOOTSTRAP_BIN"
               fi
 
               chmod a+x "$BOOTSTRAP_BIN"
@@ -1709,13 +1713,15 @@ Resources:
               sc start docker >nul 2>&1
               set BOOTSTRAP=C:\runs-on\bootstrap-${BootstrapTag}.exe
               set BOOTSTRAP_URL=https://github.com/runs-on/bootstrap/releases/download/${BootstrapTag}/bootstrap-${BootstrapTag}-windows-%PROCESSOR_ARCHITECTURE%.exe
+              rem Downloads go to a .part file, renamed only on success: a cut transfer must not
+              rem leave a file that skips the fallback or the download at the next boot.
               if not exist "%BOOTSTRAP%" (
                 mkdir C:\runs-on >nul 2>&1
-                where curl.exe >nul 2>&1 && curl.exe -fsSL --retry 3 -o "%BOOTSTRAP%" "%BOOTSTRAP_URL%"
+                where curl.exe >nul 2>&1 && curl.exe -fsSL --retry 3 -o "%BOOTSTRAP%.part" "%BOOTSTRAP_URL%" && move /y "%BOOTSTRAP%.part" "%BOOTSTRAP%" >nul
               )
               rem Windows Server 2016 ships no curl.exe: fall back to PowerShell with TLS 1.2, as the previous user data did.
               if not exist "%BOOTSTRAP%" (
-                powershell.exe -NoProfile -NonInteractive -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%BOOTSTRAP_URL%' -OutFile '%BOOTSTRAP%' -UseBasicParsing"
+                powershell.exe -NoProfile -NonInteractive -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%BOOTSTRAP_URL%' -OutFile '%BOOTSTRAP%.part' -UseBasicParsing" && move /y "%BOOTSTRAP%.part" "%BOOTSTRAP%" >nul
               )
               rem Only images that still ship Defender need the exclusion, and only they pay for PowerShell here.
               sc query WinDefend >nul 2>&1 && powershell.exe -NoProfile -NonInteractive -Command "Add-MpPreference -ExclusionProcess '%BOOTSTRAP%' -ErrorAction SilentlyContinue"
@@ -2244,6 +2250,20 @@ Resources:
                 Condition:
                   StringEquals:
                     "aws:ARN": "${ec2:SourceInstanceARN}"
+              # Control-plane tags the agent never writes: housekeeping finds
+              # and terminates runners by them, so job code must not rewrite
+              # them. Instances only: the legacy v1 snapshot action tags its
+              # volumes and snapshots with the stack name.
+              - Effect: Deny
+                Action:
+                  - ec2:CreateTags
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  ForAnyValue:StringEquals:
+                    "aws:TagKeys":
+                      - runs-on-stack-name
+                      - runs-on-terminate
+                      - runs-on-launch-token
         # Legacy grant for the v1 runs-on/snapshot action (job-side AWS calls).
         # Removed when sticky-disk isolation is on: sticky disks tag at
         # creation from the control plane, and job-writable tags would allow
@@ -4507,9 +4527,10 @@ Resources:
             return 'Open the App\'s recent deliveries on GitHub to see the response.';
           }
 
-          // summarizeWebhooks turns the App's webhook config and its latest deliveries
-          // (newest first) into one indicator.
-          function summarizeWebhooks(config, deliveries, expectedUrl, nowMs) {
+          // summarizeWebhooks turns the App's webhook config, its latest deliveries
+          // (newest first) and the events it subscribes to into one indicator. events is
+          // undefined when unknown.
+          function summarizeWebhooks(config, deliveries, expectedUrl, nowMs, events) {
             const indicator = { name: 'GitHub webhooks', status: 'healthy', message: '' };
             // The App's webhook URL may be a custom domain in front of this stack, so a
             // different URL is not an error by itself: the deliveries decide.
@@ -4536,6 +4557,18 @@ Resources:
             }
             if (otherUrl && indicator.status !== 'healthy') {
               indicator.hint += ' The App\'s webhook URL is not this stack\'s own URL: unless it is your custom domain for this stack, point it back here in the App settings.';
+            }
+            // An App created by hand (for example with Terraform's github_app_* inputs)
+            // can miss the events RunsOn's own App manifest subscribes to.
+            const subscribed = Array.isArray(events) ? events : null;
+            if (subscribed && !subscribed.includes('workflow_job')) {
+              indicator.status = 'error';
+              indicator.message = 'The GitHub App is not subscribed to the "Workflow job" event';
+              indicator.hint = 'GitHub sends no webhook when a job is queued, so RunsOn only finds jobs by polling GitHub, which can add several minutes to each job, or more with many repositories. Subscribe to "Workflow job" and "Workflow run" under Permissions & events in the App settings.';
+            } else if (subscribed && !subscribed.includes('workflow_run') && indicator.status === 'healthy') {
+              indicator.status = 'warning';
+              indicator.message += '; the App is not subscribed to the "Workflow run" event';
+              indicator.hint = 'RunsOn then looks up each run\'s workflow file with an extra GitHub API call. Subscribe to "Workflow run" under Permissions & events in the App settings.';
             }
             return indicator;
           }
@@ -5043,11 +5076,12 @@ Resources:
                 return { name: 'GitHub webhooks', status: 'warning', message: 'Could not check the webhooks', hint: 'GitHub asked RunsOn to slow down. Refresh in a minute.' };
               }
               try {
-                const [config, deliveries] = await Promise.all([
+                const [config, deliveries, app] = await Promise.all([
                   githubAsApp(state.persisted?.primary?.app_config, 'app/hook/config'),
                   githubAsApp(state.persisted?.primary?.app_config, 'app/hook/deliveries?per_page=50'),
+                  githubAsApp(state.persisted?.primary?.app_config, 'app'),
                 ]);
-                return summarizeWebhooks(config, deliveries, baseUrl() + '/github/webhooks', now());
+                return summarizeWebhooks(config, deliveries, baseUrl() + '/github/webhooks', now(), app?.events);
               } catch (error) {
                 log('warn', 'GitHub webhook check failed', { error: String(error?.message || error) });
                 return { name: 'GitHub webhooks', status: 'warning', message: 'Could not check the webhooks', hint: 'Refresh to try again.' };
@@ -7434,8 +7468,14 @@ Resources:
             if (claimMissing(raw)) {
               throw new Error(`runtime token has no ${name} claim`);
             }
-            const value = Number(raw);
-            if (!Number.isSafeInteger(value) || value <= 0) {
+            // Only plain decimal IDs: Number() alone would also take '0x3e9', '1e3',
+            // ' 12 ' or true.
+            const text = typeof raw === 'number' ? String(raw) : raw;
+            if (typeof text !== 'string' || !/^[1-9][0-9]*$/.test(text)) {
+              throw new Error(`runtime token ${name} claim is invalid`);
+            }
+            const value = Number(text);
+            if (!Number.isSafeInteger(value)) {
               throw new Error(`runtime token ${name} claim is invalid`);
             }
             return value;
@@ -7858,8 +7898,13 @@ Resources:
         - Key: aws-apn-id-135269210855
           Value: pc:2b9joblhmcbhnqakspwshptlz
 
+  # The admin routes stay in the API when EnableAdminRoutes is false, locked
+  # with IAM authorization: unsigned requests get API Gateway's 403 "Missing
+  # Authentication Token", as on any unknown path. Deleted routes would stay
+  # in the stage: CloudFormation deletes them in its cleanup phase, after it
+  # has created the webhook-only deployment. Locked, they point at the public
+  # ingress function, which grants API Gateway these paths no permission.
   RunsOnPublicIngressRestApiSetupResource:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
@@ -7867,7 +7912,6 @@ Resources:
       PathPart: "setup"
 
   RunsOnPublicIngressRestApiSetupProxyResource:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
@@ -7889,7 +7933,6 @@ Resources:
       PathPart: "webhooks"
 
   RunsOnPublicIngressRestApiReadyzResource:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
@@ -7897,43 +7940,49 @@ Resources:
       PathPart: "readyz"
 
   RunsOnPublicIngressRestApiMethodAnyRoot:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !GetAtt RunsOnPublicIngressRestApi.RootResourceId
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: !If [AdminRoutesEnabled, NONE, AWS_IAM]
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !If
+          - AdminRoutesEnabled
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodAnySetup:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !Ref RunsOnPublicIngressRestApiSetupResource
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: !If [AdminRoutesEnabled, NONE, AWS_IAM]
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !If
+          - AdminRoutesEnabled
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodAnySetupProxy:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !Ref RunsOnPublicIngressRestApiSetupProxyResource
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: !If [AdminRoutesEnabled, NONE, AWS_IAM]
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !If
+          - AdminRoutesEnabled
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   # Aikido exemption: GitHub webhook ingress is intentionally public. API Gateway cannot require
   # AWS auth or API keys for GitHub delivery; the Lambda only enqueues the raw payload and
@@ -7951,17 +8000,19 @@ Resources:
         Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiMethodGetReadyz:
-    Condition: AdminRoutesEnabled
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !Ref RunsOnPublicIngressRestApiReadyzResource
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: !If [AdminRoutesEnabled, NONE, AWS_IAM]
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+        Uri: !If
+          - AdminRoutesEnabled
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnGitHubAppsSetupFunction.Arn}/invocations"
+          - !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RunsOnPublicIngressFunction.Arn}/invocations"
 
   RunsOnPublicIngressRestApiDeploymentWithSetup:
     Condition: AdminRoutesEnabled
@@ -7976,11 +8027,18 @@ Resources:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       Description: !Sub "Public ingress deployment root=${RunsOnGitHubAppsSetupFunction.Arn} setup=${RunsOnGitHubAppsSetupFunction.Arn} setup-proxy=${RunsOnGitHubAppsSetupFunction.Arn} readyz=${RunsOnGitHubAppsSetupFunction.Arn} webhooks=${RunsOnPublicIngressFunction.Arn}"
 
-  RunsOnPublicIngressRestApiDeploymentWebhookOnly:
+  # A new logical ID (was ...DeploymentWebhookOnly) so that stacks that
+  # already had the admin routes off get a deployment with the locked routes:
+  # DependsOn changes alone create no new snapshot.
+  RunsOnPublicIngressRestApiDeploymentAdminLocked:
     Condition: AdminRoutesDisabled
     Type: AWS::ApiGateway::Deployment
     DependsOn:
+      - RunsOnPublicIngressRestApiMethodAnyRoot
+      - RunsOnPublicIngressRestApiMethodAnySetup
+      - RunsOnPublicIngressRestApiMethodAnySetupProxy
       - RunsOnPublicIngressRestApiMethodPostGitHubWebhooks
+      - RunsOnPublicIngressRestApiMethodGetReadyz
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       Description: !Sub "Public ingress deployment webhook-only webhooks=${RunsOnPublicIngressFunction.Arn}"
@@ -7989,7 +8047,7 @@ Resources:
     Type: AWS::ApiGateway::Stage
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
-      DeploymentId: !If [AdminRoutesEnabled, !Ref RunsOnPublicIngressRestApiDeploymentWithSetup, !Ref RunsOnPublicIngressRestApiDeploymentWebhookOnly]
+      DeploymentId: !If [AdminRoutesEnabled, !Ref RunsOnPublicIngressRestApiDeploymentWithSetup, !Ref RunsOnPublicIngressRestApiDeploymentAdminLocked]
       StageName: prod
       MethodSettings:
         - ResourcePath: "/*"
@@ -9116,22 +9174,6 @@ Resources:
       FifoQueue: true
       MessageRetentionPeriod: 259200 # 3 days
       SqsManagedSseEnabled: true
-
-  RunsOnQueueWebhooksDeadLetterPolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref RunsOnQueueWebhooksDeadLetter
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal: "*"
-            Action: "sqs:SendMessage"
-            Resource: !GetAtt RunsOnQueueWebhooksDeadLetter.Arn
-            Condition:
-              ArnEquals:
-                aws:SourceArn: !Ref RunsOnQueueWebhooks
 
   RunsOnQueueWebhooks:
     Type: AWS::SQS::Queue
