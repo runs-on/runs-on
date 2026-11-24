@@ -6,9 +6,9 @@ Security fixes go into the last two minor versions of the latest major version.
 
 | Version | Supported          |
 | ------- | ------------------ |
+| v3.7.x  | :white_check_mark: |
 | v3.6.x  | :white_check_mark: |
-| v3.5.x  | :white_check_mark: |
-| < v3.5  | :x:                |
+| < v3.6  | :x:                |
 
 To get a fix, [upgrade your stack](https://runs-on.com/docs/maintenance/upgrades/) to the latest patch release of a supported version.
 
