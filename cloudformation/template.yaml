@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.6.2)
+Description: CloudFormation stack for https://runs-on.com (v3.7.0-rc.3)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -198,19 +198,19 @@ Parameters:
 
   EnableCacheIsolation:
     Type: String
-    Default: "false"
+    Default: "true"
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable per-repository/per-branch isolation for Magic Cache data under scoped-cache/*. Direct S3 cache integrations keep instance-profile access to the stack-shared cache/* namespace and are not repository-isolated. Enabling later moves Magic Cache objects to a new prefix (one-time cache re-warm)."
+    Description: "Isolate Magic Cache and git cache data per repository and branch under scoped-cache/*, with short-lived credentials the cache broker mints from each job's Actions runtime token (ACTIONS_RUNTIME_TOKEN, not GITHUB_TOKEN, so workflow permissions do not affect it). Default true since v3.7. Turning it on moves Magic Cache objects to a new prefix (one-time cache re-warm; entries under cache/ expire with the cache retention). Setting false lets job code of any repository on the stack read and overwrite every other repository's cache entries. Direct S3 cache integrations keep instance-profile access to the stack-shared cache/* namespace in both modes."
 
   EnableStickyDiskIsolation:
     Type: String
-    Default: "false"
+    Default: "true"
     AllowedValues:
       - "true"
       - "false"
-    Description: "Remove the legacy EBS volume/snapshot permissions from the runner instance role. Sticky disks (sticky= label) are unaffected (the control plane performs all EBS operations), but the legacy v1 runs-on/snapshot action stops working."
+    Description: "Remove the legacy EBS volume/snapshot permissions from the runner instance role. The control plane performs all sticky-disk EBS operations. Default true since v3.7. Sticky disks (sticky= label) keep working and keep their existing snapshots, but the legacy v1 runs-on/snapshot action stops working. Setting false restores, for the v1 action, permissions scoped to this stack's runs-on-stack-name tag: job code can then list every EBS volume and snapshot in the region, create volumes and snapshots tagged for this stack (only from this stack's snapshots and volumes), and attach (to this stack's instances), detach and delete any volume or snapshot tagged for this stack, including other repositories' sticky-disk volumes and snapshots: it can read their data, write to their volumes and delete them. It cannot add tags to existing volumes or snapshots (except runs-on-delete-after on this stack's volumes), write runs-on-stickydisk* tags, or modify EBS resources outside this stack."
 
   EnableEfs:
     Type: String
@@ -381,8 +381,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.6.2
-      ImageTag: v3.6.2@sha256:286756600e5b5e83ac552930491adfa8b187965a3315d347a9fb25fa4bfb3c49
+      AppTag: v3.7.0-rc.3
+      ImageTag: v3.7.0-rc.3@sha256:7c9beb793a8dbed46d489b6224ae81d79d3b05f539e1c6d1f6c2dd02cb1525e5
   AppSize:
     small:
       Cpu: 256
@@ -2268,18 +2268,53 @@ Resources:
         # Removed when sticky-disk isolation is on: sticky disks tag at
         # creation from the control plane, and job-writable tags would allow
         # lineage poisoning.
+        # The stack tag gates every other legacy EBS grant, so jobs may only
+        # set it at creation, to this stack, and never write sticky-disk tags.
+        # Afterwards they may only refresh runs-on-delete-after on this
+        # stack's volumes (the v1 action's post step).
+        # Known gap: IAM reads aws:RequestTag/runs-on-stack-name from a tag
+        # whose key differs only in case, while EC2 stores both keys, so a
+        # request tagging Runs-On-Stack-Name with this stack can also tag a
+        # new volume or snapshot runs-on-stack-name with another stack. That
+        # gives the job no access to the other stack's resources.
         - !If
           - StickyDiskIsolationDisabled
           - PolicyName: CreateTagsOnVolumesAndSnapshots
             PolicyDocument:
               Version: "2012-10-17"
               Statement:
+                - Effect: Deny
+                  Action:
+                    - ec2:CreateTags
+                  Resource:
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    ForAnyValue:StringLike:
+                      "aws:TagKeys":
+                        - runs-on-stickydisk*
                 - Effect: Allow
                   Action:
                     - ec2:CreateTags
                   Resource:
                     - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:*:snapshot/*"
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    StringEquals:
+                      "ec2:CreateAction":
+                        - CreateVolume
+                        - CreateSnapshot
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateTags
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                    ForAllValues:StringEquals:
+                      "aws:TagKeys":
+                        - runs-on-delete-after
           - !Ref AWS::NoValue
         - PolicyName: SendLogs
           PolicyDocument:
@@ -2504,6 +2539,9 @@ Resources:
           - !Ref AWS::NoValue
         - !If
           - StickyDiskIsolationDisabled
+          # IAM checks each resource of the call: the new volume or snapshot
+          # must be born with this stack's tag, and the source snapshot or
+          # volume must already carry it.
           - PolicyName: VolumeSnapshotCreate
             PolicyDocument:
               Version: "2012-10-17"
@@ -2511,10 +2549,31 @@ Resources:
                 - Effect: Allow
                   Action:
                     - ec2:CreateVolume
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateVolume
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
                     - ec2:CreateSnapshot
-                  Resource:
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateSnapshot
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    StringEquals:
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
           - !Ref AWS::NoValue
         - !If
           - StickyDiskIsolationDisabled
@@ -3073,11 +3132,15 @@ Resources:
         Statement:
           # The control plane publishes GitHub's OIDC JWKS to this single key
           # (pkg/jwkscache); the broker validates runtime tokens exclusively
-          # against it and holds no other S3 permissions.
+          # against it. On GitHub Enterprise Server it also reads the calling
+          # instance's repository binding (pkg/cachebinding). It holds no
+          # other S3 permissions.
           - Effect: Allow
             Action:
               - s3:GetObject
-            Resource: !Sub "${S3BucketCache.Arn}/agents/github-jwks.json"
+            Resource:
+              - !Sub "${S3BucketCache.Arn}/agents/github-jwks.json"
+              - !Sub "${S3BucketCache.Arn}/runners/cache-bindings/*"
 
   RunsOnPublicIngressRole:
     Type: AWS::IAM::Role
@@ -7041,6 +7104,14 @@ Resources:
             if (match) return `https://token.actions.${match[1]}.ghe.com`;
             return `${url}/_services/token`;
           }
+
+          // ghesHostForEnterpriseURL returns the host of a GitHub Enterprise Server, and
+          // nothing for github.com and GHE.com. The stack's platform alone turns the
+          // GHES rules on: a token never selects them by what it lacks.
+          function ghesHostForEnterpriseURL(url) {
+            if (!url || /^https:\/\/(?:api\.)?[^./]+\.ghe\.com$/.test(url.toLowerCase())) return '';
+            return new URL(url).host;
+          }
           const bucketArn = process.env.CACHE_BUCKET_ARN;
           const bucketName = bucketNameFromArn(bucketArn);
           // This broker isolates only Magic Cache data under scoped-cache/*. Direct S3
@@ -7053,6 +7124,12 @@ Resources:
           // copy is accepted regardless of age — a stale key set still verifies
           // signatures correctly, and rotation lag is bounded by the refresh interval.
           const jwksObjectKey = 'agents/github-jwks.json';
+          // GitHub Enterprise Server signs runtime tokens that name no repository, so
+          // there the control plane states which repository an instance runs a job of,
+          // in an object it creates once and the instance can neither write nor delete
+          // (pkg/cachebinding). Its key ends in the caller's verified STS user ID.
+          const ghesHost = ghesHostForEnterpriseURL(enterpriseURL);
+          const cacheBindingPrefix = 'runners/cache-bindings/';
           const jwksCacheTTLMS = 2 * 60 * 1000;
           const runnerRoleArn = process.env.RUNNER_ROLE_ARN;
           const expectedAWSPartition = partitionFromArn(runnerRoleArn);
@@ -7082,7 +7159,15 @@ Resources:
             // The cache prefix is a pure function of the GitHub-signed token: the same
             // signature that authorizes the ac scopes carries the repository ID, so a
             // token can only ever mint credentials into its own repository's prefix.
-            const { ownerID, repoID } = tokenRepositoryIDs(token.payload);
+            // A GHES token carries no repository, so the instance's binding names it.
+            const ids = await jobRepositoryIDs(token.payload, caller.userID);
+            if (ids === null) {
+              // Fleet runners wait for their binding on most jobs. That wait is an
+              // answer, not a failure: a thrown error would count in the function's
+              // Errors metric at every poll.
+              return { binding_pending: true };
+            }
+            const { ownerID, repoID } = ids;
             const repository = repositoryPath(ownerID, repoID);
 
             if (input.mode === 'git') {
@@ -7240,10 +7325,13 @@ Resources:
             }
             const header = JSON.parse(base64urlDecode(parts[0]).toString('utf8'));
             const payload = JSON.parse(base64urlDecode(parts[1]).toString('utf8'));
-            if (header.alg !== 'RS256' || !header.kid) {
+            // GHES names the signing key by its certificate thumbprint (x5t) and issues
+            // runtime tokens under its bare host, not under the OIDC issuer URL.
+            const keyID = header.kid || (ghesHost !== '' && header.x5t);
+            if (header.alg !== 'RS256' || typeof keyID !== 'string' || keyID === '') {
               throw new Error('runtime token uses an unsupported signing algorithm');
             }
-            if (payload.iss !== issuer) {
+            if (payload.iss !== issuer && (ghesHost === '' || payload.iss !== ghesHost)) {
               throw new Error('runtime token issuer is not trusted');
             }
             const now = Math.floor(Date.now() / 1000);
@@ -7254,14 +7342,17 @@ Resources:
               throw new Error('runtime token is expired');
             }
 
-            let jwk = (await loadJwks()).keys.find((key) => key.kid === header.kid);
+            const signedBy = header.kid
+              ? (key) => key.kid === header.kid
+              : (key) => key.x5t === keyID || key.kid === thumbprintHex(keyID);
+            let jwk = (await loadJwks()).keys.find(signedBy);
             if (!jwk) {
               // A kid miss on a warm Lambda usually means GitHub rotated the signing
               // key inside our in-memory cache window; re-read the S3 copy once before
               // rejecting. If the control plane has not refreshed the copy yet the
               // mint fails until its next 5-minute pass — agents retry.
               cachedJwksExpiresAt = 0;
-              jwk = (await loadJwks()).keys.find((key) => key.kid === header.kid);
+              jwk = (await loadJwks()).keys.find(signedBy);
             }
             if (!jwk) {
               throw new Error('runtime token signing key is not trusted');
@@ -7274,6 +7365,11 @@ Resources:
               throw new Error('runtime token signature is invalid');
             }
             return { header, payload };
+          }
+
+          // thumbprintHex is an x5t thumbprint the way GHES writes it as a JWKS kid.
+          function thumbprintHex(x5t) {
+            return base64urlDecode(x5t).toString('hex').toUpperCase();
           }
 
           async function loadJwks() {
@@ -7458,6 +7554,39 @@ Resources:
               ownerID: requiredNumericClaim(payload.repository_owner_id, 'repository_owner_id'),
               repoID,
             };
+          }
+
+          // jobRepositoryIDs names the repository a validated token's job belongs to:
+          // the token's own claims, or on GHES, whose tokens carry none, the repository
+          // the control plane bound the calling instance to, or null while it has bound
+          // none. Off GHES a token without the claim still fails closed in
+          // tokenRepositoryIDs.
+          async function jobRepositoryIDs(payload, callerUserID) {
+            if (ghesHost === '' || !claimMissing(payload.repository_id)) {
+              return tokenRepositoryIDs(payload);
+            }
+            // Without s3:ListBucket a missing object reads as AccessDenied: that is
+            // "not bound yet". Fleet binds a runner when its job starts, and the agent
+            // polls while the handler answers binding_pending. Any other failure (S3
+            // unavailable, a binding that does not parse) is an error.
+            let output;
+            try {
+              output = await getS3Client().send(new GetObjectCommand({
+                Bucket: bucketName,
+                Key: `${cacheBindingPrefix}${callerUserID}.json`,
+              }));
+            } catch (error) {
+              const status = error?.$metadata?.httpStatusCode;
+              if (error?.name === 'AccessDenied' || error?.name === 'NoSuchKey' || status === 403 || status === 404) {
+                return null;
+              }
+              throw error;
+            }
+            const binding = JSON.parse(await bodyToString(output.Body));
+            if (!Number.isSafeInteger(binding.repositoryId) || binding.repositoryId <= 0) {
+              throw new Error('runner cache binding names no repository');
+            }
+            return { ownerID: unassertedOwnerID, repoID: binding.repositoryId };
           }
 
           function claimMissing(raw) {
@@ -7746,6 +7875,7 @@ Resources:
             gitPrefixesFor,
             defaultIssuerForEnterpriseURL,
             instanceIDFromCallerUserID,
+            jobRepositoryIDs,
             normalizeAccessControls,
             normalizeCallerIdentityProof,
             normalizeEvent,
@@ -7989,6 +8119,11 @@ Resources:
   # X-Hub-Signature-256, and the Flex worker validates the signature after reading the SQS message.
   RunsOnPublicIngressRestApiMethodPostGitHubWebhooks:
     Type: AWS::ApiGateway::Method
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_59
+            comment: GitHub webhooks cannot send AWS auth; the Flex worker verifies X-Hub-Signature-256.
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !Ref RunsOnPublicIngressRestApiGitHubWebhooksResource
