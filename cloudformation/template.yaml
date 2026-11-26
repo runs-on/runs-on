@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation stack for https://runs-on.com (v3.6.2)
+Description: CloudFormation stack for https://runs-on.com (v3.7.0-rc.4)
 # Keep this template free of transforms. AWS::LanguageExtensions resolves
 # parameters into the processed template, so updating with "Use current
 # template" silently ignored every parameter change.
@@ -22,6 +22,7 @@ Metadata:
           default: "Networking and security [optional]"
         Parameters:
           - VpcCidrBlock
+          - AvailabilityZoneCount
           - Private
           - Ipv6Enabled
           - SSHAllowed
@@ -107,6 +108,15 @@ Parameters:
     Default: 10.1.0.0/16
     Description: "CIDR block for the embedded RunsOn VPC. Set this to a range that does not overlap with your existing VPCs when creating the stack. Changing this after the VPC exists requires replacing the VPC and dependent resources."
 
+  AvailabilityZoneCount:
+    Type: String
+    Default: "auto"
+    AllowedValues:
+      - "auto"
+      - "2"
+      - "3"
+    Description: "Number of Availability Zones the embedded VPC spans, with one public and one private subnet in each. More zones give runners more EC2 capacity to draw from. 'auto' means 3, except 2 in us-west-1, where accounts get two zones (set 3 there if yours has three). Set 2 where your account's default VPC has default subnets in only two zones: CloudFormation then offers only those two, and the third zone's subnets fail to create (`aws ec2 describe-subnets --filters Name=default-for-az,Values=true` lists them). Going from 2 to 3 adds the third zone's subnets and leaves the others untouched; going back to 2 deletes them, which fails while runners still use them. Private networking keeps a single NAT gateway and static egress IP whatever the count."
+
   Private:
     Type: String
     Default: "false"
@@ -185,7 +195,7 @@ Parameters:
     Type: String
     Default: ""
     AllowedPattern: "^$|^arn:aws[a-zA-Z-]*:network-firewall:[a-z0-9-]+:[0-9]{12}:firewall-policy/.+$"
-    Description: "Optional ARN of an AWS Network Firewall policy used for IPv4 egress filtering. Manage the policy and its rule groups outside this stack. When provided, RunsOn creates firewall endpoints in both AZs and routes IPv4 egress from public subnets, plus private-subnet egress after NAT, through the firewall. S3 gateway endpoint traffic still bypasses the firewall. IPv6 traffic is not filtered; set Ipv6Enabled=false if you need comprehensive egress filtering."
+    Description: "Optional ARN of an AWS Network Firewall policy used for IPv4 egress filtering. Manage the policy and its rule groups outside this stack. When provided, RunsOn creates a firewall endpoint in each AZ and routes IPv4 egress from public subnets, plus private-subnet egress after NAT, through the firewall. S3 gateway endpoint traffic still bypasses the firewall. IPv6 traffic is not filtered; set Ipv6Enabled=false if you need comprehensive egress filtering."
 
   # Runner behavior and storage [optional]
   EnableBedrock:
@@ -198,19 +208,19 @@ Parameters:
 
   EnableCacheIsolation:
     Type: String
-    Default: "false"
+    Default: "true"
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable per-repository/per-branch isolation for Magic Cache data under scoped-cache/*. Direct S3 cache integrations keep instance-profile access to the stack-shared cache/* namespace and are not repository-isolated. Enabling later moves Magic Cache objects to a new prefix (one-time cache re-warm)."
+    Description: "Isolate Magic Cache and git cache data per repository and branch under scoped-cache/*, with short-lived credentials the cache broker mints from each job's Actions runtime token (ACTIONS_RUNTIME_TOKEN, not GITHUB_TOKEN, so workflow permissions do not affect it). Default true since v3.7. Turning it on moves Magic Cache objects to a new prefix (one-time cache re-warm; entries under cache/ expire with the cache retention). Setting false lets job code of any repository on the stack read and overwrite every other repository's cache entries. Direct S3 cache integrations keep instance-profile access to the stack-shared cache/* namespace in both modes."
 
   EnableStickyDiskIsolation:
     Type: String
-    Default: "false"
+    Default: "true"
     AllowedValues:
       - "true"
       - "false"
-    Description: "Remove the legacy EBS volume/snapshot permissions from the runner instance role. Sticky disks (sticky= label) are unaffected (the control plane performs all EBS operations), but the legacy v1 runs-on/snapshot action stops working."
+    Description: "Remove the legacy EBS volume/snapshot permissions from the runner instance role. The control plane performs all sticky-disk EBS operations. Default true since v3.7. Sticky disks (sticky= label) keep working and keep their existing snapshots, but the legacy v1 runs-on/snapshot action stops working. Setting false restores, for the v1 action, permissions scoped to this stack's runs-on-stack-name tag: job code can then list every EBS volume and snapshot in the region, create volumes and snapshots tagged for this stack (only from this stack's snapshots and volumes), and attach (to this stack's instances), detach and delete any volume or snapshot tagged for this stack, including other repositories' sticky-disk volumes and snapshots: it can read their data, write to their volumes and delete them. It cannot add tags to existing volumes or snapshots (except runs-on-delete-after on this stack's volumes), write runs-on-stickydisk* tags, or modify EBS resources outside this stack."
 
   EnableEfs:
     Type: String
@@ -381,8 +391,8 @@ Mappings:
   App:
     Tags:
       BootstrapTag: v0.1.12
-      AppTag: v3.6.2
-      ImageTag: v3.6.2@sha256:286756600e5b5e83ac552930491adfa8b187965a3315d347a9fb25fa4bfb3c49
+      AppTag: v3.7.0-rc.4
+      ImageTag: v3.7.0-rc.4@sha256:443c0b4a0c1e6311d329446a2b5bd7d1e4de0cc1a7848e498b62f683fe72d91d
   AppSize:
     small:
       Cpu: 256
@@ -452,6 +462,17 @@ Conditions:
   # other supported partitions keep the commercial service principal.
   IsChinaPartition: !Equals [!Ref AWS::Partition, "aws-cn"]
   NetworkFirewallDisabled: !Equals [!Ref NetworkFirewallPolicyArn, ""]
+  # CloudFormation cannot count a Region's zones without a transform, so
+  # 'auto' knows the commercial Region where accounts get two.
+  TwoZoneRegion: !Equals [!Ref AWS::Region, us-west-1]
+  ThreeZones: !Or
+    - !Equals [!Ref AvailabilityZoneCount, "3"]
+    - !And
+      - !Equals [!Ref AvailabilityZoneCount, "auto"]
+      - !Not [!Condition TwoZoneRegion]
+  ThreeZonesFirewall: !And [!Condition NetworkFirewallEnabled, !Condition ThreeZones]
+  ThreeZonesNoFirewall: !And [!Condition NetworkFirewallDisabled, !Condition ThreeZones]
+  ThreeZonesEfs: !And [!Condition CreateEfs, !Condition ThreeZones]
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -553,6 +574,17 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateSubnet2RouteTable
 
+  # Every private route table holds the same routes (the single NAT gateway
+  # and the egress-only gateway), so the third zone shares the first zone's
+  # table. It then also gets the routes customers added to that table
+  # themselves, such as VPC peering or Transit Gateway routes.
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ThreeZones
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     DependsOn: VPCIPv6CidrBlock
@@ -612,6 +644,37 @@ Resources:
           Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Condition: ThreeZones
+    DependsOn: VPCIPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Select [10, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock:
+        Fn::Select:
+          - 2
+          - Fn::Cidr:
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet3
 
   PrivateSubnetGateway1:
     Condition: HasPrivateSubnet
@@ -704,6 +767,37 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2
 
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Condition: ThreeZones
+    DependsOn: VPCIPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Select [2, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: !If [IsPrivateOnly, false, true]
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock:
+        Fn::Select:
+          - 5
+          - Fn::Cidr:
+            - Fn::Select:
+              - 0
+              - Fn::GetAtt:
+                - VPC
+                - Ipv6CidrBlocks
+            - 256
+            - 64
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet3
+
   S3VpcEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -714,6 +808,7 @@ Resources:
       RouteTableIds:
         - !If [NetworkFirewallEnabled, !Ref PublicSubnet1FirewallRouteTable, !Ref PublicRouteTable]
         - !If [NetworkFirewallEnabled, !Ref PublicSubnet2FirewallRouteTable, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref PublicSubnet3FirewallRouteTable, !Ref AWS::NoValue]
         - !Ref PrivateSubnet1RouteTable
         - !Ref PrivateSubnet2RouteTable
 
@@ -780,6 +875,13 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  SubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ThreeZonesNoFirewall
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
   # Optional distributed AWS Network Firewall egress path. The public subnets
   # use AZ-local firewall endpoints so stateful rules see both directions of a
   # connection; private-subnet traffic is filtered after it exits the NAT gateway
@@ -819,6 +921,24 @@ Resources:
           Value: pc:2b9joblhmcbhnqakspwshptlz
         - Key: Name
           Value: !Sub ${AWS::StackName}-FirewallSubnet2
+
+  FirewallSubnet3:
+    Type: AWS::EC2::Subnet
+    Condition: ThreeZonesFirewall
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Select [13, !Cidr [!GetAtt [VPC, CidrBlock], 16, 12]]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-FirewallSubnet3
 
   FirewallSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
@@ -882,6 +1002,15 @@ Resources:
       SubnetId: !Ref FirewallSubnet2
       RouteTableId: !Ref FirewallSubnet2RouteTable
 
+  # Firewall subnet route tables only route to the internet gateway, so the
+  # third zone shares the first zone's table.
+  FirewallSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ThreeZonesFirewall
+    Properties:
+      SubnetId: !Ref FirewallSubnet3
+      RouteTableId: !Ref FirewallSubnet1RouteTable
+
   NetworkFirewall:
     Type: AWS::NetworkFirewall::Firewall
     Condition: NetworkFirewallEnabled
@@ -892,6 +1021,10 @@ Resources:
       SubnetMappings:
         - SubnetId: !Ref FirewallSubnet1
         - SubnetId: !Ref FirewallSubnet2
+        - !If
+          - ThreeZonesFirewall
+          - SubnetId: !Ref FirewallSubnet3
+          - !Ref AWS::NoValue
       DeleteProtection: false
       Tags:
         - Key: !Ref CostAllocationTag
@@ -1246,6 +1379,7 @@ Resources:
       SubnetIds:
         FirewallSubnet1: !Ref FirewallSubnet1
         FirewallSubnet2: !Ref FirewallSubnet2
+        FirewallSubnet3: !If [ThreeZonesFirewall, !Ref FirewallSubnet3, !Ref AWS::NoValue]
 
   PublicSubnet1FirewallRouteTable:
     Type: AWS::EC2::RouteTable
@@ -1277,6 +1411,21 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PublicSubnet2FirewallRouteTable
 
+  PublicSubnet3FirewallRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: ThreeZonesFirewall
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: !Ref CostAllocationTag
+          Value: !Ref AWS::StackName
+        - Key: runs-on-stack-name
+          Value: !Ref AWS::StackName
+        - Key: aws-apn-id-135269210855
+          Value: pc:2b9joblhmcbhnqakspwshptlz
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet3FirewallRouteTable
+
   PublicSubnet1FirewallRoute:
     Type: AWS::EC2::Route
     Condition: NetworkFirewallEnabled
@@ -1292,6 +1441,14 @@ Resources:
       RouteTableId: !Ref PublicSubnet2FirewallRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet2EndpointId
+
+  PublicSubnet3FirewallRoute:
+    Type: AWS::EC2::Route
+    Condition: ThreeZonesFirewall
+    Properties:
+      RouteTableId: !Ref PublicSubnet3FirewallRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet3EndpointId
 
   PublicSubnet1FirewallRouteIPv6:
     Type: AWS::EC2::Route
@@ -1311,6 +1468,15 @@ Resources:
       DestinationIpv6CidrBlock: ::/0
       GatewayId: !Ref InternetGateway
 
+  PublicSubnet3FirewallRouteIPv6:
+    Type: AWS::EC2::Route
+    Condition: ThreeZonesFirewall
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicSubnet3FirewallRouteTable
+      DestinationIpv6CidrBlock: ::/0
+      GatewayId: !Ref InternetGateway
+
   PublicSubnet1FirewallRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Condition: NetworkFirewallEnabled
@@ -1324,6 +1490,13 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicSubnet2FirewallRouteTable
+
+  PublicSubnet3FirewallRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: ThreeZonesFirewall
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicSubnet3FirewallRouteTable
 
   InternetGatewayRouteTable:
     Type: AWS::EC2::RouteTable
@@ -1366,6 +1539,14 @@ Resources:
       RouteTableId: !Ref InternetGatewayRouteTable
       DestinationCidrBlock: !GetAtt PublicSubnet2.CidrBlock
       VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet2EndpointId
+
+  InternetGatewayRoutePublicSubnet3:
+    Type: AWS::EC2::Route
+    Condition: ThreeZonesFirewall
+    Properties:
+      RouteTableId: !Ref InternetGatewayRouteTable
+      DestinationCidrBlock: !GetAtt PublicSubnet3.CidrBlock
+      VpcEndpointId: !GetAtt NetworkFirewallEndpointResolver.FirewallSubnet3EndpointId
 
   # --- EFS Resources ---
   EfsFileSystem:
@@ -1422,6 +1603,15 @@ Resources:
     Properties:
       FileSystemId: !Ref EfsFileSystem
       SubnetId: !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  EfsMountTarget3:
+    Condition: ThreeZonesEfs
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PublicSubnet3
       SecurityGroups:
         - !Ref EfsSecurityGroup
 
@@ -2264,22 +2454,58 @@ Resources:
                       - runs-on-stack-name
                       - runs-on-terminate
                       - runs-on-launch-token
+                      - runs-on-fleet-standby
         # Legacy grant for the v1 runs-on/snapshot action (job-side AWS calls).
         # Removed when sticky-disk isolation is on: sticky disks tag at
         # creation from the control plane, and job-writable tags would allow
         # lineage poisoning.
+        # The stack tag gates every other legacy EBS grant, so jobs may only
+        # set it at creation, to this stack, and never write sticky-disk tags.
+        # Afterwards they may only refresh runs-on-delete-after on this
+        # stack's volumes (the v1 action's post step).
+        # Known gap: IAM reads aws:RequestTag/runs-on-stack-name from a tag
+        # whose key differs only in case, while EC2 stores both keys, so a
+        # request tagging Runs-On-Stack-Name with this stack can also tag a
+        # new volume or snapshot runs-on-stack-name with another stack. That
+        # gives the job no access to the other stack's resources.
         - !If
           - StickyDiskIsolationDisabled
           - PolicyName: CreateTagsOnVolumesAndSnapshots
             PolicyDocument:
               Version: "2012-10-17"
               Statement:
+                - Effect: Deny
+                  Action:
+                    - ec2:CreateTags
+                  Resource:
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    ForAnyValue:StringLike:
+                      "aws:TagKeys":
+                        - runs-on-stickydisk*
                 - Effect: Allow
                   Action:
                     - ec2:CreateTags
                   Resource:
                     - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:*:snapshot/*"
+                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    StringEquals:
+                      "ec2:CreateAction":
+                        - CreateVolume
+                        - CreateSnapshot
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateTags
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                    ForAllValues:StringEquals:
+                      "aws:TagKeys":
+                        - runs-on-delete-after
           - !Ref AWS::NoValue
         - PolicyName: SendLogs
           PolicyDocument:
@@ -2378,9 +2604,10 @@ Resources:
                         !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/*",
                       ]
-              # Volume-scoped sticky-disk clean-unmount markers are the only
-              # keys the instance may write under its runners/ prefix.
-              # runner-identity.json remains unwritable from the instance.
+              # Volume-scoped sticky-disk clean-unmount markers and
+              # pool-status.json are the only keys the instance may write under
+              # its runners/ prefix. runner-identity.json remains unwritable
+              # from the instance.
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -2390,6 +2617,12 @@ Resources:
                     - [
                         !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/",
                         "${aws:userid}/stickydisk-clean/*",
+                      ]
+                  - !Join
+                    - ""
+                    - [
+                        !Sub "arn:${AWS::Partition}:s3:::${S3BucketCache}/runners/",
+                        "${aws:userid}/pool-status.json",
                       ]
               # The agent uploads the runner's telemetry capture to its own
               # telemetry/ prefix at shutdown. Captured logs and spans can hold
@@ -2504,6 +2737,9 @@ Resources:
           - !Ref AWS::NoValue
         - !If
           - StickyDiskIsolationDisabled
+          # IAM checks each resource of the call: the new volume or snapshot
+          # must be born with this stack's tag, and the source snapshot or
+          # volume must already carry it.
           - PolicyName: VolumeSnapshotCreate
             PolicyDocument:
               Version: "2012-10-17"
@@ -2511,10 +2747,31 @@ Resources:
                 - Effect: Allow
                   Action:
                     - ec2:CreateVolume
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateVolume
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
                     - ec2:CreateSnapshot
-                  Resource:
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-                    - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*" # no account id in snapshot ARN
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  Condition:
+                    StringEquals:
+                      "aws:ResourceTag/runs-on-stack-name": !Ref AWS::StackName
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateSnapshot
+                  Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*"
+                  Condition:
+                    StringEquals:
+                      "aws:RequestTag/runs-on-stack-name": !Ref AWS::StackName
           - !Ref AWS::NoValue
         - !If
           - StickyDiskIsolationDisabled
@@ -3073,11 +3330,15 @@ Resources:
         Statement:
           # The control plane publishes GitHub's OIDC JWKS to this single key
           # (pkg/jwkscache); the broker validates runtime tokens exclusively
-          # against it and holds no other S3 permissions.
+          # against it. On GitHub Enterprise Server it also reads the calling
+          # instance's repository binding (pkg/cachebinding). It holds no
+          # other S3 permissions.
           - Effect: Allow
             Action:
               - s3:GetObject
-            Resource: !Sub "${S3BucketCache.Arn}/agents/github-jwks.json"
+            Resource:
+              - !Sub "${S3BucketCache.Arn}/agents/github-jwks.json"
+              - !Sub "${S3BucketCache.Arn}/runners/cache-bindings/*"
 
   RunsOnPublicIngressRole:
     Type: AWS::IAM::Role
@@ -7041,6 +7302,14 @@ Resources:
             if (match) return `https://token.actions.${match[1]}.ghe.com`;
             return `${url}/_services/token`;
           }
+
+          // ghesHostForEnterpriseURL returns the host of a GitHub Enterprise Server, and
+          // nothing for github.com and GHE.com. The stack's platform alone turns the
+          // GHES rules on: a token never selects them by what it lacks.
+          function ghesHostForEnterpriseURL(url) {
+            if (!url || /^https:\/\/(?:api\.)?[^./]+\.ghe\.com$/.test(url.toLowerCase())) return '';
+            return new URL(url).host;
+          }
           const bucketArn = process.env.CACHE_BUCKET_ARN;
           const bucketName = bucketNameFromArn(bucketArn);
           // This broker isolates only Magic Cache data under scoped-cache/*. Direct S3
@@ -7053,6 +7322,12 @@ Resources:
           // copy is accepted regardless of age — a stale key set still verifies
           // signatures correctly, and rotation lag is bounded by the refresh interval.
           const jwksObjectKey = 'agents/github-jwks.json';
+          // GitHub Enterprise Server signs runtime tokens that name no repository, so
+          // there the control plane states which repository an instance runs a job of,
+          // in an object it creates once and the instance can neither write nor delete
+          // (pkg/cachebinding). Its key ends in the caller's verified STS user ID.
+          const ghesHost = ghesHostForEnterpriseURL(enterpriseURL);
+          const cacheBindingPrefix = 'runners/cache-bindings/';
           const jwksCacheTTLMS = 2 * 60 * 1000;
           const runnerRoleArn = process.env.RUNNER_ROLE_ARN;
           const expectedAWSPartition = partitionFromArn(runnerRoleArn);
@@ -7082,7 +7357,15 @@ Resources:
             // The cache prefix is a pure function of the GitHub-signed token: the same
             // signature that authorizes the ac scopes carries the repository ID, so a
             // token can only ever mint credentials into its own repository's prefix.
-            const { ownerID, repoID } = tokenRepositoryIDs(token.payload);
+            // A GHES token carries no repository, so the instance's binding names it.
+            const ids = await jobRepositoryIDs(token.payload, caller.userID);
+            if (ids === null) {
+              // Fleet runners wait for their binding on most jobs. That wait is an
+              // answer, not a failure: a thrown error would count in the function's
+              // Errors metric at every poll.
+              return { binding_pending: true };
+            }
+            const { ownerID, repoID } = ids;
             const repository = repositoryPath(ownerID, repoID);
 
             if (input.mode === 'git') {
@@ -7240,10 +7523,13 @@ Resources:
             }
             const header = JSON.parse(base64urlDecode(parts[0]).toString('utf8'));
             const payload = JSON.parse(base64urlDecode(parts[1]).toString('utf8'));
-            if (header.alg !== 'RS256' || !header.kid) {
+            // GHES names the signing key by its certificate thumbprint (x5t) and issues
+            // runtime tokens under its bare host, not under the OIDC issuer URL.
+            const keyID = header.kid || (ghesHost !== '' && header.x5t);
+            if (header.alg !== 'RS256' || typeof keyID !== 'string' || keyID === '') {
               throw new Error('runtime token uses an unsupported signing algorithm');
             }
-            if (payload.iss !== issuer) {
+            if (payload.iss !== issuer && (ghesHost === '' || payload.iss !== ghesHost)) {
               throw new Error('runtime token issuer is not trusted');
             }
             const now = Math.floor(Date.now() / 1000);
@@ -7254,14 +7540,17 @@ Resources:
               throw new Error('runtime token is expired');
             }
 
-            let jwk = (await loadJwks()).keys.find((key) => key.kid === header.kid);
+            const signedBy = header.kid
+              ? (key) => key.kid === header.kid
+              : (key) => key.x5t === keyID || key.kid === thumbprintHex(keyID);
+            let jwk = (await loadJwks()).keys.find(signedBy);
             if (!jwk) {
               // A kid miss on a warm Lambda usually means GitHub rotated the signing
               // key inside our in-memory cache window; re-read the S3 copy once before
               // rejecting. If the control plane has not refreshed the copy yet the
               // mint fails until its next 5-minute pass — agents retry.
               cachedJwksExpiresAt = 0;
-              jwk = (await loadJwks()).keys.find((key) => key.kid === header.kid);
+              jwk = (await loadJwks()).keys.find(signedBy);
             }
             if (!jwk) {
               throw new Error('runtime token signing key is not trusted');
@@ -7274,6 +7563,11 @@ Resources:
               throw new Error('runtime token signature is invalid');
             }
             return { header, payload };
+          }
+
+          // thumbprintHex is an x5t thumbprint the way GHES writes it as a JWKS kid.
+          function thumbprintHex(x5t) {
+            return base64urlDecode(x5t).toString('hex').toUpperCase();
           }
 
           async function loadJwks() {
@@ -7458,6 +7752,39 @@ Resources:
               ownerID: requiredNumericClaim(payload.repository_owner_id, 'repository_owner_id'),
               repoID,
             };
+          }
+
+          // jobRepositoryIDs names the repository a validated token's job belongs to:
+          // the token's own claims, or on GHES, whose tokens carry none, the repository
+          // the control plane bound the calling instance to, or null while it has bound
+          // none. Off GHES a token without the claim still fails closed in
+          // tokenRepositoryIDs.
+          async function jobRepositoryIDs(payload, callerUserID) {
+            if (ghesHost === '' || !claimMissing(payload.repository_id)) {
+              return tokenRepositoryIDs(payload);
+            }
+            // Without s3:ListBucket a missing object reads as AccessDenied: that is
+            // "not bound yet". Fleet binds a runner when its job starts, and the agent
+            // polls while the handler answers binding_pending. Any other failure (S3
+            // unavailable, a binding that does not parse) is an error.
+            let output;
+            try {
+              output = await getS3Client().send(new GetObjectCommand({
+                Bucket: bucketName,
+                Key: `${cacheBindingPrefix}${callerUserID}.json`,
+              }));
+            } catch (error) {
+              const status = error?.$metadata?.httpStatusCode;
+              if (error?.name === 'AccessDenied' || error?.name === 'NoSuchKey' || status === 403 || status === 404) {
+                return null;
+              }
+              throw error;
+            }
+            const binding = JSON.parse(await bodyToString(output.Body));
+            if (!Number.isSafeInteger(binding.repositoryId) || binding.repositoryId <= 0) {
+              throw new Error('runner cache binding names no repository');
+            }
+            return { ownerID: unassertedOwnerID, repoID: binding.repositoryId };
           }
 
           function claimMissing(raw) {
@@ -7746,6 +8073,7 @@ Resources:
             gitPrefixesFor,
             defaultIssuerForEnterpriseURL,
             instanceIDFromCallerUserID,
+            jobRepositoryIDs,
             normalizeAccessControls,
             normalizeCallerIdentityProof,
             normalizeEvent,
@@ -7989,6 +8317,11 @@ Resources:
   # X-Hub-Signature-256, and the Flex worker validates the signature after reading the SQS message.
   RunsOnPublicIngressRestApiMethodPostGitHubWebhooks:
     Type: AWS::ApiGateway::Method
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_59
+            comment: GitHub webhooks cannot send AWS auth; the Flex worker verifies X-Hub-Signature-256.
     Properties:
       RestApiId: !Ref RunsOnPublicIngressRestApi
       ResourceId: !Ref RunsOnPublicIngressRestApiGitHubWebhooksResource
@@ -8657,6 +8990,22 @@ Resources:
       ServiceToken: !GetAtt StackConfigMaterializerFunction.Arn
       RefreshToken: !Ref StackConfigMaterializerFunctionVersion
       StackConfigSecretArn: !Ref RunsOnStackConfigSecret
+      # The function ignores this property. It makes the stack config, and
+      # through its version the worker task, wait until the third zone can
+      # reach the internet: flexd checks each subnet's routes once, when it
+      # starts, and on a stack that gains the third zone the firewall routes
+      # come minutes after the subnets, once the new firewall endpoint is ready.
+      ThirdZoneNetworking:
+        - !If [ThreeZones, !Ref PrivateSubnet3RouteTableAssociation, !Ref AWS::NoValue]
+        - !If [ThreeZonesNoFirewall, !Ref SubnetRouteTableAssociation3, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref FirewallSubnet3RouteTableAssociation, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref PublicSubnet3FirewallRouteTableAssociation, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref PublicSubnet3FirewallRoute, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref PublicSubnet3FirewallRouteIPv6, !Ref AWS::NoValue]
+        - !If [ThreeZonesFirewall, !Ref InternetGatewayRoutePublicSubnet3, !Ref AWS::NoValue]
+        # The S3 gateway route of the third public subnet's own route table.
+        - !If [ThreeZonesFirewall, !Ref S3VpcEndpoint, !Ref AWS::NoValue]
+        - !If [ThreeZonesEfs, !Ref EfsMountTarget3, !Ref AWS::NoValue]
       StackConfigBase:
         AwsAccountId: !Ref AWS::AccountId
         Private: !Ref Private
@@ -8668,8 +9017,8 @@ Resources:
         InstanceRoleName: !Ref EC2InstanceRole
         InstanceRoleId: !GetAtt EC2InstanceRole.RoleId
         SshAllowed: !Ref SSHAllowed
-        PublicSubnetIds: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
-        PrivateSubnetIds: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+        PublicSubnetIds: !If [ThreeZones, !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]]
+        PrivateSubnetIds: !If [ThreeZones, !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]]
         TopicArn: !Ref AlertTopic
         RunnerCustomTags: !Join [",", !Ref RunnerCustomTags]
         RunnerMaxRuntime: !Ref RunnerMaxRuntime
@@ -8729,8 +9078,8 @@ Resources:
             private_mode: !Ref Private
             ipv6_enabled: !If [HasIpv6Enabled, true, false]
             ssh_allowed: !If [HasSSHAllowed, true, false]
-            public_subnet_count: 2
-            private_subnet_count: 2
+            public_subnet_count: !If [ThreeZones, 3, 2]
+            private_subnet_count: !If [ThreeZones, 3, 2]
           runtime:
             app_size: !Ref AppSize
             capacity_provider: !Ref AppCapacityProvider
@@ -9009,6 +9358,7 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                 Resource: !GetAtt RunsOnLocksTable.Arn
@@ -9122,8 +9472,8 @@ Resources:
           SecurityGroups: [!Ref SecurityGroup]
           Subnets: !If
             - HasPrivateSubnet
-            - [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
-            - [!Ref PublicSubnet1, !Ref PublicSubnet2]
+            - [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !If [ThreeZones, !Ref PrivateSubnet3, !Ref AWS::NoValue]]
+            - [!Ref PublicSubnet1, !Ref PublicSubnet2, !If [ThreeZones, !Ref PublicSubnet3, !Ref AWS::NoValue]]
       Tags:
         - Key: !Ref CostAllocationTag
           Value: !Ref AWS::StackName
@@ -9771,10 +10121,10 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VpcCidrBlock"
   RunsOnPublicSubnetIds:
     Description: Public subnet IDs
-    Value: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+    Value: !If [ThreeZones, !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3]], !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]]
   RunsOnPrivateSubnetIds:
     Description: Private subnet IDs
-    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Value: !If [ThreeZones, !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]], !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]]
   RunsOnEgressStaticIps:
     Description: Static IPs for egress traffic (if configured)
     Value: !If [HasPrivateSubnet, !Ref NatGatewayElasticIP, ""]
