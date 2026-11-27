@@ -1,5 +1,7 @@
 # RunsOn
 
+[![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners)
+
 **Cut CI spend, speed up builds, and keep your runner infrastructure fully under your control.**
 
 RunsOn is the self-hosted GitHub Actions control plane for AWS. It launches an isolated EC2 runner for every job with full GitHub Linux runner-image compatibility.
